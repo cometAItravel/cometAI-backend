@@ -305,7 +305,7 @@ function Register() {
       return;
     }
     try {
-      await axios.post("http://localhost:5000/register", { name, email, password });
+      await axios.post("https://cometai-backend.onrender.com/register", { name, email, password });
       alert("🚀 Account created! Welcome to CometAI.");
       navigate("/login");
     } catch (err) {

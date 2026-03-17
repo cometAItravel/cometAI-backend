@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const styles = `
@@ -576,9 +576,9 @@ export default function LandingPage() {
         <div className="footer-logo">☄️ COMETAI</div>
         <div className="footer-text">© 2026 CometAI Travel. Built with ❤️ in India.</div>
         <div className="footer-links">
-          <a className="footer-link">Privacy</a>
-          <a className="footer-link">Terms</a>
-          <a className="footer-link">Contact</a>
+          <span className="footer-link">Privacy</span>
+<span className="footer-link">Terms</span>
+<span className="footer-link">Contact</span>
         </div>
       </footer>
     </>

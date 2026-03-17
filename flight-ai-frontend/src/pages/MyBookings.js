@@ -318,7 +318,7 @@ function MyBookings() {
     const fetchBookings = async () => {
       const token = localStorage.getItem("token");
       try {
-        const response = await axios.get("http://localhost:5000/my-bookings", {
+        const response = await axios.get("https://cometai-backend.onrender.com/my-bookings", {
           headers: { Authorization: `Bearer ${token}` }
         });
         setBookings(response.data);

@@ -340,6 +340,241 @@ app.post("/lock-seat", authenticateToken, async (req, res) => {
   }
 });
 
+/* ---------------- WHATSAPP BOT ---------------- */
+
+const twilio = require("twilio");
+const twilioClient = twilio(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_AUTH_TOKEN
+);
+
+// store conversation state for each user
+const userSessions = {};
+
+app.post("/whatsapp", async (req, res) => {
+  const incomingMsg = req.body.Body?.trim().toLowerCase();
+  const userPhone = req.body.From;
+
+  let replyMsg = "";
+
+  try {
+
+    // get or create session for this user
+    if (!userSessions[userPhone]) {
+      userSessions[userPhone] = { step: "idle", flights: [] };
+    }
+
+    const session = userSessions[userPhone];
+
+    // ── STEP 1: User sends a flight search query ──
+    if (session.step === "idle" || session.step === "searching") {
+
+      // detect cities
+      const cities = [
+        "bangalore","mumbai","delhi","chennai",
+        "hyderabad","kolkata","goa","pune",
+        "kochi","ahmedabad","jaipur","dubai"
+      ];
+
+      let from = null;
+      let to = null;
+
+      cities.forEach(city => {
+        if (incomingMsg.includes(city)) {
+          if (!from) from = city;
+          else if (!to) to = city;
+        }
+      });
+
+      if (!from || !to) {
+        replyMsg = `✈️ *CometAI Travel Bot*\n\nHi! I can help you book flights.\n\nTry sending:\n_"flights bangalore to mumbai tomorrow"_\n_"cheap delhi to goa friday"_`;
+      } else {
+
+        // detect date
+        let targetDate = null;
+        const now = new Date();
+
+        if (incomingMsg.includes("today")) {
+          targetDate = new Date(now);
+        } else if (incomingMsg.includes("tomorrow")) {
+          targetDate = new Date(now);
+          targetDate.setDate(targetDate.getDate() + 1);
+        } else {
+          const days = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
+          days.forEach((day, i) => {
+            if (incomingMsg.includes(day)) {
+              const todayIndex = now.getDay();
+              let diff = i - todayIndex;
+              if (diff <= 0) diff += 7;
+              targetDate = new Date(now);
+              targetDate.setDate(now.getDate() + diff);
+            }
+          });
+        }
+
+        // search flights
+        let query = `SELECT * FROM flights WHERE LOWER(from_city)=$1 AND LOWER(to_city)=$2`;
+        let values = [from, to];
+
+        if (targetDate) {
+          query += ` AND DATE(departure_time)=$3`;
+          values.push(targetDate.toISOString().split("T")[0]);
+        }
+
+        query += ` ORDER BY price ASC LIMIT 5`;
+
+        const result = await pool.query(query, values);
+
+        if (result.rows.length === 0) {
+          // fallback — show any available flights
+          const fallback = await pool.query(
+            `SELECT * FROM flights WHERE LOWER(from_city)=$1 AND LOWER(to_city)=$2 AND departure_time > NOW() ORDER BY price ASC LIMIT 5`,
+            [from, to]
+          );
+
+          if (fallback.rows.length === 0) {
+            replyMsg = `❌ No flights found from *${from}* to *${to}*.\n\nTry a different route or date.`;
+          } else {
+            session.flights = fallback.rows;
+            session.step = "selecting";
+            session.from = from;
+            session.to = to;
+
+            replyMsg = `✈️ *Flights from ${from.toUpperCase()} → ${to.toUpperCase()}*\n\n`;
+            fallback.rows.forEach((f, i) => {
+              const dep = new Date(f.departure_time).toLocaleTimeString("en-IN", {hour:"2-digit",minute:"2-digit",hour12:false});
+              const arr = new Date(f.arrival_time).toLocaleTimeString("en-IN", {hour:"2-digit",minute:"2-digit",hour12:false});
+              replyMsg += `*${i+1}. ${f.airline}*\n⏰ ${dep} → ${arr}\n💰 ₹${f.price.toLocaleString()}\n\n`;
+            });
+            replyMsg += `Reply with a number to book.\nExample: _1_ or _2 window seat_`;
+          }
+        } else {
+          session.flights = result.rows;
+          session.step = "selecting";
+          session.from = from;
+          session.to = to;
+
+          replyMsg = `✈️ *Flights from ${from.toUpperCase()} → ${to.toUpperCase()}*\n\n`;
+          result.rows.forEach((f, i) => {
+            const dep = new Date(f.departure_time).toLocaleTimeString("en-IN", {hour:"2-digit",minute:"2-digit",hour12:false});
+            const arr = new Date(f.arrival_time).toLocaleTimeString("en-IN", {hour:"2-digit",minute:"2-digit",hour12:false});
+            replyMsg += `*${i+1}. ${f.airline}*\n⏰ ${dep} → ${arr}\n💰 ₹${f.price.toLocaleString()}\n\n`;
+          });
+          replyMsg += `Reply with a number to book.\nExample: _1_ or _2 window seat_`;
+        }
+      }
+    }
+
+    // ── STEP 2: User picks a flight number ──
+    else if (session.step === "selecting") {
+      const numMatch = incomingMsg.match(/^(\d+)/);
+
+      if (!numMatch) {
+        replyMsg = `Please reply with a number like *1*, *2*, or *3* to select a flight.`;
+      } else {
+        const flightIndex = parseInt(numMatch[1]) - 1;
+
+        if (flightIndex < 0 || flightIndex >= session.flights.length) {
+          replyMsg = `Invalid number. Please reply with 1 to ${session.flights.length}.`;
+        } else {
+          session.selectedFlight = session.flights[flightIndex];
+          session.step = "naming";
+
+          // check for seat preference
+          if (incomingMsg.includes("window")) {
+            session.seatPreference = "window";
+          } else if (incomingMsg.includes("aisle")) {
+            session.seatPreference = "aisle";
+          }
+
+          const f = session.selectedFlight;
+          const dep = new Date(f.departure_time).toLocaleTimeString("en-IN", {hour:"2-digit",minute:"2-digit",hour12:false});
+
+          replyMsg = `✅ *${f.airline} selected*\n⏰ ${dep}\n💰 ₹${f.price.toLocaleString()}\n`;
+
+          if (session.seatPreference) {
+            replyMsg += `🪟 Seat preference: *${session.seatPreference}*\n`;
+          }
+
+          replyMsg += `\nWhat is your full name for the booking?`;
+        }
+      }
+    }
+
+    // ── STEP 3: User gives their name ──
+    else if (session.step === "naming") {
+      const passengerName = req.body.Body.trim();
+      session.passengerName = passengerName;
+      session.step = "confirming";
+
+      const f = session.selectedFlight;
+      const dep = new Date(f.departure_time).toLocaleTimeString("en-IN", {hour:"2-digit",minute:"2-digit",hour12:false});
+      const depDate = new Date(f.departure_time).toLocaleDateString("en-IN", {day:"numeric",month:"short"});
+
+      replyMsg = `📋 *Booking Summary*\n\n`;
+      replyMsg += `✈️ ${f.airline}\n`;
+      replyMsg += `🛫 ${session.from?.toUpperCase()} → ${session.to?.toUpperCase()}\n`;
+      replyMsg += `📅 ${depDate} at ${dep}\n`;
+      replyMsg += `💰 ₹${f.price.toLocaleString()}\n`;
+      replyMsg += `👤 ${passengerName}\n`;
+
+      if (session.seatPreference) {
+        replyMsg += `🪟 ${session.seatPreference} seat\n`;
+      }
+
+      replyMsg += `\nReply *CONFIRM* to book or *CANCEL* to start over.`;
+    }
+
+    // ── STEP 4: User confirms or cancels ──
+    else if (session.step === "confirming") {
+      if (incomingMsg === "confirm") {
+        const f = session.selectedFlight;
+
+        // save booking to database
+        await pool.query(
+          `INSERT INTO bookings (flight_id, passenger_name, user_id) VALUES ($1, $2, $3)`,
+          [f.id, session.passengerName, 1]
+        );
+
+        // reduce seat count
+        await pool.query(
+          `UPDATE flights SET seats_available = seats_available - 1 WHERE id = $1`,
+          [f.id]
+        );
+
+        const bookingId = "CMT" + Date.now().toString(36).toUpperCase().slice(-6);
+
+        replyMsg = `🎉 *Booking Confirmed!*\n\n`;
+        replyMsg += `✈️ ${f.airline}\n`;
+        replyMsg += `🛫 ${session.from?.toUpperCase()} → ${session.to?.toUpperCase()}\n`;
+        replyMsg += `👤 ${session.passengerName}\n`;
+        replyMsg += `🎫 Booking ID: *${bookingId}*\n\n`;
+        replyMsg += `Have a great flight! ☄️\n\n`;
+        replyMsg += `Book another flight anytime by typing your route.`;
+
+        // reset session
+        userSessions[userPhone] = { step: "idle", flights: [] };
+
+      } else if (incomingMsg === "cancel") {
+        userSessions[userPhone] = { step: "idle", flights: [] };
+        replyMsg = `Booking cancelled. Type your route anytime to search again.\n\nExample: _flights bangalore to mumbai tomorrow_`;
+      } else {
+        replyMsg = `Please reply *CONFIRM* to confirm or *CANCEL* to cancel.`;
+      }
+    }
+
+  } catch (err) {
+    console.error("WhatsApp bot error:", err);
+    replyMsg = `Sorry, something went wrong. Please try again.\n\nType your route to search flights.`;
+    userSessions[userPhone] = { step: "idle", flights: [] };
+  }
+
+  // send reply via Twilio
+  const twiml = new twilio.twiml.MessagingResponse();
+  twiml.message(replyMsg);
+  res.type("text/xml").send(twiml.toString());
+});
+
 /* ---------------- START SERVER ---------------- */
 
 const PORT = process.env.PORT || 5000;

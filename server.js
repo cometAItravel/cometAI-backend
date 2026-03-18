@@ -254,13 +254,6 @@ app.post("/whatsapp", async (req, res) => {
   res.type("text/xml").send(twiml.toString());
 });
 
-await resend.emails.send({
-  from: "CometAI Travel <onboarding@resend.dev>",
-  to: toEmail,
-  subject: `🚀 Booking Confirmed — ${bookingId} | CometAI Travel`,
-  html: `...same html...`
-});
-
 async function sendBookingEmail(toEmail, bookingDetails) {
   const { passengerName, airline, flightNo, fromCity, toCity, departureTime, arrivalTime, price, bookingId, cabinClass } = bookingDetails;
   const depTime = departureTime ? new Date(departureTime).toLocaleString("en-IN", {day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:false}) : "—";

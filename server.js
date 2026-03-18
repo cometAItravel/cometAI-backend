@@ -1,4 +1,5 @@
 const express = require("express");
+const axios = require("axios");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { Pool } = require("pg");
@@ -574,6 +575,70 @@ app.post("/whatsapp", async (req, res) => {
   const twiml = new twilio.twiml.MessagingResponse();
   twiml.message(replyMsg);
   res.type("text/xml").send(twiml.toString());
+});
+
+/* ---------------- REAL FLIGHT SEARCH (AviationStack) ---------------- */
+
+app.get("/real-flights", async (req, res) => {
+  try {
+    const { from, to, date } = req.query;
+
+    if (!from || !to) {
+      return res.status(400).json({ message: "Please provide from and to cities" });
+    }
+
+    // get airport codes
+    const cityToCode = {
+      "bangalore": "BLR", "mumbai": "BOM", "delhi": "DEL",
+      "chennai": "MAA", "hyderabad": "HYD", "kolkata": "CCU",
+      "goa": "GOI", "pune": "PNQ", "kochi": "COK",
+      "ahmedabad": "AMD", "jaipur": "JAI", "varanasi": "VNS",
+      "dubai": "DXB", "singapore": "SIN"
+    };
+
+    const fromCode = cityToCode[from.toLowerCase()] || from.toUpperCase();
+    const toCode = cityToCode[to.toLowerCase()] || to.toUpperCase();
+
+    // call AviationStack API
+    const response = await axios.get("http://api.aviationstack.com/v1/flights", {
+      params: {
+        access_key: process.env.AVIATIONSTACK_KEY,
+        dep_iata: fromCode,
+        arr_iata: toCode,
+        limit: 10,
+        flight_status: "scheduled"
+      }
+    });
+
+    const flights = response.data.data;
+
+    if (!flights || flights.length === 0) {
+      return res.json([]);
+    }
+
+    // format flights to match our app structure
+    const formatted = flights.map((f, i) => ({
+      id: `real_${i}`,
+      airline: f.airline?.name || "Unknown Airline",
+      flight_no: f.flight?.iata || "—",
+      from_city: f.departure?.airport || from,
+      to_city: f.arrival?.airport || to,
+      from_code: fromCode,
+      to_code: toCode,
+      departure_time: f.departure?.scheduled || null,
+      arrival_time: f.arrival?.scheduled || null,
+      price: Math.floor(Math.random() * 5000) + 2000, // mock price for now
+      seats_available: Math.floor(Math.random() * 50) + 10,
+      flight_status: f.flight_status || "scheduled",
+      is_real: true
+    }));
+
+    res.json(formatted);
+
+  } catch (err) {
+    console.error("AviationStack error:", err.message);
+    res.status(500).json({ message: "Flight search failed", error: err.message });
+  }
 });
 
 /* ---------------- START SERVER ---------------- */

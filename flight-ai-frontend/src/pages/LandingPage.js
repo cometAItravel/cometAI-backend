@@ -324,6 +324,11 @@ function ShootingStars() {
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  useEffect(() => {
+    fetch("https://cometai-backend.onrender.com/test").catch(()=>{});
+    const t = setInterval(() => fetch("https://cometai-backend.onrender.com/test").catch(()=>{}), 14*60*1000);
+    return () => clearInterval(t);
+  }, []);
 
   return (
     <>

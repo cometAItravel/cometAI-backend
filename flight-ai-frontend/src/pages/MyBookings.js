@@ -1,397 +1,172 @@
-import React, { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
+const API = "https://cometai-backend.onrender.com";
+
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=DM+Sans:wght@300;400;500&display=swap');
-
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #01020a; color: #e8eaf6; font-family: 'DM Sans', sans-serif; min-height: 100vh; }
 
-  body {
-    background: #01020a;
-    color: #e8eaf6;
-    font-family: 'DM Sans', sans-serif;
-    min-height: 100vh;
-  }
+  .stars-bg { position:fixed; inset:0; z-index:0; pointer-events:none; background: radial-gradient(ellipse at 15% 50%, rgba(99,43,200,0.28) 0%, transparent 55%), radial-gradient(ellipse at 85% 20%, rgba(25,90,220,0.22) 0%, transparent 50%), #01020a; }
+  .star { position:absolute; border-radius:50%; background:white; animation:twinkle var(--d,3s) ease-in-out infinite var(--delay,0s); }
+  @keyframes twinkle { 0%,100%{opacity:var(--min-op,.2);transform:scale(1);}50%{opacity:1;transform:scale(1.5);} }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);} }
 
-  .stars-bg {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    background:
-      radial-gradient(ellipse at 20% 50%, rgba(63,43,150,0.15) 0%, transparent 60%),
-      radial-gradient(ellipse at 80% 20%, rgba(25,90,180,0.12) 0%, transparent 55%),
-      #01020a;
-  }
+  .page-wrap { position:relative; z-index:1; min-height:100vh; padding:0 20px 60px; max-width:900px; margin:0 auto; }
 
-  .star {
-    position: absolute;
-    border-radius: 50%;
-    background: white;
-    animation: twinkle var(--d, 3s) ease-in-out infinite var(--delay, 0s);
-  }
+  .nav { display:flex; align-items:center; justify-content:space-between; padding:20px 0 32px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:40px; }
+  .nav-logo { font-family:'Orbitron',sans-serif; font-size:18px; font-weight:800; background:linear-gradient(90deg,#818cf8,#c084fc); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; cursor:pointer; }
+  .btn-ghost { background:transparent; border:1px solid rgba(129,140,248,0.35); color:#a5b4fc; padding:8px 16px; border-radius:8px; font-family:'DM Sans',sans-serif; font-size:13px; cursor:pointer; transition:all 0.2s; }
+  .btn-ghost:hover { background:rgba(129,140,248,0.1); }
 
-  @keyframes twinkle {
-    0%, 100% { opacity: var(--min-op, 0.2); }
-    50% { opacity: 1; }
-  }
+  .page-title { font-family:'Orbitron',sans-serif; font-size:24px; font-weight:800; background:linear-gradient(135deg,#e0e7ff,#a5b4fc); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:8px; animation:fadeUp 0.5s ease both; }
+  .page-sub { font-size:14px; color:rgba(165,180,252,0.4); margin-bottom:32px; animation:fadeUp 0.5s ease 0.1s both; }
 
-  .page-wrap {
-    position: relative;
-    z-index: 1;
-    min-height: 100vh;
-    padding: 0 24px 60px;
-    max-width: 900px;
-    margin: 0 auto;
-    animation: fadeUp 0.6s ease both;
-  }
+  .bookings-grid { display:flex; flex-direction:column; gap:16px; animation:fadeUp 0.5s ease 0.2s both; }
 
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
+  .booking-card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:20px; transition:all 0.2s; position:relative; overflow:hidden; }
+  .booking-card::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(99,102,241,0.04) 0%,transparent 60%); pointer-events:none; }
+  .booking-card:hover { border-color:rgba(129,140,248,0.3); }
 
-  .nav {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 28px 0 40px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-    margin-bottom: 48px;
-  }
+  .booking-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+  .booking-id { font-size:11px; letter-spacing:1px; color:rgba(165,180,252,0.4); }
+  .booking-status { padding:4px 10px; border-radius:20px; font-size:11px; background:rgba(52,211,153,0.1); border:1px solid rgba(52,211,153,0.2); color:#6ee7b7; }
 
-  .nav-logo {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 22px;
-    font-weight: 800;
-    letter-spacing: 1px;
-    background: linear-gradient(90deg, #818cf8, #c084fc, #38bdf8);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    cursor: pointer;
-  }
+  .booking-route { display:flex; align-items:center; gap:16px; margin-bottom:16px; }
+  .route-city-block { }
+  .route-city-name { font-family:'Orbitron',sans-serif; font-size:18px; font-weight:800; color:#e0e7ff; }
+  .route-city-label { font-size:11px; color:rgba(165,180,252,0.4); margin-top:2px; }
+  .route-arrow { font-size:20px; color:rgba(129,140,248,0.4); }
 
-  .btn-ghost {
-    background: transparent;
-    border: 1px solid rgba(129,140,248,0.35);
-    color: #a5b4fc;
-    padding: 9px 20px;
-    border-radius: 8px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .btn-ghost:hover {
-    background: rgba(129,140,248,0.1);
-    border-color: rgba(129,140,248,0.6);
-  }
+  .booking-details { display:flex; gap:24px; flex-wrap:wrap; padding-top:16px; border-top:1px solid rgba(255,255,255,0.05); }
+  .detail-item { }
+  .detail-label { font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:rgba(165,180,252,0.35); margin-bottom:4px; }
+  .detail-value { font-size:14px; color:#e0e7ff; font-weight:500; }
+  .detail-price { font-family:'Orbitron',sans-serif; font-size:16px; font-weight:800; background:linear-gradient(135deg,#a5f3fc,#818cf8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
 
-  .page-title {
-    font-family: 'Orbitron', sans-serif;
-    font-size: clamp(22px, 4vw, 36px);
-    font-weight: 800;
-    background: linear-gradient(135deg, #e0e7ff, #a5b4fc, #c084fc);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin-bottom: 8px;
-  }
+  .empty-state { text-align:center; padding:80px 20px; animation:fadeUp 0.5s ease both; }
+  .empty-icon { font-size:52px; margin-bottom:16px; opacity:0.4; }
+  .empty-title { font-family:'Orbitron',sans-serif; font-size:16px; color:rgba(165,180,252,0.3); margin-bottom:12px; }
+  .empty-sub { font-size:14px; color:rgba(165,180,252,0.2); margin-bottom:24px; }
+  .btn-search { background:linear-gradient(135deg,#6366f1,#8b5cf6); border:none; color:white; padding:12px 28px; border-radius:12px; font-family:'DM Sans',sans-serif; font-size:14px; font-weight:500; cursor:pointer; transition:all 0.2s; }
+  .btn-search:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(99,102,241,0.4); }
 
-  .page-sub {
-    font-size: 14px;
-    color: rgba(165,180,252,0.4);
-    margin-bottom: 36px;
-    font-weight: 300;
-    letter-spacing: 0.3px;
-  }
-
-  .bookings-list {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-
-  .booking-card {
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.07);
-    border-radius: 16px;
-    padding: 24px 28px;
-    display: grid;
-    grid-template-columns: 1fr auto 1fr auto;
-    align-items: center;
-    gap: 20px;
-    transition: all 0.2s;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .booking-card::before {
-    content: '';
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 3px;
-    background: linear-gradient(180deg, #6366f1, #8b5cf6, #38bdf8);
-    border-radius: 3px 0 0 3px;
-  }
-
-  .booking-card:hover {
-    border-color: rgba(129,140,248,0.25);
-    background: rgba(255,255,255,0.05);
-    transform: translateX(4px);
-  }
-
-  .booking-label {
-    font-size: 10px;
-    color: rgba(165,180,252,0.35);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-bottom: 4px;
-  }
-
-  .booking-value {
-    font-size: 15px;
-    color: #c7d2fe;
-    font-weight: 400;
-  }
-
-  .route-display {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    flex: 1;
-    justify-content: center;
-  }
-
-  .city-code {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 20px;
-    font-weight: 800;
-    color: #e0e7ff;
-    letter-spacing: 2px;
-  }
-
-  .city-name {
-    font-size: 11px;
-    color: rgba(165,180,252,0.4);
-    margin-top: 3px;
-    text-align: center;
-  }
-
-  .route-line-bar {
-    flex: 1;
-    height: 1px;
-    background: linear-gradient(90deg, rgba(129,140,248,0.15), rgba(192,132,252,0.35), rgba(129,140,248,0.15));
-    min-width: 40px;
-  }
-
-  .price-tag {
-    text-align: right;
-  }
-
-  .price-amount {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 20px;
-    font-weight: 800;
-    background: linear-gradient(135deg, #a5f3fc, #818cf8);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .booking-date {
-    font-size: 11px;
-    color: rgba(165,180,252,0.35);
-    margin-top: 4px;
-    letter-spacing: 0.3px;
-  }
-
-  .passenger-block {}
-
-  .status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(52,211,153,0.1);
-    border: 1px solid rgba(52,211,153,0.25);
-    color: #6ee7b7;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 11px;
-    letter-spacing: 1px;
-    font-weight: 500;
-    margin-top: 8px;
-  }
-
-  .empty-state {
-    text-align: center;
-    padding: 100px 20px;
-    color: rgba(165,180,252,0.2);
-  }
-
-  .empty-icon { font-size: 52px; margin-bottom: 20px; opacity: 0.3; }
-
-  .empty-title {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 14px;
-    letter-spacing: 3px;
-    margin-bottom: 12px;
-  }
-
-  .empty-sub {
-    font-size: 13px;
-    font-weight: 300;
-    color: rgba(165,180,252,0.2);
-  }
-
-  .btn-primary {
-    display: inline-block;
-    margin-top: 24px;
-    background: linear-gradient(135deg, rgba(99,102,241,0.3), rgba(139,92,246,0.3));
-    border: 1px solid rgba(129,140,248,0.4);
-    color: #a5b4fc;
-    padding: 12px 28px;
-    border-radius: 10px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .btn-primary:hover {
-    background: linear-gradient(135deg, rgba(99,102,241,0.5), rgba(139,92,246,0.5));
-    color: #e0e7ff;
-    transform: translateY(-1px);
-  }
-
-  .loading {
-    text-align: center;
-    padding: 60px;
-    color: rgba(129,140,248,0.5);
-    font-family: 'Orbitron', sans-serif;
-    font-size: 11px;
-    letter-spacing: 3px;
-    animation: pulse 1.5s ease infinite;
-  }
-
-  @keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:1} }
+  .loading { text-align:center; padding:60px; color:rgba(129,140,248,0.6); font-family:'Orbitron',sans-serif; font-size:11px; letter-spacing:3px; animation:pulse 1.5s ease infinite; }
+  @keyframes pulse { 0%,100%{opacity:0.5}50%{opacity:1} }
 `;
 
-const CITY_CODES = {
-  bangalore: 'BLR', mumbai: 'BOM', delhi: 'DEL',
-  chennai: 'MAA', hyderabad: 'HYD', kolkata: 'CCU',
-  goa: 'GOI', pune: 'PNQ', dubai: 'DXB', kochi: 'COK',
-};
-
 function Stars() {
-  const stars = Array.from({ length: 60 }, (_, i) => ({
-    id: i,
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    size: Math.random() * 2 + 0.5,
-    duration: Math.random() * 4 + 2,
-    delay: Math.random() * 4,
-  }));
-  return (
-    <div className="stars-bg">
-      {stars.map(s => (
-        <div key={s.id} className="star" style={{
-          left: `${s.x}%`, top: `${s.y}%`,
-          width: s.size, height: s.size,
-          '--d': `${s.duration}s`, '--delay': `${s.delay}s`, '--min-op': 0.1,
-        }} />
-      ))}
-    </div>
-  );
+  const stars = Array.from({length:80},(_,i)=>({id:i,x:Math.random()*100,y:Math.random()*100,size:Math.random()*2+0.3,duration:Math.random()*5+2,delay:Math.random()*6,minOp:Math.random()*0.15+0.05}));
+  return<div className="stars-bg">{stars.map(s=><div key={s.id} className="star" style={{left:`${s.x}%`,top:`${s.y}%`,width:s.size,height:s.size,'--d':`${s.duration}s`,'--delay':`${s.delay}s`,'--min-op':s.minOp}}/>)}</div>;
 }
 
-function MyBookings() {
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+function formatDate(dt){
+  if(!dt)return"—";
+  return new Date(dt).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});
+}
+function formatTime(dt){
+  if(!dt)return"—";
+  return new Date(dt).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false});
+}
 
-  const getCode = (city) => CITY_CODES[city?.toLowerCase()] || city?.slice(0,3).toUpperCase();
+function MyBookings(){
+  const [bookings,setBookings]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [error,setError]=useState("");
+  const navigate=useNavigate();
 
-  useEffect(() => {
-    const fetchBookings = async () => {
-      const token = localStorage.getItem("token");
-      try {
-        const response = await axios.get("https://cometai-backend.onrender.com/my-bookings", {
-          headers: { Authorization: `Bearer ${token}` }
+  useEffect(()=>{
+    const fetchBookings=async()=>{
+      const token=localStorage.getItem("token");
+      if(!token){ navigate("/login"); return; }
+      try{
+        const response=await axios.get(`${API}/my-bookings`,{
+          headers:{Authorization:`Bearer ${token}`}
         });
         setBookings(response.data);
-      } catch (err) {
+      }catch(err){
         console.error(err);
+        if(err.response?.status===401||err.response?.status===403){
+          localStorage.removeItem("token");
+          navigate("/login");
+        } else {
+          setError("Failed to load bookings. Please try again.");
+        }
       }
       setLoading(false);
     };
     fetchBookings();
-  }, []);
+  },[navigate]);
 
-  return (
+  return(
     <>
       <style>{styles}</style>
-      <Stars />
+      <Stars/>
       <div className="page-wrap">
         <nav className="nav">
-          <div className="nav-logo" onClick={() => navigate("/")}>☄ CometAI</div>
-          <button className="btn-ghost" onClick={() => navigate("/")}>
-            ← Search Flights
-          </button>
+          <div className="nav-logo" onClick={()=>navigate("/")}>☄️ CometAI</div>
+          <button className="btn-ghost" onClick={()=>navigate("/search")}>← Search Flights</button>
         </nav>
 
-        <h1 className="page-title">My Bookings</h1>
-        <p className="page-sub">Your upcoming journeys across the galaxy</p>
+        <div className="page-title">My Bookings</div>
+        <div className="page-sub">Your flight booking history</div>
 
-        {loading && <div className="loading">Loading your bookings...</div>}
+        {loading&&<div className="loading">Loading your bookings...</div>}
 
-        {!loading && bookings.length === 0 && (
-          <div className="empty-state">
-            <div className="empty-icon">🛸</div>
-            <div className="empty-title">No missions yet</div>
-            <div className="empty-sub">Book your first flight to get started</div>
-            <button className="btn-primary" onClick={() => navigate("/")}>
-              Search Flights →
-            </button>
+        {!loading&&error&&(
+          <div style={{background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.25)",color:"#fca5a5",padding:"16px",borderRadius:"12px",fontSize:"14px"}}>
+            ⚠ {error}
           </div>
         )}
 
-        {!loading && bookings.length > 0 && (
-          <div className="bookings-list">
-            {bookings.map((booking) => (
+        {!loading&&!error&&bookings.length===0&&(
+          <div className="empty-state">
+            <div className="empty-icon">✈️</div>
+            <div className="empty-title">No bookings yet</div>
+            <div className="empty-sub">Your confirmed flights will appear here</div>
+            <button className="btn-search" onClick={()=>navigate("/search")}>Search Flights →</button>
+          </div>
+        )}
+
+        {!loading&&bookings.length>0&&(
+          <div className="bookings-grid">
+            {bookings.map(booking=>(
               <div className="booking-card" key={booking.id}>
-
-                <div className="passenger-block">
-                  <div className="booking-label">Passenger</div>
-                  <div className="booking-value">{booking.passenger_name}</div>
-                  <div className="status-badge">✦ Confirmed</div>
+                <div className="booking-top">
+                  <div className="booking-id">Booking #{booking.id}</div>
+                  <div className="booking-status">✓ Confirmed</div>
                 </div>
-
-                <div className="route-display">
-                  <div>
-                    <div className="city-code">{getCode(booking.from_city)}</div>
-                    <div className="city-name">{booking.from_city}</div>
+                <div className="booking-route">
+                  <div className="route-city-block">
+                    <div className="route-city-name">{booking.from_city?.slice(0,3).toUpperCase()}</div>
+                    <div className="route-city-label">{booking.from_city}</div>
                   </div>
-                  <div className="route-line-bar" />
-                  <span style={{ fontSize: 14 }}>✈</span>
-                  <div className="route-line-bar" />
-                  <div>
-                    <div className="city-code">{getCode(booking.to_city)}</div>
-                    <div className="city-name">{booking.to_city}</div>
+                  <div className="route-arrow">✈</div>
+                  <div className="route-city-block">
+                    <div className="route-city-name">{booking.to_city?.slice(0,3).toUpperCase()}</div>
+                    <div className="route-city-label">{booking.to_city}</div>
                   </div>
                 </div>
-
-                <div className="price-tag">
-                  <div className="price-amount">₹{booking.price?.toLocaleString()}</div>
-                  <div className="booking-date">
-                    {booking.departure_time
-                      ? new Date(booking.departure_time).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-                      : "—"}
+                <div className="booking-details">
+                  <div className="detail-item">
+                    <div className="detail-label">Passenger</div>
+                    <div className="detail-value">{booking.passenger_name}</div>
+                  </div>
+                  <div className="detail-item">
+                    <div className="detail-label">Date</div>
+                    <div className="detail-value">{formatDate(booking.departure_time)}</div>
+                  </div>
+                  <div className="detail-item">
+                    <div className="detail-label">Time</div>
+                    <div className="detail-value">{formatTime(booking.departure_time)}</div>
+                  </div>
+                  <div className="detail-item">
+                    <div className="detail-label">Amount</div>
+                    <div className="detail-price">₹{booking.price?.toLocaleString()}</div>
                   </div>
                 </div>
-
               </div>
             ))}
           </div>

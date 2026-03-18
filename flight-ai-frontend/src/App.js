@@ -724,7 +724,7 @@ function App(){
         <Route path="/search" element={<SearchPage/>}/>
         <Route path="/login" element={<Login/>}/>
         <Route path="/register" element={<Register/>}/>
-        <Route path="/bookings" element={<MyBookings/>}/>
+        <Route path="/bookings" element={<Bookings/>}/>
       </Routes>
     </Router>
   );

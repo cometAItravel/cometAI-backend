@@ -9,11 +9,6 @@ const { Resend } = require("resend");
 const resend = new Resend(process.env.RESEND_API_KEY);
 const twilio = require("twilio");
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-});
-
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -265,6 +260,19 @@ await resend.emails.send({
   subject: `🚀 Booking Confirmed — ${bookingId} | CometAI Travel`,
   html: `...same html...`
 });
+
+async function sendBookingEmail(toEmail, bookingDetails) {
+  const { passengerName, airline, flightNo, fromCity, toCity, departureTime, arrivalTime, price, bookingId, cabinClass } = bookingDetails;
+  const depTime = departureTime ? new Date(departureTime).toLocaleString("en-IN", {day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:false}) : "—";
+  const arrTime = arrivalTime ? new Date(arrivalTime).toLocaleTimeString("en-IN", {hour:"2-digit",minute:"2-digit",hour12:false}) : "—";
+
+  await resend.emails.send({
+    from: "CometAI Travel <onboarding@resend.dev>",
+    to: toEmail,
+    subject: `🚀 Booking Confirmed — ${bookingId} | CometAI Travel`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#01020a;color:#e8eaf6;border-radius:16px;overflow:hidden;"><div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:32px 24px;text-align:center;"><h1 style="margin:0;font-size:28px;color:white;">☄️ COMETAI</h1><p style="margin:8px 0 0;color:rgba(255,255,255,0.8);font-size:14px;letter-spacing:3px;">TRAVEL INTELLIGENCE</p></div><div style="background:rgba(52,211,153,0.15);padding:16px 24px;text-align:center;"><p style="margin:0;color:#6ee7b7;font-size:18px;font-weight:bold;">✅ Booking Confirmed!</p></div><div style="padding:24px;text-align:center;"><p style="margin:0;font-size:12px;color:rgba(165,180,252,0.5);">BOOKING ID</p><p style="margin:8px 0 0;font-size:28px;font-weight:bold;color:#a5b4fc;letter-spacing:4px;">${bookingId}</p></div><div style="padding:24px;"><table style="width:100%;border-collapse:collapse;"><tr><td style="padding:10px 0;color:rgba(165,180,252,0.5);font-size:12px;">PASSENGER</td><td style="padding:10px 0;color:#e0e7ff;font-weight:bold;text-align:right;">${passengerName}</td></tr><tr><td style="padding:10px 0;color:rgba(165,180,252,0.5);font-size:12px;">AIRLINE</td><td style="padding:10px 0;color:#e0e7ff;font-weight:bold;text-align:right;">${airline} ${flightNo||""}</td></tr><tr><td style="padding:10px 0;color:rgba(165,180,252,0.5);font-size:12px;">ROUTE</td><td style="padding:10px 0;color:#e0e7ff;font-weight:bold;text-align:right;">${fromCity} → ${toCity}</td></tr><tr><td style="padding:10px 0;color:rgba(165,180,252,0.5);font-size:12px;">DEPARTURE</td><td style="padding:10px 0;color:#e0e7ff;font-weight:bold;text-align:right;">${depTime}</td></tr><tr><td style="padding:10px 0;color:rgba(165,180,252,0.5);font-size:12px;">ARRIVAL</td><td style="padding:10px 0;color:#e0e7ff;font-weight:bold;text-align:right;">${arrTime}</td></tr><tr><td style="padding:10px 0;color:rgba(165,180,252,0.5);font-size:12px;">CLASS</td><td style="padding:10px 0;color:#e0e7ff;font-weight:bold;text-align:right;">${cabinClass||"Economy"}</td></tr><tr><td style="padding:16px 0 0;color:rgba(165,180,252,0.5);font-size:12px;">AMOUNT PAID</td><td style="padding:16px 0 0;color:#a5f3fc;font-size:22px;font-weight:bold;text-align:right;">₹${price?.toLocaleString()}</td></tr></table></div><div style="padding:24px;text-align:center;"><p style="margin:0;color:rgba(165,180,252,0.4);font-size:13px;line-height:1.7;">Thank you for booking with CometAI Travel! ☄️<br/>Have a wonderful journey.<br/><a href="https://comet-ai-frontend.vercel.app" style="color:#818cf8;">comet-ai-frontend.vercel.app</a></p></div></div>`
+  });
+}
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });

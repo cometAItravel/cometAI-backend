@@ -268,12 +268,7 @@ app.post("/book", authenticateToken, async (req, res) => {
     client.release();
   }
 });
-```
 
-**Step 6 — Add env variables to Render:**
-```
-EMAIL_USER = dynamics.studyai@gmail.com
-EMAIL_PASS = cometAI_super_secret_2007_2026
 
 /* ---------------- TEST ROUTE ---------------- */
 

@@ -5,6 +5,15 @@ const jwt = require("jsonwebtoken");
 const { Pool } = require("pg");
 require("dotenv").config();
 const cors = require("cors");
+const nodemailer = require("nodemailer");
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
 const app = express();
 app.use(cors());
@@ -189,15 +198,14 @@ app.post("/ai-search", async (req, res) => {
 
 app.post("/book", authenticateToken, async (req, res) => {
   const client = await pool.connect();
-
   try {
-    const { flight_id, passenger_name } = req.body;
+    const { flight_id, passenger_name, cabin_class } = req.body;
     const user_id = req.user.id;
 
     await client.query("BEGIN");
 
     const flight = await client.query(
-      "SELECT seats_available FROM flights WHERE id=$1 FOR UPDATE",
+      "SELECT * FROM flights WHERE id=$1 FOR UPDATE",
       [flight_id]
     );
 
@@ -222,7 +230,35 @@ app.post("/book", authenticateToken, async (req, res) => {
     );
 
     await client.query("COMMIT");
-    res.json({ message: "Booking confirmed!" });
+
+    // generate booking ID
+    const bookingId = "CMT" + Date.now().toString(36).toUpperCase().slice(-6);
+
+    // get user email
+    const userResult = await pool.query(
+      "SELECT email FROM users WHERE id=$1",
+      [user_id]
+    );
+    const userEmail = userResult.rows[0]?.email;
+
+    // send confirmation email
+    if (userEmail) {
+      const f = flight.rows[0];
+      await sendBookingEmail(userEmail, {
+        passengerName: passenger_name,
+        airline: f.airline,
+        flightNo: f.flight_no,
+        fromCity: f.from_city,
+        toCity: f.to_city,
+        departureTime: f.departure_time,
+        arrivalTime: f.arrival_time,
+        price: f.price,
+        bookingId,
+        cabinClass: cabin_class || "Economy"
+      });
+    }
+
+    res.json({ message: "Booking confirmed!", bookingId });
 
   } catch (err) {
     await client.query("ROLLBACK");
@@ -232,6 +268,12 @@ app.post("/book", authenticateToken, async (req, res) => {
     client.release();
   }
 });
+```
+
+**Step 6 — Add env variables to Render:**
+```
+EMAIL_USER = your_gmail@gmail.com
+EMAIL_PASS = your_16_char_app_password
 
 /* ---------------- TEST ROUTE ---------------- */
 
@@ -640,6 +682,102 @@ app.get("/real-flights", async (req, res) => {
     res.status(500).json({ message: "Flight search failed", error: err.message });
   }
 });
+
+/* ---------------- SEND BOOKING EMAIL ---------------- */
+
+async function sendBookingEmail(toEmail, bookingDetails) {
+  const {
+    passengerName, airline, flightNo,
+    fromCity, toCity, departureTime,
+    arrivalTime, price, bookingId, cabinClass
+  } = bookingDetails;
+
+  const depTime = departureTime
+    ? new Date(departureTime).toLocaleString("en-IN", {
+        day: "numeric", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit", hour12: false
+      })
+    : "—";
+
+  const arrTime = arrivalTime
+    ? new Date(arrivalTime).toLocaleTimeString("en-IN", {
+        hour: "2-digit", minute: "2-digit", hour12: false
+      })
+    : "—";
+
+  const mailOptions = {
+    from: `"CometAI Travel ☄️" <${process.env.EMAIL_USER}>`,
+    to: toEmail,
+    subject: `🚀 Booking Confirmed — ${bookingId} | CometAI Travel`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #01020a; color: #e8eaf6; border-radius: 16px; overflow: hidden;">
+
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 32px 24px; text-align: center;">
+          <h1 style="margin: 0; font-size: 28px; color: white; letter-spacing: 2px;">☄️ COMETAI</h1>
+          <p style="margin: 8px 0 0; color: rgba(255,255,255,0.8); font-size: 14px; letter-spacing: 3px;">TRAVEL INTELLIGENCE</p>
+        </div>
+
+        <!-- Confirmed banner -->
+        <div style="background: rgba(52,211,153,0.15); border-bottom: 1px solid rgba(52,211,153,0.3); padding: 16px 24px; text-align: center;">
+          <p style="margin: 0; color: #6ee7b7; font-size: 18px; font-weight: bold;">✅ Booking Confirmed!</p>
+        </div>
+
+        <!-- Booking ID -->
+        <div style="padding: 24px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08);">
+          <p style="margin: 0; font-size: 12px; letter-spacing: 2px; color: rgba(165,180,252,0.5);">BOOKING ID</p>
+          <p style="margin: 8px 0 0; font-size: 28px; font-weight: bold; color: #a5b4fc; letter-spacing: 4px;">${bookingId}</p>
+        </div>
+
+        <!-- Flight details -->
+        <div style="padding: 24px; border-bottom: 1px solid rgba(255,255,255,0.08);">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 10px 0; color: rgba(165,180,252,0.5); font-size: 12px; letter-spacing: 1px;">PASSENGER</td>
+              <td style="padding: 10px 0; color: #e0e7ff; font-weight: bold; text-align: right;">${passengerName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; color: rgba(165,180,252,0.5); font-size: 12px; letter-spacing: 1px;">AIRLINE</td>
+              <td style="padding: 10px 0; color: #e0e7ff; font-weight: bold; text-align: right;">${airline} ${flightNo || ""}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; color: rgba(165,180,252,0.5); font-size: 12px; letter-spacing: 1px;">ROUTE</td>
+              <td style="padding: 10px 0; color: #e0e7ff; font-weight: bold; text-align: right;">${fromCity} → ${toCity}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; color: rgba(165,180,252,0.5); font-size: 12px; letter-spacing: 1px;">DEPARTURE</td>
+              <td style="padding: 10px 0; color: #e0e7ff; font-weight: bold; text-align: right;">${depTime}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; color: rgba(165,180,252,0.5); font-size: 12px; letter-spacing: 1px;">ARRIVAL</td>
+              <td style="padding: 10px 0; color: #e0e7ff; font-weight: bold; text-align: right;">${arrTime}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; color: rgba(165,180,252,0.5); font-size: 12px; letter-spacing: 1px;">CLASS</td>
+              <td style="padding: 10px 0; color: #e0e7ff; font-weight: bold; text-align: right;">${cabinClass || "Economy"}</td>
+            </tr>
+            <tr style="border-top: 1px solid rgba(255,255,255,0.08);">
+              <td style="padding: 16px 0 0; color: rgba(165,180,252,0.5); font-size: 12px; letter-spacing: 1px;">AMOUNT PAID</td>
+              <td style="padding: 16px 0 0; color: #a5f3fc; font-size: 22px; font-weight: bold; text-align: right;">₹${price?.toLocaleString()}</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Footer -->
+        <div style="padding: 24px; text-align: center;">
+          <p style="margin: 0; color: rgba(165,180,252,0.4); font-size: 13px; line-height: 1.7;">
+            Thank you for booking with CometAI Travel! ☄️<br/>
+            Have a wonderful journey.<br/><br/>
+            <a href="https://comet-ai-frontend.vercel.app" style="color: #818cf8;">comet-ai-frontend.vercel.app</a>
+          </p>
+        </div>
+
+      </div>
+    `,
+  };
+
+  await transporter.sendMail(mailOptions);
+}
 
 /* ---------------- START SERVER ---------------- */
 

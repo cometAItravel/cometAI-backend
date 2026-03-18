@@ -450,7 +450,7 @@ function SearchPage(){
     try{
       const params=new URLSearchParams({from:fromCity.name,to:toCity.name});
       if(date)params.append("date",date);
-      const res=await axios.get(`${API}/flights?${params}`);
+      const res = await axios.get(`${API}/real-flights?${params}`);
       setFlights(res.data);
       setFilterMaxPrice(res.data.length>0?Math.max(...res.data.map(f=>f.price))+1000:20000);
     }catch{setFlights([]);}

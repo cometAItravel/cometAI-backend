@@ -267,5 +267,37 @@ async function sendBookingEmail(toEmail, bookingDetails) {
   });
 }
 
+/* ---------------- ADMIN ROUTES ---------------- */
+
+app.get("/admin/bookings", async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT bookings.id, bookings.passenger_name, bookings.booked_at,
+              flights.from_city, flights.to_city, flights.departure_time,
+              flights.price, flights.airline, users.email as user_email
+       FROM bookings
+       JOIN flights ON bookings.flight_id = flights.id
+       JOIN users ON bookings.user_id = users.id
+       ORDER BY bookings.id DESC`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server Error");
+  }
+});
+
+app.get("/admin/users", async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, name, email FROM users ORDER BY id DESC`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server Error");
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });

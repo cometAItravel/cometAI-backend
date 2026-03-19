@@ -299,5 +299,69 @@ app.get("/admin/users", async (req, res) => {
   }
 });
 
+/* ---------------- WAITLIST ---------------- */
+
+app.post("/waitlist", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email required" });
+
+    // create waitlist table if not exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS waitlist (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        joined_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    await pool.query(
+      "INSERT INTO waitlist (email) VALUES ($1)",
+      [email]
+    );
+
+    // send welcome email via Resend
+    try {
+      const { Resend } = require("resend");
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      await resend.emails.send({
+        from: "CometAI Travel <onboarding@resend.dev>",
+        to: email,
+        subject: "🚀 You're on the CometAI waitlist!",
+        html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#01020a;color:#e8eaf6;border-radius:16px;overflow:hidden;"><div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:32px 24px;text-align:center;"><h1 style="margin:0;font-size:28px;color:white;">☄️ COMETAI</h1><p style="margin:8px 0 0;color:rgba(255,255,255,0.8);font-size:14px;letter-spacing:3px;">TRAVEL INTELLIGENCE</p></div><div style="padding:32px 24px;text-align:center;"><h2 style="color:#a5b4fc;font-size:22px;margin-bottom:12px;">You're on the list! 🎉</h2><p style="color:rgba(165,180,252,0.6);font-size:15px;line-height:1.7;margin-bottom:24px;">Thanks for joining the CometAI waitlist! We're building India's smartest travel platform — book flights using AI or WhatsApp with zero booking fees.</p><p style="color:rgba(165,180,252,0.6);font-size:15px;line-height:1.7;">We'll email you the moment we launch. In the meantime, share with friends and help us grow!</p><div style="margin-top:32px;"><a href="https://comet-ai-frontend.vercel.app/waitlist" style="background:#6366f1;color:white;padding:12px 28px;border-radius:10px;text-decoration:none;font-size:14px;font-weight:600;">Share the waitlist →</a></div></div><div style="padding:24px;text-align:center;border-top:1px solid rgba(255,255,255,0.06);"><p style="color:rgba(165,180,252,0.3);font-size:12px;">CometAI Travel · India's AI-powered travel platform</p></div></div>`
+      });
+    } catch (emailErr) {
+      console.error("Waitlist email error:", emailErr.message);
+    }
+
+    res.json({ message: "Added to waitlist!" });
+  } catch (err) {
+    if (err.code === "23505") {
+      return res.status(409).json({ message: "Already on waitlist" });
+    }
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.get("/waitlist/count", async (req, res) => {
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS waitlist (id SERIAL PRIMARY KEY, email VARCHAR(255) UNIQUE NOT NULL, joined_at TIMESTAMP DEFAULT NOW())`);
+    const result = await pool.query("SELECT COUNT(*) FROM waitlist");
+    res.json({ count: parseInt(result.rows[0].count) });
+  } catch (err) {
+    res.json({ count: 0 });
+  }
+});
+
+app.get("/admin/waitlist", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM waitlist ORDER BY joined_at DESC");
+    res.json(result.rows);
+  } catch (err) {
+    res.json([]);
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });

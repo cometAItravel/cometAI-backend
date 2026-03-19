@@ -318,7 +318,7 @@ app.post("/waitlist", async (req, res) => {
     }
     await pool.query("INSERT INTO waitlist (email, ref_code, referred_by) VALUES ($1, $2, $3)", [email, refCode, referredBy]);
     try {
-      const refLink = `https://comet-ai-frontend.vercel.app/waitlist?ref=${refCode}`;
+      const refLink = `https://comet-ai-frontend.vercel.app/waitlist?ref=${refCode}&email=${encodeURIComponent(email)}`;
       await resend.emails.send({
         from: "CometAI Travel <onboarding@resend.dev>",
         to: email,

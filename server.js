@@ -18,11 +18,13 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejec
 
 console.log("SERVER STARTED");
 
+/* ---------------- USERS ---------------- */
 app.get("/users", async (req, res) => {
   try { const result = await pool.query("SELECT * FROM users"); res.json(result.rows); }
   catch (err) { console.error(err); res.status(500).send("Server Error"); }
 });
 
+/* ---------------- FLIGHTS ---------------- */
 app.get("/flights", async (req, res) => {
   try {
     const { from, to, date } = req.query;
@@ -36,6 +38,7 @@ app.get("/flights", async (req, res) => {
   } catch (err) { console.error("FLIGHT ERROR:", err); res.status(500).send("Server Error"); }
 });
 
+/* ---------------- REAL FLIGHTS ---------------- */
 app.get("/real-flights", async (req, res) => {
   try {
     const { from, to } = req.query;
@@ -71,6 +74,7 @@ app.get("/real-flights", async (req, res) => {
   }
 });
 
+/* ---------------- AI SEARCH ---------------- */
 app.post("/ai-search", async (req, res) => {
   try {
     const queryText = req.body.query.toLowerCase();
@@ -101,6 +105,7 @@ app.post("/ai-search", async (req, res) => {
   } catch (err) { console.error(err); res.status(500).send("Server Error"); }
 });
 
+/* ---------------- AUTH ---------------- */
 function authenticateToken(req, res, next) {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
@@ -111,6 +116,7 @@ function authenticateToken(req, res, next) {
   });
 }
 
+/* ---------------- BOOKING ---------------- */
 app.post("/book", authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
@@ -136,8 +142,10 @@ app.post("/book", authenticateToken, async (req, res) => {
   finally { client.release(); }
 });
 
+/* ---------------- TEST ---------------- */
 app.get("/test", (req, res) => { res.send("Test route working"); });
 
+/* ---------------- REGISTER ---------------- */
 app.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -147,6 +155,7 @@ app.post("/register", async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ message: "Registration failed" }); }
 });
 
+/* ---------------- LOGIN ---------------- */
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -160,6 +169,7 @@ app.post("/login", async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ message: "Login failed" }); }
 });
 
+/* ---------------- MY BOOKINGS ---------------- */
 app.get("/my-bookings", authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -168,6 +178,7 @@ app.get("/my-bookings", authenticateToken, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).send("Server Error"); }
 });
 
+/* ---------------- SEAT LOCK ---------------- */
 app.post("/lock-seat", authenticateToken, async (req, res) => {
   try {
     const { flight_id } = req.body; const user_id = req.user.id;
@@ -177,6 +188,7 @@ app.post("/lock-seat", authenticateToken, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).send("Server Error"); }
 });
 
+/* ---------------- WHATSAPP BOT ---------------- */
 const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 const userSessions = {};
 
@@ -254,11 +266,11 @@ app.post("/whatsapp", async (req, res) => {
   res.type("text/xml").send(twiml.toString());
 });
 
+/* ---------------- SEND BOOKING EMAIL ---------------- */
 async function sendBookingEmail(toEmail, bookingDetails) {
   const { passengerName, airline, flightNo, fromCity, toCity, departureTime, arrivalTime, price, bookingId, cabinClass } = bookingDetails;
-  const depTime = departureTime ? new Date(departureTime).toLocaleString("en-IN", {day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:false}) : "—";
-  const arrTime = arrivalTime ? new Date(arrivalTime).toLocaleTimeString("en-IN", {hour:"2-digit",minute:"2-digit",hour12:false}) : "—";
-
+  const depTime = departureTime ? new Date(departureTime).toLocaleString("en-IN",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:false}) : "—";
+  const arrTime = arrivalTime ? new Date(arrivalTime).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false}) : "—";
   await resend.emails.send({
     from: "CometAI Travel <onboarding@resend.dev>",
     to: toEmail,
@@ -268,76 +280,59 @@ async function sendBookingEmail(toEmail, bookingDetails) {
 }
 
 /* ---------------- ADMIN ROUTES ---------------- */
-
 app.get("/admin/bookings", async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT bookings.id, bookings.passenger_name, bookings.booked_at,
-              flights.from_city, flights.to_city, flights.departure_time,
-              flights.price, flights.airline, users.email as user_email
-       FROM bookings
-       JOIN flights ON bookings.flight_id = flights.id
-       JOIN users ON bookings.user_id = users.id
-       ORDER BY bookings.id DESC`
-    );
+    const result = await pool.query(`SELECT bookings.id, bookings.passenger_name, bookings.booked_at, flights.from_city, flights.to_city, flights.departure_time, flights.price, flights.airline, users.email as user_email FROM bookings JOIN flights ON bookings.flight_id = flights.id JOIN users ON bookings.user_id = users.id ORDER BY bookings.id DESC`);
     res.json(result.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Server Error");
-  }
+  } catch (err) { console.error(err); res.status(500).send("Server Error"); }
 });
 
 app.get("/admin/users", async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT id, name, email FROM users ORDER BY id DESC`
-    );
+    const result = await pool.query(`SELECT id, name, email FROM users ORDER BY id DESC`);
     res.json(result.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Server Error");
-  }
+  } catch (err) { console.error(err); res.status(500).send("Server Error"); }
 });
 
-/* ---------------- WAITLIST ---------------- */
+/* ---------------- WAITLIST WITH REFERRAL ---------------- */
+function generateRefCode(email) {
+  const base = email.split("@")[0].replace(/[^a-zA-Z0-9]/g, "").slice(0, 8);
+  const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `${base}${rand}`;
+}
+
+async function ensureWaitlistTable() {
+  await pool.query(`CREATE TABLE IF NOT EXISTS waitlist (id SERIAL PRIMARY KEY, email VARCHAR(255) UNIQUE NOT NULL, ref_code VARCHAR(20) UNIQUE NOT NULL, referred_by VARCHAR(20), joined_at TIMESTAMP DEFAULT NOW())`);
+}
 
 app.post("/waitlist", async (req, res) => {
   try {
-    const { email } = req.body;
+    await ensureWaitlistTable();
+    const { email, ref } = req.body;
     if (!email) return res.status(400).json({ message: "Email required" });
-
-    // create waitlist table if not exists
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS waitlist (
-        id SERIAL PRIMARY KEY,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        joined_at TIMESTAMP DEFAULT NOW()
-      )
-    `);
-
-    await pool.query(
-      "INSERT INTO waitlist (email) VALUES ($1)",
-      [email]
-    );
-
-    // send welcome email via Resend
+    const refCode = generateRefCode(email);
+    let referredBy = null;
+    if (ref) {
+      const refCheck = await pool.query("SELECT email FROM waitlist WHERE ref_code=$1", [ref]);
+      if (refCheck.rows.length > 0) referredBy = ref;
+    }
+    await pool.query("INSERT INTO waitlist (email, ref_code, referred_by) VALUES ($1, $2, $3)", [email, refCode, referredBy]);
     try {
-      const { Resend } = require("resend");
-      const resend = new Resend(process.env.RESEND_API_KEY);
+      const refLink = `https://comet-ai-frontend.vercel.app/waitlist?ref=${refCode}`;
       await resend.emails.send({
         from: "CometAI Travel <onboarding@resend.dev>",
         to: email,
-        subject: "🚀 You're on the CometAI waitlist!",
-        html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#01020a;color:#e8eaf6;border-radius:16px;overflow:hidden;"><div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:32px 24px;text-align:center;"><h1 style="margin:0;font-size:28px;color:white;">☄️ COMETAI</h1><p style="margin:8px 0 0;color:rgba(255,255,255,0.8);font-size:14px;letter-spacing:3px;">TRAVEL INTELLIGENCE</p></div><div style="padding:32px 24px;text-align:center;"><h2 style="color:#a5b4fc;font-size:22px;margin-bottom:12px;">You're on the list! 🎉</h2><p style="color:rgba(165,180,252,0.6);font-size:15px;line-height:1.7;margin-bottom:24px;">Thanks for joining the CometAI waitlist! We're building India's smartest travel platform — book flights using AI or WhatsApp with zero booking fees.</p><p style="color:rgba(165,180,252,0.6);font-size:15px;line-height:1.7;">We'll email you the moment we launch. In the meantime, share with friends and help us grow!</p><div style="margin-top:32px;"><a href="https://comet-ai-frontend.vercel.app/waitlist" style="background:#6366f1;color:white;padding:12px 28px;border-radius:10px;text-decoration:none;font-size:14px;font-weight:600;">Share the waitlist →</a></div></div><div style="padding:24px;text-align:center;border-top:1px solid rgba(255,255,255,0.06);"><p style="color:rgba(165,180,252,0.3);font-size:12px;">CometAI Travel · India's AI-powered travel platform</p></div></div>`
+        subject: "🚀 You're on the CometAI waitlist! Here's your referral link",
+        html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#01020a;color:#e8eaf6;border-radius:16px;overflow:hidden;"><div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:32px 24px;text-align:center;"><h1 style="margin:0;font-size:28px;color:white;">☄️ COMETAI</h1></div><div style="padding:32px 24px;text-align:center;"><h2 style="color:#a5b4fc;">You're on the list! 🎉</h2><p style="color:rgba(165,180,252,0.6);font-size:15px;line-height:1.7;margin-bottom:24px;">Share your referral link! For every friend who books above ₹5,000 — you get ₹150 off and they get ₹100 off!</p><div style="background:rgba(99,102,241,0.1);border:1px solid rgba(129,140,248,0.2);border-radius:12px;padding:16px;margin-bottom:24px;"><p style="color:#a5b4fc;font-family:monospace;font-size:14px;">${refLink}</p></div><a href="${refLink}" style="background:#6366f1;color:white;padding:12px 28px;border-radius:10px;text-decoration:none;font-size:14px;font-weight:600;">Share your link →</a></div></div>`
       });
-    } catch (emailErr) {
-      console.error("Waitlist email error:", emailErr.message);
-    }
-
-    res.json({ message: "Added to waitlist!" });
+    } catch (emailErr) { console.error("Waitlist email error:", emailErr.message); }
+    res.json({ message: "Added to waitlist!", refCode });
   } catch (err) {
     if (err.code === "23505") {
-      return res.status(409).json({ message: "Already on waitlist" });
+      try {
+        const existing = await pool.query("SELECT ref_code FROM waitlist WHERE email=$1", [req.body.email]);
+        return res.status(409).json({ message: "Already on waitlist", refCode: existing.rows[0]?.ref_code });
+      } catch { return res.status(409).json({ message: "Already on waitlist" }); }
     }
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -346,22 +341,36 @@ app.post("/waitlist", async (req, res) => {
 
 app.get("/waitlist/count", async (req, res) => {
   try {
-    await pool.query(`CREATE TABLE IF NOT EXISTS waitlist (id SERIAL PRIMARY KEY, email VARCHAR(255) UNIQUE NOT NULL, joined_at TIMESTAMP DEFAULT NOW())`);
+    await ensureWaitlistTable();
     const result = await pool.query("SELECT COUNT(*) FROM waitlist");
     res.json({ count: parseInt(result.rows[0].count) });
-  } catch (err) {
-    res.json({ count: 0 });
-  }
+  } catch (err) { res.json({ count: 0 }); }
+});
+
+app.get("/waitlist/leaderboard", async (req, res) => {
+  try {
+    await ensureWaitlistTable();
+    const result = await pool.query(`SELECT w.email, COUNT(r.id) as ref_count FROM waitlist w LEFT JOIN waitlist r ON r.referred_by = w.ref_code GROUP BY w.email ORDER BY ref_count DESC LIMIT 10`);
+    res.json(result.rows);
+  } catch (err) { res.json([]); }
+});
+
+app.get("/waitlist/my-refs/:refCode", async (req, res) => {
+  try {
+    await ensureWaitlistTable();
+    const result = await pool.query("SELECT COUNT(*) FROM waitlist WHERE referred_by=$1", [req.params.refCode]);
+    res.json({ count: parseInt(result.rows[0].count) });
+  } catch (err) { res.json({ count: 0 }); }
 });
 
 app.get("/admin/waitlist", async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM waitlist ORDER BY joined_at DESC");
+    await ensureWaitlistTable();
+    const result = await pool.query(`SELECT w.*, COUNT(r.id) as ref_count FROM waitlist w LEFT JOIN waitlist r ON r.referred_by = w.ref_code GROUP BY w.id ORDER BY ref_count DESC, w.joined_at ASC`);
     res.json(result.rows);
-  } catch (err) {
-    res.json([]);
-  }
+  } catch (err) { res.json([]); }
 });
 
+/* ---------------- START SERVER ---------------- */
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });

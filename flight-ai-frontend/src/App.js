@@ -6,6 +6,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import LandingPage from "./pages/LandingPage";
 import AdminDashboard from "./pages/AdminDashboard";
+import Waitlist from "./pages/Waitlist";
 
 const API = "https://cometai-backend.onrender.com";
 

@@ -1,147 +1,171 @@
-import { useState, useEffect } from "react";
-import axios from "axios";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const API = "https://cometai-backend.onrender.com";
-
-const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=DM+Sans:wght@300;400;500&display=swap');
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #01020a; color: #e8eaf6; font-family: 'DM Sans', sans-serif; min-height: 100vh; overflow: hidden; }
-
-  .stars-bg {
-    position: fixed; inset: 0; z-index: 0; pointer-events: none;
-    background:
-      radial-gradient(ellipse at 20% 50%, rgba(99,43,200,0.3) 0%, transparent 55%),
-      radial-gradient(ellipse at 80% 20%, rgba(25,90,220,0.25) 0%, transparent 50%),
-      radial-gradient(ellipse at 60% 80%, rgba(140,30,180,0.2) 0%, transparent 50%),
-      #01020a;
-  }
-  .nebula { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: radial-gradient(ellipse 800px 400px at 10% 60%, rgba(99,43,200,0.08) 0%, transparent 70%), radial-gradient(ellipse 600px 300px at 90% 30%, rgba(56,189,248,0.06) 0%, transparent 70%); }
-  .star { position: absolute; border-radius: 50%; background: white; animation: twinkle var(--d,3s) ease-in-out infinite var(--delay,0s); }
-  @keyframes twinkle { 0%,100%{opacity:var(--min-op,.15);transform:scale(1);}50%{opacity:1;transform:scale(1.5);} }
-  .shooting-star { position: fixed; top:0; left:0; width:2px; height:2px; background:white; border-radius:50%; pointer-events:none; z-index:1; }
-  .shooting-star::after { content:''; position:absolute; top:50%; right:0; transform:translateY(-50%); width:140px; height:1px; background:linear-gradient(90deg,rgba(255,255,255,0),rgba(165,180,252,0.8),white); border-radius:2px; }
-  @keyframes shoot { 0%{transform:translate(0,0) rotate(var(--angle));opacity:1;}70%{opacity:1;}100%{transform:translate(var(--tx),var(--ty)) rotate(var(--angle));opacity:0;} }
-
-  .login-wrap { position:relative; z-index:1; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 24px; animation:fadeUp 0.7s ease 0.3s both; }
-  @keyframes fadeUp { from{opacity:0;transform:translateY(28px);}to{opacity:1;transform:translateY(0);} }
-
-  .logo-wrap { display:flex; flex-direction:column; align-items:center; margin-bottom:40px; }
-  .logo-icon-wrap { position:relative; width:80px; height:80px; margin-bottom:16px; }
-  .logo-orbit { position:absolute; inset:0; border-radius:50%; border:1px solid rgba(129,140,248,0.35); animation:spin 8s linear infinite; }
-  .logo-orbit-2 { position:absolute; inset:10px; border-radius:50%; border:1px solid rgba(192,132,252,0.25); animation:spin 5s linear infinite reverse; }
-  @keyframes spin{to{transform:rotate(360deg);}}
-  .logo-orbit::before { content:''; position:absolute; width:8px; height:8px; background:#818cf8; border-radius:50%; top:-4px; left:50%; transform:translateX(-50%); box-shadow:0 0 10px #818cf8; }
-  .logo-orbit-2::before { content:''; position:absolute; width:6px; height:6px; background:#c084fc; border-radius:50%; bottom:-3px; left:50%; transform:translateX(-50%); box-shadow:0 0 8px #c084fc; }
-  .logo-comet { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:32px; filter:drop-shadow(0 0 16px rgba(129,140,248,0.8)); }
-  .logo-name { font-family:'Orbitron',sans-serif; font-size:28px; font-weight:800; letter-spacing:3px; background:linear-gradient(90deg,#818cf8,#c084fc,#38bdf8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-  .logo-tagline { font-size:10px; letter-spacing:4px; text-transform:uppercase; color:rgba(165,180,252,0.4); margin-top:6px; font-weight:300; }
-
-  .login-card { width:100%; max-width:420px; background:rgba(255,255,255,0.03); border:1px solid rgba(129,140,248,0.2); border-radius:24px; padding:40px 36px 36px; backdrop-filter:blur(20px); box-shadow:0 24px 80px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.05); }
-  .card-title { font-family:'Orbitron',sans-serif; font-size:18px; font-weight:600; color:#e0e7ff; margin-bottom:6px; letter-spacing:1px; }
-  .card-sub { font-size:13px; color:rgba(165,180,252,0.4); margin-bottom:28px; font-weight:300; }
-  .input-group { margin-bottom:16px; }
-  .input-label { display:block; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:rgba(165,180,252,0.5); margin-bottom:8px; font-weight:500; }
-  .input-field { width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(129,140,248,0.2); border-radius:12px; padding:13px 16px; color:#e0e7ff; font-family:'DM Sans',sans-serif; font-size:14px; outline:none; transition:all 0.2s; }
-  .input-field::placeholder{color:rgba(165,180,252,0.2);}
-  .input-field:focus{border-color:rgba(129,140,248,0.6);background:rgba(129,140,248,0.08);}
-  .error-msg{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#fca5a5;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;}
-  .wake-msg{background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);color:#fcd34d;padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:16px;text-align:center;}
-  .btn-login { width:100%; padding:14px; background:linear-gradient(135deg,#6366f1,#8b5cf6); border:none; border-radius:12px; color:white; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:500; cursor:pointer; letter-spacing:0.5px; margin-top:8px; transition:all 0.2s; box-shadow:0 4px 20px rgba(99,102,241,0.3); }
-  .btn-login:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(99,102,241,0.5);}
-  .btn-login:disabled{opacity:0.7;cursor:not-allowed;transform:none;}
-  .divider{display:flex;align-items:center;gap:12px;margin:24px 0 20px;}
-  .divider-line{flex:1;height:1px;background:rgba(255,255,255,0.06);}
-  .divider-text{font-size:11px;color:rgba(165,180,252,0.25);letter-spacing:1px;}
-  .register-link{text-align:center;font-size:13px;color:rgba(165,180,252,0.4);}
-  .register-link span{color:#a5b4fc;cursor:pointer;font-weight:500;}
-  .register-link span:hover{color:#c7d2fe;}
+const CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(22px);}to{opacity:1;transform:translateY(0);}}
+  @keyframes floatUD{0%,100%{transform:translateY(0);}50%{transform:translateY(-9px);}}
+  @keyframes orbitRing{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+  @keyframes planeOrbit{from{transform:rotate(0deg) translateX(22px) rotate(0deg);}to{transform:rotate(360deg) translateX(22px) rotate(-360deg);}}
 `;
 
-function Stars() {
-  const stars = Array.from({length:100},(_,i)=>({id:i,x:Math.random()*100,y:Math.random()*100,size:Math.random()*2.5+0.3,duration:Math.random()*5+2,delay:Math.random()*6,minOp:Math.random()*0.2+0.05}));
-  return<div className="stars-bg">{stars.map(s=><div key={s.id} className="star" style={{left:`${s.x}%`,top:`${s.y}%`,width:s.size,height:s.size,'--d':`${s.duration}s`,'--delay':`${s.delay}s`,'--min-op':s.minOp}}/>)}</div>;
-}
-
-function Login() {
-  const [email,setEmail]=useState("");
-  const [password,setPassword]=useState("");
-  const [error,setError]=useState("");
-  const [loading,setLoading]=useState(false);
-  const [waking,setWaking]=useState(false);
-  const navigate=useNavigate();
-
-  // wake up backend immediately when login page loads
-  useEffect(()=>{
-    setWaking(true);
-    fetch(`${API}/test`)
-      .then(()=>setWaking(false))
-      .catch(()=>setWaking(false));
-  },[]);
-
-  const handleLogin=async()=>{
-    if(!email||!password){setError("Please fill in all fields.");return;}
-    setLoading(true);
-    setError("");
-    try{
-      const res=await axios.post(`${API}/login`,{email,password});
-      localStorage.setItem("token",res.data.token);
-      navigate("/search");
-    }catch(err){
-      setError("Invalid email or password. Please try again.");
-    }
-    setLoading(false);
-  };
-
-  return(
-    <>
-      <style>{styles}</style>
-      <Stars/>
-      <div className="nebula"/>
-
-      <div className="login-wrap">
-        <div className="logo-wrap">
-          <div className="logo-icon-wrap">
-            <div className="logo-orbit"/>
-            <div className="logo-orbit-2"/>
-            <div className="logo-comet">☄️</div>
-          </div>
-          <div className="logo-name">COMETAI</div>
-          <div className="logo-tagline">Travel Intelligence</div>
-        </div>
-
-        <div className="login-card">
-          <div className="card-title">Welcome back</div>
-          <div className="card-sub">Sign in to continue your journey</div>
-
-          {waking&&<div className="wake-msg">⚡ Waking up servers... first login may take ~30 seconds</div>}
-          {error&&<div className="error-msg">⚠ {error}</div>}
-
-          <div className="input-group">
-            <label className="input-label">Email</label>
-            <input className="input-field" type="email" placeholder="you@example.com" value={email} onChange={e=>setEmail(e.target.value)} onKeyPress={e=>{if(e.key==="Enter")handleLogin();}}/>
-          </div>
-
-          <div className="input-group">
-            <label className="input-label">Password</label>
-            <input className="input-field" type="password" placeholder="••••••••" value={password} onChange={e=>setPassword(e.target.value)} onKeyPress={e=>{if(e.key==="Enter")handleLogin();}}/>
-          </div>
-
-          <button className="btn-login" onClick={handleLogin} disabled={loading}>
-            {loading?"Signing in...":"Launch →"}
-          </button>
-
-          <div className="divider"><div className="divider-line"/><div className="divider-text">or</div><div className="divider-line"/></div>
-
-          <div className="register-link">
-            New to CometAI?{" "}
-            <span onClick={()=>navigate("/register")}>Create account</span>
-          </div>
-        </div>
-      </div>
-    </>
+function AlvrynIcon({ size = 40, spin = false }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 60 60" fill="none">
+      <defs>
+        <linearGradient id="lg1" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#6C63FF"/><stop offset="100%" stopColor="#00C2FF"/>
+        </linearGradient>
+        <linearGradient id="lg2" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FF6B6B"/><stop offset="100%" stopColor="#FFD93D"/>
+        </linearGradient>
+      </defs>
+      <ellipse cx="30" cy="30" rx="27" ry="11" stroke="url(#lg1)" strokeWidth="1.2" strokeDasharray="5 3" opacity="0.45"
+        style={spin?{animation:"orbitRing 5s linear infinite",transformOrigin:"30px 30px"}:{}}/>
+      <text x="10" y="47" fontFamily="'Syne',sans-serif" fontWeight="900" fontSize="40" fill="url(#lg1)">A</text>
+      <g style={spin?{animation:"planeOrbit 5s linear infinite",transformOrigin:"30px 30px"}:{}}>
+        <path d="M57 30 L50 26 L52 30 L50 34 Z" fill="url(#lg2)"/>
+        <path d="M51 26.5 L51 22 L54 27 Z" fill="url(#lg2)" opacity="0.75"/>
+      </g>
+    </svg>
   );
 }
 
-export default Login;
+function AuroraBackground({ colors }) {
+  const ref = useRef(null);
+  const raf = useRef(null);
+  useEffect(() => {
+    const c = ref.current; if (!c) return;
+    const ctx = c.getContext("2d");
+    let W = c.offsetWidth, H = c.offsetHeight;
+    c.width = W; c.height = H;
+    const blobs = Array.from({length:5},(_,i)=>({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-0.5)*0.5,vy:(Math.random()-0.5)*0.5,r:200+Math.random()*180,ci:i%colors.length}));
+    const resize=()=>{W=c.offsetWidth;H=c.offsetHeight;c.width=W;c.height=H;};
+    window.addEventListener("resize",resize);
+    const draw=()=>{
+      ctx.clearRect(0,0,W,H);
+      blobs.forEach(b=>{b.x+=b.vx;b.y+=b.vy;if(b.x<-b.r||b.x>W+b.r)b.vx*=-1;if(b.y<-b.r||b.y>H+b.r)b.vy*=-1;
+        const g=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,b.r);g.addColorStop(0,colors[b.ci%colors.length]+"28");g.addColorStop(1,"transparent");
+        ctx.fillStyle=g;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();});
+      raf.current=requestAnimationFrame(draw);
+    };
+    draw();
+    return()=>{cancelAnimationFrame(raf.current);window.removeEventListener("resize",resize);};
+  },[colors]);
+  return <canvas ref={ref} style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",zIndex:0}}/>;
+}
+
+export default function Login() {
+  const navigate = useNavigate();
+  const [form, setForm] = useState({ email:"", password:"" });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [waking, setWaking] = useState(false);
+
+  const handleSubmit = async () => {
+    setError(""); setLoading(true); setWaking(true);
+setTimeout(() => setWaking(false), 28000);
+    try {
+      const res = await fetch("https://cometai-backend.onrender.com/login", {
+        method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        navigate("/search");
+      } else { setError(data.message || "Invalid credentials"); }
+    } catch { setError("Server error. Please try again."); }
+    finally { setLoading(false); setWaking(false); }
+  };
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#f8f8fa", position:"relative",
+      display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" }}>
+      <style>{CSS}</style>
+      <AuroraBackground colors={["#6C63FF","#00C2FF","#a78bfa"]}/>
+
+      {/* Nav */}
+      <div style={{ position:"fixed", top:0, left:0, right:0, zIndex:100, padding:"16px 6%",
+        display:"flex", alignItems:"center", gap:10, cursor:"pointer" }}
+        onClick={()=>navigate("/")}>
+        <AlvrynIcon size={36} spin/>
+        <div>
+          <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:900, fontSize:16,
+            color:"#0a0a0a", letterSpacing:"-0.04em" }}>ALVRYN</div>
+          <div style={{ fontFamily:"'Space Mono',monospace", fontSize:7,
+            color:"#6C63FF", letterSpacing:"0.18em" }}>TRAVEL BEYOND</div>
+        </div>
+      </div>
+
+      <div style={{ position:"relative", zIndex:2, width:"100%", maxWidth:420,
+        padding:"0 20px", animation:"fadeUp 0.6s both" }}>
+        <div style={{ background:"rgba(255,255,255,0.88)", backdropFilter:"blur(24px)",
+          borderRadius:28, padding:"48px 40px",
+          boxShadow:"0 24px 80px rgba(0,0,0,0.10)", border:"1px solid rgba(255,255,255,0.9)" }}>
+          <div style={{ textAlign:"center", marginBottom:36 }}>
+            <div style={{ display:"flex", justifyContent:"center", marginBottom:16,
+              animation:"floatUD 4s ease-in-out infinite" }}>
+              <AlvrynIcon size={52} spin/>
+            </div>
+            <h1 style={{ fontFamily:"'Syne',sans-serif", fontWeight:900, fontSize:28,
+              color:"#0a0a0a", marginBottom:6 }}>Welcome back</h1>
+            <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, color:"#888" }}>Sign in to your Alvryn account</p>
+          </div>
+
+          <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+            {[
+              {key:"email",label:"Email",type:"email",ph:"you@example.com"},
+              {key:"password",label:"Password",type:"password",ph:"••••••••"},
+            ].map(f=>(
+              <div key={f.key}>
+                <label style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600,
+                  color:"#555", display:"block", marginBottom:7 }}>{f.label}</label>
+                <input type={f.type} placeholder={f.ph} value={form[f.key]}
+                  onChange={e=>setForm({...form,[f.key]:e.target.value})}
+                  onKeyDown={e=>e.key==="Enter"&&handleSubmit()}
+                  style={{ width:"100%", padding:"13px 16px", borderRadius:13, fontSize:15,
+                    fontFamily:"'DM Sans',sans-serif", color:"#0a0a0a",
+                    background:"#fafafa", border:"1.5px solid rgba(0,0,0,0.1)",
+                    outline:"none", transition:"border-color 0.2s,box-shadow 0.2s" }}
+                  onFocus={e=>{e.target.style.borderColor="#6C63FF";e.target.style.boxShadow="0 0 0 3px rgba(108,99,255,0.12)";}}
+                  onBlur={e=>{e.target.style.borderColor="rgba(0,0,0,0.1)";e.target.style.boxShadow="none";}}/>
+              </div>
+            ))}
+
+            {error && (
+              <div style={{ padding:"12px 16px", borderRadius:10, background:"#FFF0F0",
+                border:"1px solid #FFCDD2", fontFamily:"'DM Sans',sans-serif",
+                fontSize:14, color:"#C62828" }}>{error}</div>
+            )}
+
+            <button onClick={handleSubmit} disabled={loading}
+              style={{ padding:"14px", borderRadius:14, fontSize:16, fontWeight:800,
+                fontFamily:"'Syne',sans-serif", color:"#fff", border:"none", cursor:"pointer",
+                background: loading?"#ccc":"linear-gradient(135deg,#6C63FF,#00C2FF)",
+                boxShadow: loading?"none":"0 8px 32px rgba(108,99,255,0.4)", marginTop:6,
+                transition:"transform 0.2s" }}
+              onMouseEnter={e=>!loading&&(e.currentTarget.style.transform="translateY(-2px)")}
+              onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>
+              {waking ? "☕ Waking up server (~30s)…" : loading ? "Signing in…" : "Sign In →"}
+            </button>
+          </div>
+
+          <div style={{ display:"flex", alignItems:"center", gap:14, margin:"24px 0" }}>
+            <div style={{ flex:1, height:1, background:"rgba(0,0,0,0.07)" }}/>
+            <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#bbb" }}>or</span>
+            <div style={{ flex:1, height:1, background:"rgba(0,0,0,0.07)" }}/>
+          </div>
+          <p style={{ textAlign:"center", fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#888" }}>
+            Don't have an account?{" "}
+            <span onClick={()=>navigate("/register")}
+              style={{ color:"#6C63FF", cursor:"pointer", fontWeight:700, textDecoration:"underline" }}>
+              Sign up free →
+            </span>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}

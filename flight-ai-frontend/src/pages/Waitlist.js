@@ -1,420 +1,431 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import axios from "axios";
+import { motion, useInView } from "framer-motion";
 
 const API = "https://cometai-backend.onrender.com";
 
-const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=DM+Sans:wght@300;400;500&display=swap');
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #01020a; color: #e8eaf6; font-family: 'DM Sans', sans-serif; min-height: 100vh; overflow-x: hidden; }
-  .stars-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: radial-gradient(ellipse at 20% 50%, rgba(99,43,200,0.35) 0%, transparent 55%), radial-gradient(ellipse at 80% 20%, rgba(25,90,220,0.28) 0%, transparent 50%), radial-gradient(ellipse at 60% 80%, rgba(140,30,180,0.22) 0%, transparent 50%), #01020a; }
-  .nebula { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: radial-gradient(ellipse 900px 500px at 5% 70%, rgba(99,43,200,0.12) 0%, transparent 70%), radial-gradient(ellipse 700px 400px at 95% 25%, rgba(56,189,248,0.1) 0%, transparent 70%); }
-  .star { position: absolute; border-radius: 50%; background: white; animation: twinkle var(--d,3s) ease-in-out infinite var(--delay,0s); }
-  @keyframes twinkle { 0%,100%{opacity:var(--min-op,.2);transform:scale(1);}50%{opacity:1;transform:scale(1.6);} }
-  .shooting-star { position: fixed; top:0; left:0; width:2px; height:2px; background:white; border-radius:50%; pointer-events:none; z-index:2; }
-  .shooting-star::after { content:''; position:absolute; top:50%; right:0; transform:translateY(-50%); width:160px; height:1px; background:linear-gradient(90deg,rgba(255,255,255,0),rgba(165,180,252,0.8),white); border-radius:2px; }
-  @keyframes shoot { 0%{transform:translate(0,0) rotate(var(--angle));opacity:1;}70%{opacity:1;}100%{transform:translate(var(--tx),var(--ty)) rotate(var(--angle));opacity:0;} }
-
-  .page { position: relative; z-index: 1; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px; text-align: center; }
-  .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; animation: fadeUp 0.6s ease both; }
-  .logo-icon { font-size: 28px; filter: drop-shadow(0 0 12px rgba(129,140,248,0.8)); }
-  .logo-text { font-family: 'Orbitron', sans-serif; font-size: 20px; font-weight: 800; letter-spacing: 2px; background: linear-gradient(90deg, #818cf8, #c084fc, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-  @keyframes fadeUp { from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);} }
-
-  .launch-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(99,102,241,0.1); border: 1px solid rgba(129,140,248,0.25); color: #a5b4fc; padding: 8px 18px; border-radius: 20px; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 20px; animation: fadeUp 0.6s ease 0.1s both; }
-  .badge-dot { width: 6px; height: 6px; background: #6ee7b7; border-radius: 50%; animation: blink 2s ease infinite; }
-  @keyframes blink { 0%,100%{opacity:1;}50%{opacity:0.3;} }
-
-  .hero-title { font-family: 'Orbitron', sans-serif; font-size: clamp(28px, 6vw, 56px); font-weight: 800; line-height: 1.1; background: linear-gradient(135deg, #e0e7ff 0%, #a5b4fc 40%, #c084fc 70%, #38bdf8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 14px; letter-spacing: 1px; animation: fadeUp 0.6s ease 0.2s both; }
-  .hero-sub { font-size: clamp(14px, 2.5vw, 16px); color: rgba(180,190,255,0.55); font-weight: 300; max-width: 480px; line-height: 1.7; margin-bottom: 24px; animation: fadeUp 0.6s ease 0.3s both; }
-
-  /* REFERRAL PREVIEW — shown before joining */
-  .referral-preview { width: 100%; max-width: 500px; background: rgba(99,102,241,0.08); border: 1px solid rgba(129,140,248,0.2); border-radius: 16px; padding: 20px 24px; margin-bottom: 24px; animation: fadeUp 0.6s ease 0.35s both; }
-  .referral-preview-title { font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 600; color: #a5b4fc; letter-spacing: 1px; margin-bottom: 12px; }
-  .referral-steps { display: flex; flex-direction: column; gap: 10px; }
-  .referral-step { display: flex; align-items: flex-start; gap: 12px; text-align: left; }
-  .step-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
-  .step-text { font-size: 13px; color: rgba(165,180,252,0.7); line-height: 1.5; }
-  .step-text strong { color: #e0e7ff; }
-  .referral-note { font-size: 11px; color: rgba(165,180,252,0.35); margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); }
-
-  .counter-wrap { display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 24px; animation: fadeUp 0.6s ease 0.4s both; }
-  .counter-avatars { display: flex; }
-  .counter-avatar { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #01020a; background: linear-gradient(135deg, #6366f1, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 12px; margin-left: -8px; }
-  .counter-avatar:first-child { margin-left: 0; }
-  .counter-text { font-size: 13px; color: rgba(165,180,252,0.6); }
-  .counter-num { color: #a5b4fc; font-weight: 600; }
-
-  .waitlist-form { width: 100%; max-width: 500px; animation: fadeUp 0.6s ease 0.45s both; }
-  .input-row { display: flex; gap: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(129,140,248,0.25); border-radius: 14px; padding: 6px 6px 6px 20px; transition: all 0.2s; margin-bottom: 10px; }
-  .input-row:focus-within { border-color: rgba(129,140,248,0.6); box-shadow: 0 0 0 3px rgba(129,140,248,0.1); }
-  .email-input { flex: 1; background: transparent; border: none; outline: none; color: #e0e7ff; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 300; padding: 8px 0; }
-  .email-input::placeholder { color: rgba(165,180,252,0.3); }
-  .btn-join { background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; color: white; padding: 12px 24px; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
-  .btn-join:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(99,102,241,0.4); }
-  .btn-join:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
-  .error-msg { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); color: #f87171; padding: 10px 16px; border-radius: 10px; font-size: 13px; margin-bottom: 10px; }
-  .input-hint { font-size: 11px; color: rgba(165,180,252,0.3); text-align: center; }
-
-  /* SUCCESS STATE */
-  .success-section { width: 100%; max-width: 560px; animation: fadeUp 0.5s ease both; }
-  .success-hero { background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.2); border-radius: 16px; padding: 20px 24px; margin-bottom: 16px; }
-  .success-icon { font-size: 36px; margin-bottom: 8px; }
-  .success-title { font-family: 'Orbitron', sans-serif; font-size: 17px; font-weight: 700; color: #6ee7b7; margin-bottom: 6px; }
-  .success-sub { font-size: 13px; color: rgba(110,231,183,0.6); }
-
-  .referral-card { background: rgba(99,102,241,0.08); border: 1px solid rgba(129,140,248,0.2); border-radius: 16px; padding: 20px 24px; margin-bottom: 16px; }
-  .referral-title { font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 600; color: #a5b4fc; letter-spacing: 1px; margin-bottom: 6px; }
-  .referral-desc { font-size: 13px; color: rgba(165,180,252,0.5); margin-bottom: 16px; line-height: 1.6; }
-  .referral-reward { display: flex; gap: 10px; margin-bottom: 16px; }
-  .reward-item { flex: 1; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 12px; text-align: center; }
-  .reward-amount { font-family: 'Orbitron', sans-serif; font-size: 20px; font-weight: 800; color: #6ee7b7; }
-  .reward-label { font-size: 11px; color: rgba(165,180,252,0.4); margin-top: 4px; line-height: 1.4; }
-  .ref-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
-  .ref-stat { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 14px; text-align: center; }
-  .ref-stat-value { font-family: 'Orbitron', sans-serif; font-size: 24px; font-weight: 800; color: #e0e7ff; }
-  .ref-stat-label { font-size: 11px; color: rgba(165,180,252,0.4); margin-top: 4px; }
-  .ref-link-wrap { display: flex; gap: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(129,140,248,0.2); border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; }
-  .ref-link-text { flex: 1; font-size: 11px; color: #a5b4fc; font-family: monospace; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .btn-copy { background: rgba(99,102,241,0.2); border: 1px solid rgba(129,140,248,0.3); color: #a5b4fc; padding: 6px 14px; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 12px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
-  .btn-copy:hover { background: rgba(99,102,241,0.4); }
-  .btn-copy.copied { background: rgba(52,211,153,0.2); border-color: rgba(52,211,153,0.3); color: #6ee7b7; }
-
-  .share-title { font-size: 11px; color: rgba(165,180,252,0.35); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
-  .share-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-  .btn-share { display: flex; align-items: center; gap: 6px; padding: 11px 18px; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; border: none; }
-  .btn-share:hover { transform: translateY(-1px); }
-  .btn-whatsapp { background: #25D366; color: white; }
-  .btn-whatsapp:hover { background: #20b857; box-shadow: 0 4px 16px rgba(37,211,102,0.3); }
-  .btn-instagram { background: linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); color: white; }
-  .btn-instagram:hover { box-shadow: 0 4px 16px rgba(220,39,67,0.3); }
-  .btn-twitter { background: #1DA1F2; color: white; }
-  .btn-twitter:hover { background: #1a91da; box-shadow: 0 4px 16px rgba(29,161,242,0.3); }
-  .btn-copy-link { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12) !important; color: rgba(165,180,252,0.7); }
-  .btn-copy-link:hover { background: rgba(255,255,255,0.12); color: #a5b4fc; }
-
-  .leaderboard { width: 100%; max-width: 500px; margin-top: 28px; animation: fadeUp 0.6s ease 0.5s both; }
-  .lb-title { font-family: 'Orbitron', sans-serif; font-size: 11px; font-weight: 600; color: rgba(165,180,252,0.4); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
-  .lb-card { background: rgba(15,17,26,0.6); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; overflow: hidden; }
-  .lb-row { display: flex; align-items: center; gap: 12px; padding: 11px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); }
-  .lb-row:last-child { border-bottom: none; }
-  .lb-rank { font-size: 14px; width: 24px; }
-  .lb-email { flex: 1; font-size: 13px; color: #94a3b8; text-align: left; }
-  .lb-count { font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 700; color: #6366f1; }
-
-  .features { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-top: 28px; animation: fadeUp 0.6s ease 0.6s both; }
-  .feature { display: flex; align-items: center; gap: 6px; font-size: 12px; color: rgba(165,180,252,0.4); }
-  .footer { margin-top: 40px; font-size: 12px; color: rgba(165,180,252,0.2); animation: fadeUp 0.6s ease 0.7s both; }
-  .footer a { color: rgba(165,180,252,0.3); text-decoration: none; }
-
-  @media(max-width:480px) {
-    .input-row { flex-direction: column; padding: 12px 16px; }
-    .btn-join { width: 100%; padding: 13px; }
-    .referral-reward { flex-direction: column; }
-    .share-btns { gap: 6px; }
-    .btn-share { padding: 10px 14px; font-size: 12px; }
-  }
-`;
-
-function Stars() {
-  const stars = Array.from({length:100},(_,i)=>({id:i,x:Math.random()*100,y:Math.random()*100,size:Math.random()*2.5+0.3,duration:Math.random()*5+2,delay:Math.random()*6,minOp:Math.random()*0.2+0.05}));
-  return<div className="stars-bg">{stars.map(s=><div key={s.id} className="star" style={{left:`${s.x}%`,top:`${s.y}%`,width:s.size,height:s.size,'--d':`${s.duration}s`,'--delay':`${s.delay}s`,'--min-op':s.minOp}}/>)}</div>;
-}
-
-function ShootingStars() {
-  const [stars,setStars]=useState([]);
-  useEffect(()=>{
-    let id=0;
-    const launch=()=>{
-      const x=Math.random()*70,y=Math.random()*35,dist=500+Math.random()*300,angle=25+Math.random()*20,rad=(angle*Math.PI)/180;
-      const star={id:id++,x,y,tx:Math.cos(rad)*dist,ty:Math.sin(rad)*dist,angle,dur:700+Math.random()*700};
-      setStars(p=>[...p,star]);
-      setTimeout(()=>setStars(p=>p.filter(s=>s.id!==star.id)),star.dur+100);
-      setTimeout(launch,1500+Math.random()*3000);
-    };
-    const t=setTimeout(launch,500);
-    return()=>clearTimeout(t);
-  },[]);
-  return<>{stars.map(s=><div key={s.id} className="shooting-star" style={{left:`${s.x}%`,top:`${s.y}%`,'--angle':`${s.angle}deg`,'--tx':`${s.tx}px`,'--ty':`${s.ty}px`,animation:`shoot ${s.dur}ms ease-out forwards`}}/>)}</>;
+/* ── BlurText ── */
+const buildKF = (from, steps) => {
+  const keys = new Set([...Object.keys(from), ...steps.flatMap(s => Object.keys(s))]);
+  const kf = {}; keys.forEach(k => { kf[k] = [from[k], ...steps.map(s => s[k])]; }); return kf;
+};
+function BlurText({ text='', delay=120, animateBy='words', direction='top', stepDuration=0.4, once=true, style={} }) {
+  const els = animateBy==='words' ? text.split(' ') : text.split('');
+  const ref = useRef(null);
+  const inView = useInView(ref, { once, margin:'-40px' });
+  const from = useMemo(()=>direction==='top'?{filter:'blur(14px)',opacity:0,y:-50}:{filter:'blur(14px)',opacity:0,y:50},[direction]);
+  const to = useMemo(()=>[{filter:'blur(6px)',opacity:0.4,y:direction==='top'?10:-10},{filter:'blur(0px)',opacity:1,y:0}],[direction]);
+  const steps=to.length+1; const dur=stepDuration*(steps-1);
+  const times=Array.from({length:steps},(_,i)=>steps===1?0:i/(steps-1));
+  return(
+    <div ref={ref} style={{display:'flex',flexWrap:'wrap',...style}}>
+      {els.map((seg,i)=>(
+        <motion.span key={i} initial={from} animate={inView?buildKF(from,to):from}
+          transition={{duration:dur,times,delay:(i*delay)/1000,ease:'easeOut'}}
+          style={{display:'inline-block',willChange:'transform,filter,opacity'}}>
+          {seg===''?'\u00A0':seg}{animateBy==='words'&&i<els.length-1&&'\u00A0'}
+        </motion.span>
+      ))}
+    </div>
+  );
 }
 
 function maskEmail(email) {
   if (!email) return "***@***.com";
-  const [user, domain] = email.split("@");
-  return user.slice(0,2) + "***@" + domain;
+  const p = email.split("@");
+  if (p.length < 2) return "***";
+  return p[0].slice(0,2) + "***@" + p[1];
 }
 
-function Waitlist() {
+export default function Waitlist() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [count, setCount] = useState(0);
-  const [myData, setMyData] = useState(null);
+  const [myRefCode, setMyRefCode] = useState("");
+  const [myRefs, setMyRefs] = useState(0);
   const [leaderboard, setLeaderboard] = useState([]);
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [scrollY, setScrollY] = useState(0);
+  const canvasRef = useRef(null);
+  const animRef = useRef(null);
 
-  const urlParams = new URLSearchParams(window.location.search);
-  const refCode = urlParams.get("ref");
-  const emailFromUrl = urlParams.get("email");
+  const incomingRef = (() => {
+    try { return new URLSearchParams(window.location.search||"").get("ref") || ""; }
+    catch { return ""; }
+  })();
+
+  // scroll for theme morph
+  useEffect(() => {
+    const onScroll = () => setScrollY(window.scrollY);
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const themeIndex = scrollY < window.innerHeight * 0.6 ? 0 : scrollY < window.innerHeight * 1.4 ? 1 : 2;
+
+  const themes = [
+    // Pearl violet
+    { bg:'linear-gradient(135deg,#f8f6ff 0%,#f0ebff 30%,#e8f4ff 60%,#f5f8ff 100%)', accent:'#6d28d9', accent2:'#8b5cf6', text:'#1e1033', sub:'#4c1d95', card:'rgba(255,255,255,0.8)', cardBorder:'rgba(109,40,217,0.12)' },
+    // Mint teal
+    { bg:'linear-gradient(135deg,#f0fdf9 0%,#e0faf4 30%,#ccfbf0 60%,#f0fdf9 100%)', accent:'#059669', accent2:'#10b981', text:'#064e3b', sub:'#065f46', card:'rgba(255,255,255,0.82)', cardBorder:'rgba(5,150,105,0.15)' },
+    // Sky blue
+    { bg:'linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 30%,#bae6fd 60%,#f0f9ff 100%)', accent:'#0284c7', accent2:'#0ea5e9', text:'#0c4a6e', sub:'#075985', card:'rgba(255,255,255,0.82)', cardBorder:'rgba(2,132,199,0.15)' },
+  ];
+  const theme = themes[themeIndex];
+
+  // canvas particles
+  useEffect(() => {
+    const cv = canvasRef.current; if (!cv) return;
+    const ctx = cv.getContext("2d");
+    cv.width = window.innerWidth; cv.height = window.innerHeight;
+    const particles = Array.from({length:140},()=>({
+      x:Math.random()*cv.width, y:Math.random()*cv.height,
+      r:Math.random()*3+0.5, op:Math.random()*0.4+0.1,
+      vx:(Math.random()-.5)*.3, vy:(Math.random()-.5)*.3,
+      tw:Math.random()*Math.PI*2, ts:Math.random()*.014+.003,
+      hue:Math.floor(Math.random()*60)+200,
+    }));
+    const meteors=[]; let mt=0;
+    const spawn=()=>meteors.push({x:Math.random()*cv.width*.7,y:Math.random()*cv.height*.4,len:80+Math.random()*130,spd:6+Math.random()*5,ang:Math.PI/6+Math.random()*.3,life:0,max:30+Math.random()*18});
+    const draw=()=>{
+      ctx.clearRect(0,0,cv.width,cv.height);
+      particles.forEach(p=>{
+        p.tw+=p.ts; p.x+=p.vx; p.y+=p.vy;
+        if(p.x<0)p.x=cv.width; if(p.x>cv.width)p.x=0;
+        if(p.y<0)p.y=cv.height; if(p.y>cv.height)p.y=0;
+        const op=p.op*(0.5+0.5*Math.sin(p.tw));
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+        ctx.fillStyle=`hsla(${p.hue},75%,60%,${op})`; ctx.fill();
+        if(p.r>2){ctx.beginPath();ctx.arc(p.x,p.y,p.r*2.5,0,Math.PI*2);ctx.fillStyle=`hsla(${p.hue},75%,70%,${op*.18})`;ctx.fill();}
+      });
+      mt++; if(mt>95+Math.random()*55){spawn();mt=0;}
+      meteors.forEach((m,i)=>{
+        m.life++;
+        const op=Math.sin((m.life/m.max)*Math.PI)*.55;
+        const tx=Math.cos(m.ang)*m.len; const ty=Math.sin(m.ang)*m.len;
+        const g=ctx.createLinearGradient(m.x,m.y,m.x-tx,m.y-ty);
+        g.addColorStop(0,`rgba(100,100,255,${op})`);
+        g.addColorStop(.4,`rgba(150,120,255,${op*.6})`);
+        g.addColorStop(1,"transparent");
+        ctx.beginPath();ctx.moveTo(m.x,m.y);ctx.lineTo(m.x-tx,m.y-ty);
+        ctx.strokeStyle=g;ctx.lineWidth=1.4;ctx.stroke();
+        m.x+=Math.cos(m.ang)*m.spd; m.y+=Math.sin(m.ang)*m.spd;
+        if(m.life>=m.max)meteors.splice(i,1);
+      });
+      animRef.current=requestAnimationFrame(draw);
+    };
+    draw();
+    const r=()=>{cv.width=window.innerWidth;cv.height=window.innerHeight;};
+    window.addEventListener("resize",r);
+    return()=>{cancelAnimationFrame(animRef.current);window.removeEventListener("resize",r);};
+  },[]);
 
   useEffect(() => {
-    axios.get(`${API}/waitlist/count`).then(res => setCount(res.data.count || 0)).catch(() => setCount(47));
-    axios.get(`${API}/waitlist/leaderboard`).then(res => setLeaderboard(res.data || [])).catch(() => {});
-
-    // check localStorage first
-    const savedEmail = localStorage.getItem("waitlist_email");
-    const savedCode = localStorage.getItem("waitlist_code");
-    if (savedEmail && savedCode) {
-      setMyData({ email: savedEmail, refCode: savedCode, refs: 0 });
-      setStatus("success");
-      axios.get(`${API}/waitlist/my-refs/${savedCode}`)
-        .then(res => setMyData(d => ({...d, refs: res.data.count || 0})))
-        .catch(() => {});
-      return;
-    }
-
-    // if coming from email link with ref code — look up their data
-    if (refCode && emailFromUrl) {
-      setMyData({ email: emailFromUrl, refCode, refs: 0 });
-      setStatus("success");
-      localStorage.setItem("waitlist_email", emailFromUrl);
-      localStorage.setItem("waitlist_code", refCode);
-      axios.get(`${API}/waitlist/my-refs/${refCode}`)
-        .then(res => setMyData(d => ({...d, refs: res.data.count || 0})))
-        .catch(() => {});
-    }
-  }, []);
+    axios.get(`${API}/waitlist/count`).then(r=>setCount(r.data.count||0)).catch(()=>setCount(47));
+    axios.get(`${API}/waitlist/leaderboard`).then(r=>setLeaderboard(r.data||[])).catch(()=>{});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleJoin = async () => {
     if (!email.trim()) { setErrorMsg("Please enter your email address."); return; }
     if (!email.includes("@")) { setErrorMsg("Please enter a valid email address."); return; }
-    setStatus("loading");
-    setErrorMsg("");
+    setStatus("loading"); setErrorMsg("");
     try {
-      const res = await axios.post(`${API}/waitlist`, {
-        email: email.trim().toLowerCase(),
-        ref: refCode || null
-      });
-      const data = res.data;
-      localStorage.setItem("waitlist_email", email.trim().toLowerCase());
-      localStorage.setItem("waitlist_code", data.refCode);
-      setMyData({ email: email.trim().toLowerCase(), refCode: data.refCode, refs: 0 });
-      setCount(c => c + 1);
-      setStatus("success");
-      axios.get(`${API}/waitlist/leaderboard`).then(r => setLeaderboard(r.data || [])).catch(() => {});
+      const res = await axios.post(`${API}/waitlist`, { email: email.trim().toLowerCase(), ref: incomingRef || null });
+      setMyRefCode(res.data.refCode); setMyRefs(0); setStatus("success"); setCount(c=>c+1);
+      axios.get(`${API}/waitlist/leaderboard`).then(r=>setLeaderboard(r.data||[])).catch(()=>{});
     } catch (err) {
       if (err.response?.status === 409) {
-        const existingCode = err.response.data.refCode;
-        if (existingCode) {
-          localStorage.setItem("waitlist_email", email.trim().toLowerCase());
-          localStorage.setItem("waitlist_code", existingCode);
-          setMyData({ email: email.trim().toLowerCase(), refCode: existingCode, refs: 0 });
-          setStatus("success");
-        } else {
-          setErrorMsg("You're already on the waitlist! Check your email for your referral link. 🚀");
-          setStatus("idle");
-        }
-      } else {
-        setErrorMsg("Something went wrong. Please try again.");
-        setStatus("idle");
-      }
+        const code = err.response.data.refCode;
+        if (code) { setMyRefCode(code); setStatus("success"); }
+        else { setErrorMsg("You're already on the waitlist! Check your email for your referral link. 🚀"); setStatus("idle"); }
+      } else { setErrorMsg("Something went wrong. Please try again."); setStatus("idle"); }
     }
   };
 
-  const refLink = myData ? `${window.location.origin}/waitlist?ref=${myData.refCode}` : "";
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(refLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(refLink);
-    setLinkCopied(true);
-    setTimeout(() => setLinkCopied(false), 2000);
-  };
-
-  const shareWhatsApp = () => {
-    const msg = encodeURIComponent(`✈️ I just joined CometAI waitlist — India's AI-powered flight booking with WhatsApp support!\n\n🎁 Join using my link and get ₹100 off your first flight booking above ₹5,000!\n\n👉 ${refLink}`);
-    window.open(`https://wa.me/?text=${msg}`, "_blank");
-  };
-
-  const shareInstagram = () => {
-    // Instagram doesn't support direct share links — copy and open Instagram
-    navigator.clipboard.writeText(`✈️ Join CometAI waitlist and get ₹100 off your first flight! ${refLink}`);
-    alert("Caption copied! Open Instagram and paste it in your story or post.");
-    window.open("https://www.instagram.com", "_blank");
-  };
-
-  const shareTwitter = () => {
-    const msg = encodeURIComponent(`🚀 Just joined CometAI — India's AI travel platform where you can book flights via WhatsApp!\n\nJoin using my link and get ₹100 off your first booking 👇\n${refLink}`);
-    window.open(`https://twitter.com/intent/tweet?text=${msg}`, "_blank");
-  };
-
-  const rankEmoji = (i) => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i+1}`;
+  const refLink = myRefCode ? `${window.location.origin}/waitlist?ref=${myRefCode}` : "";
+  const copyRef = () => { navigator.clipboard.writeText(refLink); setCopied(true); setTimeout(()=>setCopied(false),2000); };
+  const copyLink = () => { navigator.clipboard.writeText(refLink); setLinkCopied(true); setTimeout(()=>setLinkCopied(false),2000); };
+  const shareWA = () => { const msg = encodeURIComponent(`✈️ I joined CometAI — India's AI-powered flight booking!\n\n🎁 Join using my link and get ₹100 off your first flight above ₹5,000!\n\n👉 ${refLink}`); window.open(`https://wa.me/?text=${msg}`,"_blank"); };
+  const shareIG = () => { navigator.clipboard.writeText(`✈️ Join CometAI waitlist and get ₹100 off your first flight!\n👉 ${refLink}`); alert("Caption copied!\nOpen Instagram → Create Story or Post → Paste the caption."); };
+  const shareTW = () => { const msg = encodeURIComponent(`🚀 Just joined CometAI — book flights via AI or WhatsApp, zero fees!\nJoin with my link & get ₹100 off your first booking 👇\n${refLink}`); window.open(`https://twitter.com/intent/tweet?text=${msg}`,"_blank"); };
+  const emoji = (i) => ["🥇","🥈","🥉"][i] || `#${i+1}`;
 
   return (
-    <>
-      <style>{styles}</style>
-      <Stars/>
-      <div className="nebula"/>
-      <ShootingStars/>
+    <div style={{ minHeight:"100vh", overflowX:"hidden", fontFamily:"'DM Sans',sans-serif", position:"relative", transition:"background 1.6s ease", background: theme.bg }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap');
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+        ::-webkit-scrollbar{width:3px;} ::-webkit-scrollbar-thumb{border-radius:2px;}
+        @keyframes floatBlob{0%,100%{transform:translate(0,0) scale(1);}33%{transform:translate(2%,-3%) scale(1.05);}66%{transform:translate(-2%,2%) scale(0.97);}}
+        @keyframes scanLine{0%{top:-1px;opacity:0;}5%{opacity:.35;}95%{opacity:.35;}100%{top:100%;opacity:0;}}
+        @keyframes badgePing{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,.5);}70%{box-shadow:0 0 0 10px rgba(16,185,129,0);}}
+        @keyframes shimText{0%{background-position:0% center;}100%{background-position:400% center;}}
+        @keyframes counterFade{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+        .scan{position:fixed;left:0;width:100%;height:1px;pointer-events:none;z-index:2;animation:scanLine 14s linear infinite;}
+        .btn-main{border:none;border-radius:14px;font-family:'DM Sans',sans-serif;font-weight:700;cursor:pointer;position:relative;overflow:hidden;transition:all .3s cubic-bezier(.23,1,.32,1);}
+        .btn-main::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.2),transparent);}
+        .btn-main:hover{transform:translateY(-3px);}
+        .btn-out{background:transparent;border-radius:12px;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .3s;}
+        .btn-out:hover{transform:translateY(-2px);}
+        .input-field{width:100%;border-radius:12px;padding:14px 18px;font-family:'DM Sans',sans-serif;font-size:15px;outline:none;transition:all .3s;}
+        .ref-step{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;}
+        .lb-row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom-width:1px;border-bottom-style:solid;transition:background .2s;}
+        .lb-row:last-child{border-bottom:none!important;}
+        .share-btn{display:flex;align-items:center;gap:6px;padding:10px 18px;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .25s;border:none;}
+        .share-btn:hover{transform:translateY(-2px);}
+        @media(max-width:480px){
+          .rewards-row{flex-direction:column!important;}
+          .share-btns{flex-wrap:wrap!important;}
+          .hero-title{font-size:clamp(32px,9vw,48px)!important;}
+        }
+      `}</style>
 
-      <div className="page">
-        <div className="logo">
-          <span className="logo-icon">☄️</span>
-          <span className="logo-text">COMETAI</span>
+      {/* canvas */}
+      <canvas ref={canvasRef} style={{position:'fixed',inset:0,zIndex:0,pointerEvents:'none',opacity:.55}}/>
+
+      {/* morphing blobs */}
+      <motion.div animate={{background:`radial-gradient(ellipse at 15% 35%,${theme.accent}18 0%,transparent 55%)`}} transition={{duration:1.8}}
+        style={{position:'fixed',inset:0,zIndex:0,pointerEvents:'none',animation:'floatBlob 12s ease-in-out infinite'}}/>
+      <motion.div animate={{background:`radial-gradient(ellipse at 80% 20%,${theme.accent2}14 0%,transparent 50%)`}} transition={{duration:1.8}}
+        style={{position:'fixed',inset:0,zIndex:0,pointerEvents:'none',animation:'floatBlob 16s ease-in-out infinite reverse'}}/>
+
+      {/* grid */}
+      <motion.div animate={{backgroundImage:`linear-gradient(${theme.accent}07 1px,transparent 1px),linear-gradient(90deg,${theme.accent}07 1px,transparent 1px)`}} transition={{duration:1.8}}
+        style={{position:'fixed',inset:0,backgroundSize:'72px 72px',maskImage:'radial-gradient(ellipse 80% 70% at 50% 40%,black 20%,transparent 80%)',zIndex:0,pointerEvents:'none'}}/>
+
+      {/* scan */}
+      <div className="scan" style={{background:`linear-gradient(90deg,transparent,${theme.accent}18,transparent)`}}/>
+
+      {/* ── NAV ── */}
+      <motion.nav animate={{background:`rgba(255,255,255,0.8)`,borderBottomColor:`${theme.accent}15`}} transition={{duration:1.6}}
+        style={{position:'fixed',top:0,left:0,right:0,zIndex:100,backdropFilter:'blur(24px)',WebkitBackdropFilter:'blur(24px)',borderBottom:'1px solid',boxShadow:`0 1px 20px ${theme.accent}10`}}>
+        <div style={{maxWidth:900,margin:'0 auto',padding:'14px 24px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer'}} onClick={()=>window.location.href='/'}>
+            <motion.div animate={{background:`linear-gradient(135deg,${theme.accent},${theme.accent2})`,boxShadow:`0 4px 14px ${theme.accent}40`}} transition={{duration:1.6}}
+              style={{width:34,height:34,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,color:'white',flexShrink:0}}>☄</motion.div>
+            <motion.span animate={{color:theme.text}} transition={{duration:1.6}}
+              style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:800,letterSpacing:'.5px'}}>COMETAI</motion.span>
+          </div>
+          <div style={{display:'flex',gap:10}}>
+            <motion.button className="btn-out" onClick={()=>window.location.href='/login'}
+              animate={{borderColor:`${theme.accent}40`,color:theme.sub}} transition={{duration:1.6}}
+              style={{padding:'7px 18px',fontSize:13,border:'1px solid'}}>Sign In</motion.button>
+            <motion.button className="btn-main" onClick={()=>window.location.href='/register'}
+              animate={{background:`linear-gradient(135deg,${theme.accent},${theme.accent2})`,boxShadow:`0 6px 20px ${theme.accent}40`}} transition={{duration:1.6}}
+              style={{padding:'7px 18px',fontSize:13,color:'white'}}>Get Started →</motion.button>
+          </div>
         </div>
+      </motion.nav>
 
-        <div className="launch-badge">
-          <div className="badge-dot"/>
-          Launching Soon
-        </div>
+      {/* ── MAIN CONTENT ── */}
+      <div style={{position:'relative',zIndex:2,maxWidth:620,margin:'0 auto',padding:'100px 24px 60px',textAlign:'center'}}>
 
-        <h1 className="hero-title">The Future of<br/>Travel Booking</h1>
-        <p className="hero-sub">Book flights using AI or WhatsApp. Zero booking fees. India's smartest travel platform is almost here!</p>
+        {/* badge */}
+        <motion.div initial={{opacity:0,y:20,scale:.9}} animate={{opacity:1,y:0,scale:1}} transition={{duration:.6,delay:.1}}>
+          <motion.div animate={{background:`${theme.accent}12`,borderColor:`${theme.accent}35`}} transition={{duration:1.6}}
+            style={{display:'inline-flex',alignItems:'center',gap:8,marginBottom:28,border:'1px solid',borderRadius:24,padding:'7px 18px'}}>
+            <div style={{width:7,height:7,borderRadius:'50%',background:'#10b981',boxShadow:'0 0 10px #10b981',animation:'badgePing 2s ease infinite'}}/>
+            <motion.span animate={{color:theme.sub}} transition={{duration:1.6}}
+              style={{fontSize:11,letterSpacing:'2px',textTransform:'uppercase',fontFamily:"'Space Mono',monospace"}}>Launching Soon · Join Free</motion.span>
+          </motion.div>
+        </motion.div>
 
-        {status !== "success" ? (
-          <>
-            {/* REFERRAL PREVIEW — shown before joining */}
-            <div className="referral-preview" style={{width:"100%",maxWidth:"500px"}}>
-              <div className="referral-preview-title">🎁 Join & Earn Launch Rewards</div>
-              <div className="referral-steps">
-                <div className="referral-step">
-                  <span className="step-icon">1️⃣</span>
-                  <div className="step-text">Join the waitlist and get your <strong>unique referral link</strong> sent to your email</div>
-                </div>
-                <div className="referral-step">
-                  <span className="step-icon">2️⃣</span>
-                  <div className="step-text">Share your link on <strong>WhatsApp, Instagram, Twitter</strong> with friends</div>
-                </div>
-                <div className="referral-step">
-                  <span className="step-icon">3️⃣</span>
-                  <div className="step-text">When your friend books a flight above <strong>₹5,000</strong> — <strong>you get ₹150 off</strong> your next booking and <strong>they get ₹100 off</strong> their first booking!</div>
-                </div>
+        {/* TITLE */}
+        <BlurText
+          text="The Future of Travel Booking"
+          delay={120} animateBy="words" direction="top" stepDuration={0.5} once={true}
+          style={{fontFamily:"'Syne',sans-serif",fontSize:'clamp(32px,7vw,56px)',fontWeight:800,lineHeight:1.05,letterSpacing:'-1.5px',marginBottom:16,color:theme.text,justifyContent:'center'}}
+        />
+
+        <motion.p initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} transition={{delay:1,duration:.7}}
+          style={{fontSize:16,color:`${theme.sub}cc`,lineHeight:1.75,marginBottom:8,fontWeight:300}}>
+          India's AI-powered flight booking platform.
+        </motion.p>
+        <motion.p initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} transition={{delay:1.2,duration:.7}}
+          style={{fontSize:15,color:`${theme.sub}88`,lineHeight:1.75,marginBottom:32,fontWeight:300}}>
+          Book via AI, WhatsApp, or classic search — zero booking fees, real data.
+        </motion.p>
+
+        {/* COUNTER */}
+        <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:1.4,duration:.6}}
+          style={{display:'flex',alignItems:'center',gap:10,justifyContent:'center',marginBottom:28}}>
+          <div style={{display:'flex'}}>
+            {["🧑","👩","👨","🧑","👩"].map((e,i)=>(
+              <motion.div key={i} animate={{background:`linear-gradient(135deg,${theme.accent}40,${theme.accent2}30)`,borderColor:'white'}} transition={{duration:1.6}}
+                style={{width:28,height:28,borderRadius:'50%',border:'2px solid',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,marginLeft:i===0?0:-7}}>{e}</motion.div>
+            ))}
+          </div>
+          <motion.span animate={{color:theme.sub}} transition={{duration:1.6}} style={{fontSize:13}}>
+            <strong style={{color:theme.accent}}>{count}+</strong> people already joined
+          </motion.span>
+        </motion.div>
+
+        {/* REFERRAL INFO BOX */}
+        <motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{delay:1.6,duration:.7}}>
+          <motion.div animate={{background:theme.card,borderColor:`${theme.accent}20`}} transition={{duration:1.6}}
+            style={{borderRadius:20,border:'1px solid',padding:'20px 24px',marginBottom:24,textAlign:'left',backdropFilter:'blur(12px)'}}>
+            <motion.p animate={{color:theme.accent}} transition={{duration:1.6}}
+              style={{fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:'2px',textTransform:'uppercase',marginBottom:14,textAlign:'center'}}>🎁 Join & Earn Launch Rewards</motion.p>
+            {[
+              {icon:'1️⃣',text:<>Join the waitlist — get your <strong>unique referral link</strong> sent to your email instantly</>},
+              {icon:'2️⃣',text:<>Share on <strong>WhatsApp, Instagram or Twitter</strong> with friends and family</>},
+              {icon:'3️⃣',text:<>Friend books a flight above <strong>₹5,000</strong> → <strong>you get ₹150 off</strong> + <strong>friend gets ₹100 off!</strong> No limit!</>},
+            ].map((s,i)=>(
+              <div key={i} className="ref-step">
+                <span style={{fontSize:17,flexShrink:0}}>{s.icon}</span>
+                <motion.span animate={{color:`${theme.sub}bb`}} transition={{duration:1.6}} style={{fontSize:13,lineHeight:1.6}}>{s.text}</motion.span>
               </div>
-              <div className="referral-note">📧 Your referral link will be sent to your email after joining</div>
-            </div>
+            ))}
+            <motion.p animate={{color:`${theme.sub}55`}} transition={{duration:1.6}}
+              style={{fontSize:11,fontFamily:"'Space Mono',monospace",textAlign:'center',marginTop:12,paddingTop:12,borderTop:`1px solid ${theme.accent}12`}}>
+              📧 Already joined? Re-enter your email to see your referral dashboard
+            </motion.p>
+          </motion.div>
+        </motion.div>
 
-            <div className="counter-wrap">
-              <div className="counter-avatars">
-                {["🧑","👩","👨","🧑","👩"].map((e,i)=>(
-                  <div key={i} className="counter-avatar">{e}</div>
+        {/* FORM / SUCCESS */}
+        {status !== "success" ? (
+          <motion.div initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} transition={{delay:1.8,duration:.6}}>
+            {errorMsg && (
+              <motion.div animate={{background:'rgba(239,68,68,.06)',borderColor:'rgba(239,68,68,.2)'}} transition={{duration:1.6}}
+                style={{border:'1px solid',borderRadius:12,padding:'10px 16px',marginBottom:12,fontSize:13,color:'#dc2626'}}>⚠ {errorMsg}</motion.div>
+            )}
+            <motion.div animate={{background:'rgba(255,255,255,.9)',borderColor:`${theme.accent}25`,boxShadow:`0 0 0 3px ${theme.accent}00`}} transition={{duration:1.6}}
+              style={{display:'flex',gap:8,border:'1px solid',borderRadius:16,padding:'6px 6px 6px 20px',marginBottom:10,transition:'all .3s'}}
+              whileFocusWithin={{boxShadow:`0 0 0 3px ${theme.accent}18`}}>
+              <input
+                className="input-field"
+                style={{flex:1,background:'transparent',border:'none',color:theme.text,fontSize:15,padding:'8px 0'}}
+                type="email" placeholder="Enter your email address..."
+                value={email} onChange={e=>setEmail(e.target.value)}
+                onKeyPress={e=>{if(e.key==="Enter")handleJoin();}}
+              />
+              <motion.button className="btn-main" onClick={handleJoin} disabled={status==="loading"}
+                animate={{background:`linear-gradient(135deg,${theme.accent},${theme.accent2})`,boxShadow:`0 8px 24px ${theme.accent}40`}} transition={{duration:1.6}}
+                style={{padding:'11px 22px',fontSize:14,color:'white',whiteSpace:'nowrap'}}>
+                {status==="loading" ? "Joining..." : "Join & Get Link →"}
+              </motion.button>
+            </motion.div>
+            <motion.p animate={{color:`${theme.sub}55`}} transition={{duration:1.6}} style={{fontSize:11,fontFamily:"'Space Mono',monospace",letterSpacing:'.5px'}}>
+              🔒 No spam. We only email you when CometAI launches.
+            </motion.p>
+          </motion.div>
+        ) : (
+          <motion.div initial={{opacity:0,scale:.95}} animate={{opacity:1,scale:1}} transition={{duration:.5}}>
+            {/* success box */}
+            <motion.div animate={{background:'rgba(16,185,129,.06)',borderColor:'rgba(16,185,129,.2)'}} transition={{duration:1.6}}
+              style={{border:'1px solid',borderRadius:20,padding:'20px 24px',marginBottom:16}}>
+              <div style={{fontSize:40,marginBottom:10}}>🎉</div>
+              <h3 style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:700,color:'#059669',marginBottom:6}}>You're on the list!</h3>
+              <p style={{fontSize:13,color:'rgba(5,150,105,.7)'}}>Your referral link was sent to your email. Share it to earn rewards!</p>
+            </motion.div>
+
+            {/* referral card */}
+            <motion.div animate={{background:theme.card,borderColor:`${theme.accent}20`}} transition={{duration:1.6}}
+              style={{border:'1px solid',borderRadius:20,padding:'20px 24px',marginBottom:12,textAlign:'left'}}>
+              <motion.div animate={{background:`linear-gradient(90deg,transparent,${theme.accent}30,transparent)`}} transition={{duration:1.6}}
+                style={{position:'absolute',top:0,left:0,right:0,height:1,borderRadius:'20px 20px 0 0'}}/>
+              <motion.p animate={{color:theme.accent}} transition={{duration:1.6}}
+                style={{fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:'2px',textTransform:'uppercase',marginBottom:10,textAlign:'center'}}>✦ Your Referral Rewards</motion.p>
+              <p style={{fontSize:13,color:`${theme.sub}88`,marginBottom:14,lineHeight:1.6,textAlign:'center'}}>
+                When a friend books above ₹5,000 using your link — you both win!
+              </p>
+
+              {/* reward boxes */}
+              <div className="rewards-row" style={{display:'flex',gap:10,marginBottom:14}}>
+                {[{amt:'₹150',lbl:'You get per referral'},{amt:'₹100',lbl:"Friend's first booking"}].map((r,i)=>(
+                  <motion.div key={i} animate={{background:`${theme.accent}08`,borderColor:`${theme.accent}20`}} transition={{duration:1.6}}
+                    style={{flex:1,border:'1px solid',borderRadius:12,padding:14,textAlign:'center'}}>
+                    <motion.div animate={{color:theme.accent}} transition={{duration:1.6}}
+                      style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800}}>{r.amt}</motion.div>
+                    <div style={{fontSize:11,color:`${theme.sub}66`,marginTop:4}}>{r.lbl}</div>
+                  </motion.div>
                 ))}
               </div>
-              <div className="counter-text"><span className="counter-num">{count}+</span> people already joined</div>
-            </div>
 
-            <div className="waitlist-form">
-              {errorMsg && <div className="error-msg">⚠ {errorMsg}</div>}
-              <div className="input-row">
-                <input
-                  className="email-input"
-                  type="email"
-                  placeholder="Enter your email address..."
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  onKeyPress={e => { if (e.key === "Enter") handleJoin(); }}
-                />
-                <button className="btn-join" onClick={handleJoin} disabled={status === "loading"}>
-                  {status === "loading" ? "Joining..." : "Join & Get Link →"}
-                </button>
-              </div>
-              <div className="input-hint">🔒 No spam. We only email you when CometAI launches.</div>
-            </div>
-          </>
-        ) : (
-          <div className="success-section">
-            <div className="success-hero">
-              <div className="success-icon">🎉</div>
-              <div className="success-title">You're on the list!</div>
-              <div className="success-sub">Check your email for your referral link. Share it to earn launch bonuses!</div>
-            </div>
-
-            <div className="referral-card">
-              <div className="referral-title">✦ Your Referral Rewards</div>
-              <div className="referral-desc">
-                Share your link below. When a friend books a flight above ₹5,000 using your link — you both get rewarded!
+              {/* stats */}
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
+                {[{v:myRefs,l:'Friends referred'},{v:`₹${myRefs*150}`,l:'Bonus earned'}].map((st,i)=>(
+                  <motion.div key={i} animate={{background:`${theme.accent}06`,borderColor:`${theme.accent}15`}} transition={{duration:1.6}}
+                    style={{border:'1px solid',borderRadius:10,padding:12,textAlign:'center'}}>
+                    <motion.div animate={{color:theme.text}} transition={{duration:1.6}}
+                      style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800}}>{st.v}</motion.div>
+                    <div style={{fontSize:11,color:`${theme.sub}55`,marginTop:3}}>{st.l}</div>
+                  </motion.div>
+                ))}
               </div>
 
-              <div className="referral-reward">
-                <div className="reward-item">
-                  <div className="reward-amount">₹150</div>
-                  <div className="reward-label">You get per referral booking</div>
-                </div>
-                <div className="reward-item">
-                  <div className="reward-amount">₹100</div>
-                  <div className="reward-label">Friend gets on first booking</div>
-                </div>
-              </div>
+              {/* link row */}
+              <motion.div animate={{background:'rgba(255,255,255,.9)',borderColor:`${theme.accent}20`}} transition={{duration:1.6}}
+                style={{display:'flex',gap:8,border:'1px solid',borderRadius:10,padding:'10px 14px',marginBottom:14}}>
+                <div style={{flex:1,fontSize:11,color:theme.accent,fontFamily:'monospace',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{refLink}</div>
+                <motion.button className="btn-out" onClick={copyRef}
+                  animate={{borderColor:`${theme.accent}35`,color:theme.accent}} transition={{duration:1.6}}
+                  style={{border:'1px solid',padding:'5px 12px',fontSize:12,whiteSpace:'nowrap',borderRadius:8}}>
+                  {copied?"✓ Copied!":"Copy"}
+                </motion.button>
+              </motion.div>
 
-              <div className="ref-stats">
-                <div className="ref-stat">
-                  <div className="ref-stat-value">{myData?.refs || 0}</div>
-                  <div className="ref-stat-label">Friends referred</div>
-                </div>
-                <div className="ref-stat">
-                  <div className="ref-stat-value">₹{((myData?.refs || 0) * 150).toLocaleString()}</div>
-                  <div className="ref-stat-label">Bonus earned</div>
-                </div>
+              <motion.p animate={{color:`${theme.sub}55`}} transition={{duration:1.6}} style={{fontSize:11,letterSpacing:'1px',textTransform:'uppercase',fontFamily:"'Space Mono',monospace",marginBottom:10,textAlign:'center'}}>Share now & start earning</motion.p>
+              <div className="share-btns" style={{display:'flex',gap:8,justifyContent:'center'}}>
+                <button className="share-btn" onClick={shareWA} style={{background:'#25D366',color:'white'}}>📱 WhatsApp</button>
+                <button className="share-btn" onClick={shareIG} style={{background:'linear-gradient(135deg,#f09433,#dc2743,#bc1888)',color:'white'}}>📸 Instagram</button>
+                <button className="share-btn" onClick={shareTW} style={{background:'#1DA1F2',color:'white'}}>🐦 Twitter</button>
+                <motion.button className="share-btn" onClick={copyLink}
+                  animate={{background:`${theme.accent}15`,color:theme.accent,borderColor:`${theme.accent}30`}} transition={{duration:1.6}}
+                  style={{border:'1px solid'}}>
+                  {linkCopied?"✓ Copied!":"🔗 Copy"}
+                </motion.button>
               </div>
+            </motion.div>
 
-              <div className="ref-link-wrap">
-                <div className="ref-link-text">{refLink}</div>
-                <button className={`btn-copy ${copied?"copied":""}`} onClick={handleCopy}>
-                  {copied ? "✓ Copied!" : "Copy"}
-                </button>
-              </div>
-
-              <div className="share-title">Share now & start earning</div>
-              <div className="share-btns">
-                <button className="btn-share btn-whatsapp" onClick={shareWhatsApp}>
-                  📱 WhatsApp
-                </button>
-                <button className="btn-share btn-instagram" onClick={shareInstagram}>
-                  📸 Instagram
-                </button>
-                <button className="btn-share btn-twitter" onClick={shareTwitter}>
-                  🐦 Twitter
-                </button>
-                <button className={`btn-share btn-copy-link`} onClick={handleCopyLink} style={{border:"1px solid rgba(255,255,255,0.12)"}}>
-                  {linkCopied ? "✓ Copied!" : "🔗 Copy link"}
-                </button>
-              </div>
-            </div>
-          </div>
+            <button onClick={()=>{setStatus("idle");setEmail("");setMyRefCode("");}}
+              style={{background:'transparent',border:'none',fontSize:12,color:`${theme.sub}55`,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",marginTop:4}}>
+              ← Back to waitlist
+            </button>
+          </motion.div>
         )}
 
+        {/* LEADERBOARD */}
         {leaderboard.length > 0 && (
-          <div className="leaderboard">
-            <div className="lb-title">🏆 Top Referrers</div>
-            <div className="lb-card">
-              {leaderboard.slice(0,5).map((item, i) => (
-                <div className="lb-row" key={i}>
-                  <div className="lb-rank">{rankEmoji(i)}</div>
-                  <div className="lb-email">{maskEmail(item.email)}</div>
-                  <div className="lb-count">{item.ref_count} refs</div>
-                </div>
+          <motion.div initial={{opacity:0,y:20}} whileInView={{opacity:1,y:0}} viewport={{once:false,margin:'-40px'}} transition={{duration:.6}}
+            style={{marginTop:32}}>
+            <motion.p animate={{color:theme.sub}} transition={{duration:1.6}}
+              style={{fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:'2px',textTransform:'uppercase',marginBottom:8}}>🏆 Top Referrers</motion.p>
+            <motion.p animate={{color:`${theme.sub}55`}} transition={{duration:1.6}} style={{fontSize:11,marginBottom:12}}>Everyone earns ₹150 per referral — this is just for fun!</motion.p>
+            <motion.div animate={{background:theme.card,borderColor:`${theme.accent}15`}} transition={{duration:1.6}}
+              style={{border:'1px solid',borderRadius:16,overflow:'hidden'}}>
+              {leaderboard.slice(0,5).map((item,i)=>(
+                <motion.div key={i} className="lb-row" animate={{borderBottomColor:`${theme.accent}08`}} transition={{duration:1.6}}
+                  style={{gap:12,padding:'12px 16px'}}>
+                  <span style={{fontSize:16,width:22}}>{emoji(i)}</span>
+                  <span style={{flex:1,fontSize:13,color:`${theme.sub}99`,textAlign:'left'}}>{maskEmail(item.email)}</span>
+                  <motion.span animate={{color:theme.accent}} transition={{duration:1.6}}
+                    style={{fontFamily:"'Space Mono',monospace",fontSize:12,fontWeight:700}}>{item.ref_count} refs</motion.span>
+                </motion.div>
               ))}
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         )}
 
-        <div className="features">
-          <div className="feature">✈️ Real flights</div>
-          <div className="feature">🤖 AI search</div>
-          <div className="feature">📱 WhatsApp booking</div>
-          <div className="feature">💰 Zero fees</div>
-        </div>
+        {/* FEATURES ROW */}
+        <motion.div initial={{opacity:0}} whileInView={{opacity:1}} viewport={{once:false,margin:'-40px'}} transition={{duration:.7}}
+          style={{display:'flex',gap:16,justifyContent:'center',flexWrap:'wrap',marginTop:36}}>
+          {['✈️ Real flights','🤖 AI search','📱 WhatsApp','💰 Zero fees'].map(f=>(
+            <motion.div key={f} animate={{background:theme.card,borderColor:`${theme.accent}15`,color:`${theme.sub}99`}} transition={{duration:1.6}}
+              style={{display:'flex',alignItems:'center',gap:6,fontSize:12,border:'1px solid',borderRadius:20,padding:'6px 14px'}}>
+              {f}
+            </motion.div>
+          ))}
+        </motion.div>
 
-        <div className="footer">
-          <p>© 2026 CometAI Travel · <a href="/">Back to home</a></p>
-        </div>
+        {/* FOOTER */}
+        <motion.p animate={{color:`${theme.sub}40`}} transition={{duration:1.6}} style={{fontSize:12,marginTop:32}}>
+          © 2026 CometAI Travel · <span style={{cursor:'pointer'}} onClick={()=>window.location.href='/'}>Back to home</span>
+        </motion.p>
       </div>
-    </>
+    </div>
   );
 }
-
-export default Waitlist;

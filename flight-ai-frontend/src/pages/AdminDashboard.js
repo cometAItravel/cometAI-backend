@@ -1,283 +1,270 @@
-import { useState, useEffect } from "react";
-import axios from "axios";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
-const API = "https://cometai-backend.onrender.com";
-const ADMIN_PASSWORD = "user2026admin";
-
-const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap');
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #080a0f; color: #e2e8f0; font-family: 'DM Sans', sans-serif; min-height: 100vh; }
-  .admin-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: #080a0f; background-image: linear-gradient(rgba(99,102,241,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.04) 1px, transparent 1px); background-size: 40px 40px; }
-  .admin-bg::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 0%, rgba(99,102,241,0.12) 0%, transparent 60%); }
-  .dashboard { position: relative; z-index: 1; min-height: 100vh; }
-  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 20px 32px; border-bottom: 1px solid rgba(255,255,255,0.06); background: rgba(8,10,15,0.8); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 50; }
-  .topbar-left { display: flex; align-items: center; gap: 16px; }
-  .topbar-logo { font-family: 'Space Mono', monospace; font-size: 14px; font-weight: 700; color: #6366f1; letter-spacing: 1px; }
-  .topbar-divider { width: 1px; height: 20px; background: rgba(255,255,255,0.1); }
-  .topbar-title { font-size: 13px; color: #475569; letter-spacing: 1px; text-transform: uppercase; }
-  .topbar-right { display: flex; align-items: center; gap: 12px; }
-  .live-badge { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #10b981; letter-spacing: 1px; background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2); padding: 4px 10px; border-radius: 20px; }
-  .live-dot { width: 6px; height: 6px; background: #10b981; border-radius: 50%; animation: blink 2s ease infinite; }
-  @keyframes blink { 0%,100%{opacity:1;}50%{opacity:0.3;} }
-  .btn-logout-admin { background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #64748b; padding: 6px 14px; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 12px; cursor: pointer; transition: all 0.2s; }
-  .btn-logout-admin:hover { border-color: rgba(239,68,68,0.3); color: #f87171; }
-  .content { padding: 32px; }
-  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
-  .stat-card { background: rgba(15,17,26,0.8); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 24px; position: relative; overflow: hidden; transition: all 0.2s; }
-  .stat-card:hover { border-color: rgba(99,102,241,0.2); transform: translateY(-2px); }
-  .stat-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(99,102,241,0.04) 0%, transparent 60%); pointer-events: none; }
-  .stat-icon { font-size: 24px; margin-bottom: 12px; }
-  .stat-label { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: #475569; margin-bottom: 8px; }
-  .stat-value { font-family: 'Space Mono', monospace; font-size: 28px; font-weight: 700; color: #f8fafc; }
-  .stat-sub { font-size: 12px; color: #10b981; margin-top: 4px; }
-  .tabs { display: flex; gap: 4px; margin-bottom: 24px; background: rgba(15,17,26,0.6); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 4px; width: fit-content; }
-  .tab-btn { padding: 8px 20px; border: none; background: transparent; color: #64748b; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; border-radius: 8px; transition: all 0.2s; }
-  .tab-btn.active { background: rgba(99,102,241,0.15); color: #a5b4fc; }
-  .tab-btn:hover:not(.active) { color: #94a3b8; }
-  .table-wrap { background: rgba(15,17,26,0.8); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; overflow: hidden; }
-  .table-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.06); }
-  .table-title { font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700; color: #e2e8f0; letter-spacing: 0.5px; }
-  .table-count { font-size: 11px; color: #475569; background: rgba(255,255,255,0.04); padding: 3px 10px; border-radius: 20px; }
-  table { width: 100%; border-collapse: collapse; }
-  th { padding: 12px 24px; text-align: left; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: #475569; border-bottom: 1px solid rgba(255,255,255,0.06); font-weight: 500; font-family: 'Space Mono', monospace; }
-  td { padding: 14px 24px; font-size: 13px; color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,0.04); }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: rgba(99,102,241,0.03); color: #e2e8f0; }
-  .td-highlight { color: #e2e8f0; font-weight: 500; }
-  .td-price { font-family: 'Space Mono', monospace; color: #6ee7b7; font-size: 12px; }
-  .td-route { display: flex; align-items: center; gap: 6px; }
-  .td-badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 10px; letter-spacing: 0.5px; }
-  .badge-confirmed { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); color: #10b981; }
-  .badge-user { background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); color: #818cf8; }
-  .routes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
-  .route-card { background: rgba(15,17,26,0.8); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 16px; transition: all 0.2s; }
-  .route-card:hover { border-color: rgba(99,102,241,0.2); }
-  .route-name { font-size: 13px; font-weight: 600; color: #e2e8f0; margin-bottom: 6px; }
-  .route-count { font-family: 'Space Mono', monospace; font-size: 20px; font-weight: 700; color: #6366f1; }
-  .route-label { font-size: 11px; color: #475569; margin-top: 2px; }
-  .route-bar { width: 100%; height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 10px; }
-  .route-bar-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6); border-radius: 2px; transition: width 1s ease; }
-  .loading-admin { text-align: center; padding: 60px; color: #475569; font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 2px; }
-  .empty-admin { text-align: center; padding: 40px; color: #475569; font-size: 13px; }
-  @media(max-width:768px) {
-    .topbar { padding: 16px 20px; }
-    .content { padding: 20px 16px; }
-    th, td { padding: 12px 16px; }
-    .stats-grid { grid-template-columns: 1fr 1fr; }
-  }
+const CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(22px);}to{opacity:1;transform:translateY(0);}}
+  @keyframes floatUD{0%,100%{transform:translateY(0);}50%{transform:translateY(-9px);}}
+  @keyframes orbitRing{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+  @keyframes planeOrbit{from{transform:rotate(0deg) translateX(22px) rotate(0deg);}to{transform:rotate(360deg) translateX(22px) rotate(-360deg);}}
+  @keyframes spinSlow{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
 `;
 
-function AdminLogin({ onLogin }) {
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-
-  const handleLogin = () => {
-    if (password === ADMIN_PASSWORD) {
-      sessionStorage.setItem("admin_auth", "true");
-      onLogin();
-    } else {
-      setError("Invalid password. Access denied.");
-      setPassword("");
-    }
-  };
-
+function AlvrynIcon({ size = 40, spin = false }) {
   return (
-    <div style={{minHeight:"100vh", background:"#080a0f", display:"flex", alignItems:"center", justifyContent:"center", padding:"24px"}}>
-      <style>{styles}</style>
-      <div className="admin-bg"/>
-      <div style={{background:"rgba(15,17,26,0.95)", border:"1px solid rgba(99,102,241,0.4)", borderRadius:"16px", padding:"48px 40px", width:"100%", maxWidth:"400px", position:"relative", zIndex:1}}>
-        <div style={{color:"#6366f1", fontSize:"11px", letterSpacing:"3px", textTransform:"uppercase", marginBottom:"24px"}}>— Admin Access</div>
-        <div style={{fontFamily:"'Space Mono',monospace", color:"#f8fafc", fontSize:"22px", fontWeight:"700", marginBottom:"8px"}}>CometAI Control</div>
-        <div style={{color:"#64748b", fontSize:"13px", marginBottom:"32px"}}>Restricted area. Authorized personnel only.</div>
-        {error && <div style={{background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.2)", color:"#f87171", padding:"10px 14px", borderRadius:"8px", fontSize:"12px", marginBottom:"16px"}}>⚠ {error}</div>}
-        <input
-          style={{width:"100%", background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:"10px", padding:"13px 16px", color:"#f8fafc", fontSize:"14px", outline:"none", marginBottom:"16px", boxSizing:"border-box", fontFamily:"monospace", letterSpacing:"2px"}}
-          type="password"
-          placeholder="Enter admin password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          onKeyPress={e => { if (e.key === "Enter") handleLogin(); }}
-          autoFocus
-        />
-        <button
-          style={{width:"100%", padding:"13px", background:"#6366f1", border:"none", borderRadius:"10px", color:"white", fontSize:"14px", fontWeight:"600", cursor:"pointer", fontFamily:"'DM Sans',sans-serif"}}
-          onClick={handleLogin}
-        >Access Dashboard →</button>
-      </div>
-    </div>
+    <svg width={size} height={size} viewBox="0 0 60 60" fill="none">
+      <defs>
+        <linearGradient id="ag1" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FF6B6B"/><stop offset="100%" stopColor="#FFD93D"/>
+        </linearGradient>
+        <linearGradient id="ag2" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#6C63FF"/><stop offset="100%" stopColor="#00C2FF"/>
+        </linearGradient>
+      </defs>
+      <ellipse cx="30" cy="30" rx="27" ry="11" stroke="url(#ag1)" strokeWidth="1.2" strokeDasharray="5 3" opacity="0.45"
+        style={spin?{animation:"orbitRing 5s linear infinite",transformOrigin:"30px 30px"}:{}}/>
+      <text x="10" y="47" fontFamily="'Syne',sans-serif" fontWeight="900" fontSize="40" fill="url(#ag1)">A</text>
+      <g style={spin?{animation:"planeOrbit 5s linear infinite",transformOrigin:"30px 30px"}:{}}>
+        <path d="M57 30 L50 26 L52 30 L50 34 Z" fill="url(#ag2)"/>
+        <path d="M51 26.5 L51 22 L54 27 Z" fill="url(#ag2)" opacity="0.75"/>
+      </g>
+    </svg>
   );
 }
 
-function AdminDashboard() {
+function AuroraBackground({ colors }) {
+  const ref = useRef(null);
+  const raf = useRef(null);
+  useEffect(() => {
+    const c = ref.current; if (!c) return;
+    const ctx = c.getContext("2d");
+    let W=c.offsetWidth,H=c.offsetHeight; c.width=W; c.height=H;
+    const blobs=Array.from({length:4},(_,i)=>({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-0.5)*0.4,vy:(Math.random()-0.5)*0.4,r:180+Math.random()*150,ci:i%colors.length}));
+    const resize=()=>{W=c.offsetWidth;H=c.offsetHeight;c.width=W;c.height=H;};
+    window.addEventListener("resize",resize);
+    const draw=()=>{ctx.clearRect(0,0,W,H);blobs.forEach(b=>{b.x+=b.vx;b.y+=b.vy;if(b.x<-b.r||b.x>W+b.r)b.vx*=-1;if(b.y<-b.r||b.y>H+b.r)b.vy*=-1;const g=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,b.r);g.addColorStop(0,colors[b.ci%colors.length]+"1E");g.addColorStop(1,"transparent");ctx.fillStyle=g;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();});raf.current=requestAnimationFrame(draw);};
+    draw();
+    return()=>{cancelAnimationFrame(raf.current);window.removeEventListener("resize",resize);};
+  },[colors]);
+  return <canvas ref={ref} style={{position:"fixed",inset:0,width:"100%",height:"100%",pointerEvents:"none",zIndex:0}}/>;
+}
+
+const ADMIN_PW = "user2026admin";
+const accent = "#FF6B6B";
+const grad = "linear-gradient(135deg,#FF6B6B,#FFD93D)";
+
+export default function AdminDashboard() {
+  const navigate = useNavigate();
+  const [authed, setAuthed] = useState(false);
+  const [pw, setPw] = useState("");
+  const [pwErr, setPwErr] = useState("");
   const [tab, setTab] = useState("bookings");
   const [bookings, setBookings] = useState([]);
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [authed, setAuthed] = useState(false);
-  const navigate = useNavigate();
+  const [waitlist, setWaitlist] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (sessionStorage.getItem("admin_auth") === "true") {
-      setAuthed(true);
-      fetchData();
-    } else {
-      setLoading(false);
-    }
-  }, []);
-
-  const fetchData = async () => {
+  const fetchAll = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const [bookingsRes, usersRes] = await Promise.all([
-        axios.get(`${API}/admin/bookings`, { headers }).catch(() => ({ data: [] })),
-        axios.get(`${API}/admin/users`, { headers }).catch(() => ({ data: [] })),
+      const [rb,ru,rw] = await Promise.all([
+        fetch("https://cometai-backend.onrender.com/admin/bookings"),
+        fetch("https://cometai-backend.onrender.com/admin/users"),
+        fetch("https://cometai-backend.onrender.com/admin/waitlist"),
       ]);
-      setBookings(bookingsRes.data);
-      setUsers(usersRes.data);
-    } catch (err) {
-      console.error(err);
-    }
+      const [db,du,dw] = await Promise.all([rb.json(),ru.json(),rw.json()]);
+      if (Array.isArray(db)) setBookings(db);
+      if (Array.isArray(du)) setUsers(du);
+      if (Array.isArray(dw)) setWaitlist(dw);
+    } catch {}
     setLoading(false);
   };
 
-  const handleLogin = () => { setAuthed(true); fetchData(); };
-  const handleLogout = () => { sessionStorage.removeItem("admin_auth"); setAuthed(false); };
+  const login = () => {
+    if (pw === ADMIN_PW) { setAuthed(true); fetchAll(); }
+    else setPwErr("Wrong password");
+  };
 
-  if (!authed) return <AdminLogin onLogin={handleLogin} />;
+  const tabs = [
+    { id:"bookings", label:"Bookings", icon:"🎫", data:bookings },
+    { id:"users",    label:"Users",    icon:"👥", data:users    },
+    { id:"waitlist", label:"Waitlist", icon:"📋", data:waitlist },
+  ];
 
-  const totalRevenue = bookings.reduce((sum, b) => sum + (b.price || 0), 0);
-  const routeCounts = {};
-  bookings.forEach(b => {
-    const route = `${b.from_city} → ${b.to_city}`;
-    routeCounts[route] = (routeCounts[route] || 0) + 1;
-  });
-  const topRoutes = Object.entries(routeCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
-  const maxRoute = topRoutes[0]?.[1] || 1;
-
-  function formatDate(dt) {
-    if (!dt) return "—";
-    return new Date(dt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-  }
-  function formatTime(dt) {
-    if (!dt) return "";
-    return new Date(dt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false });
-  }
-
-  return (
-    <div className="dashboard">
-      <style>{styles}</style>
-      <div className="admin-bg"/>
-      <div className="topbar">
-        <div className="topbar-left">
-          <div className="topbar-logo">☄ COMETAI</div>
-          <div className="topbar-divider"/>
-          <div className="topbar-title">Admin Dashboard</div>
-        </div>
-        <div className="topbar-right">
-          <div className="live-badge"><div className="live-dot"/>LIVE</div>
-          <button className="btn-logout-admin" onClick={() => navigate("/search")}>← Back to App</button>
-          <button className="btn-logout-admin" onClick={handleLogout}>Logout</button>
+  // ── LOGIN SCREEN ──
+  if (!authed) return (
+    <div style={{ minHeight:"100vh", background:"#f8f8fa", position:"relative",
+      display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <style>{CSS}</style>
+      <AuroraBackground colors={["#FF6B6B","#FFD93D","#FF8C42"]}/>
+      <div style={{ position:"relative", zIndex:2, width:"100%", maxWidth:400, padding:"0 20px",
+        animation:"fadeUp 0.6s both" }}>
+        <div style={{ background:"rgba(255,255,255,0.9)", backdropFilter:"blur(24px)",
+          borderRadius:28, padding:"48px 40px",
+          boxShadow:"0 24px 80px rgba(0,0,0,0.10)", border:"1px solid rgba(255,255,255,0.9)" }}>
+          <div style={{ textAlign:"center", marginBottom:36 }}>
+            <div style={{ display:"flex", justifyContent:"center", marginBottom:16,
+              animation:"floatUD 4s ease-in-out infinite" }}>
+              <AlvrynIcon size={52} spin/>
+            </div>
+            <h1 style={{ fontFamily:"'Syne',sans-serif", fontWeight:900, fontSize:26, color:"#0a0a0a" }}>Admin Access</h1>
+            <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#999", marginTop:6 }}>Alvryn Dashboard</p>
+          </div>
+          <input type="password" value={pw} onChange={e=>setPw(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&login()} placeholder="Admin password"
+            style={{ width:"100%", padding:"13px 16px", borderRadius:13, fontSize:15,
+              fontFamily:"'DM Sans',sans-serif", border:`1.5px solid ${accent}44`,
+              outline:"none", background:"#fafafa", color:"#0a0a0a", marginBottom:14 }}/>
+          {pwErr && <div style={{ color:"#C62828", fontSize:13, fontFamily:"'DM Sans',sans-serif",
+            marginBottom:14 }}>{pwErr}</div>}
+          <button onClick={login}
+            style={{ width:"100%", padding:"14px", borderRadius:13, fontSize:15, fontWeight:800,
+              fontFamily:"'Syne',sans-serif", color:"#fff", border:"none", cursor:"pointer",
+              background:grad, boxShadow:`0 8px 28px ${accent}44` }}>
+            Enter Dashboard →
+          </button>
         </div>
       </div>
+    </div>
+  );
 
-      <div className="content">
-        <div className="stats-grid">
-          <div className="stat-card"><div className="stat-icon">✈️</div><div className="stat-label">Total Bookings</div><div className="stat-value">{bookings.length}</div><div className="stat-sub">↑ All time</div></div>
-          <div className="stat-card"><div className="stat-icon">👥</div><div className="stat-label">Total Users</div><div className="stat-value">{users.length}</div><div className="stat-sub">↑ Registered</div></div>
-          <div className="stat-card"><div className="stat-icon">💰</div><div className="stat-label">Total Revenue</div><div className="stat-value">₹{totalRevenue.toLocaleString()}</div><div className="stat-sub">↑ Mock payments</div></div>
-          <div className="stat-card"><div className="stat-icon">🗺️</div><div className="stat-label">Active Routes</div><div className="stat-value">{topRoutes.length}</div><div className="stat-sub">↑ Unique routes</div></div>
+  // ── DASHBOARD ──
+  const activeData = tabs.find(t=>t.id===tab)?.data || [];
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#f8f8fa", position:"relative", fontFamily:"'DM Sans',sans-serif" }}>
+      <style>{CSS}</style>
+      <AuroraBackground colors={["#FF6B6B","#FFD93D","#FF8C42"]}/>
+
+      {/* Top bar */}
+      <nav style={{ position:"sticky", top:0, zIndex:200, height:66, padding:"0 6%",
+        display:"flex", alignItems:"center", justifyContent:"space-between",
+        background:"rgba(248,248,250,0.92)", backdropFilter:"blur(22px)",
+        borderBottom:"1px solid rgba(0,0,0,0.05)" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <div style={{ animation:"floatUD 4s ease-in-out infinite" }}><AlvrynIcon size={38} spin/></div>
+          <div>
+            <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:900, fontSize:15, color:"#0a0a0a" }}>ALVRYN ADMIN</div>
+            <div style={{ fontFamily:"'Space Mono',monospace", fontSize:7, color:accent, letterSpacing:"0.18em" }}>DASHBOARD</div>
+          </div>
         </div>
+        <div style={{ display:"flex", gap:10 }}>
+          <button onClick={fetchAll}
+            style={{ padding:"8px 18px", borderRadius:10, fontSize:13, fontWeight:600,
+              fontFamily:"'DM Sans',sans-serif", color:accent,
+              border:`1.5px solid ${accent}44`, background:"transparent", cursor:"pointer" }}>↻ Refresh</button>
+          <button onClick={()=>navigate("/")}
+            style={{ padding:"8px 18px", borderRadius:10, fontSize:13, fontWeight:500,
+              fontFamily:"'DM Sans',sans-serif", color:"#888",
+              border:"1.5px solid rgba(0,0,0,0.1)", background:"transparent", cursor:"pointer" }}>← Home</button>
+        </div>
+      </nav>
 
-        <div className="tabs">
-          {[["bookings","✈️ Bookings"],["users","👥 Users"],["routes","🗺️ Routes"]].map(([id,label]) => (
-            <button key={id} className={`tab-btn ${tab===id?"active":""}`} onClick={() => setTab(id)}>{label}</button>
+      <div style={{ position:"relative", zIndex:1, padding:"40px 6%" }}>
+
+        {/* Stats */}
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:20, marginBottom:32 }}>
+          {tabs.map((t,i)=>(
+            <div key={t.id} style={{ padding:"28px 24px", background:"#fff", borderRadius:18,
+              boxShadow:"0 4px 18px rgba(0,0,0,0.05)", border:"1px solid rgba(0,0,0,0.05)",
+              animation:`fadeUp 0.5s ${i*80}ms both` }}>
+              <div style={{ fontSize:28, marginBottom:10 }}>{t.icon}</div>
+              <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:900, fontSize:40,
+                color:accent }}>{loading?"…":t.data.length}</div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#888", marginTop:4 }}>
+                Total {t.label}
+              </div>
+            </div>
           ))}
         </div>
 
-        {loading && <div className="loading-admin">Loading data...</div>}
+        {/* Tabs */}
+        <div style={{ display:"flex", gap:8, marginBottom:24 }}>
+          {tabs.map(t=>(
+            <button key={t.id} onClick={()=>setTab(t.id)}
+              style={{ padding:"10px 22px", borderRadius:12, fontSize:14, fontWeight:700,
+                fontFamily:"'Syne',sans-serif", border:"none", cursor:"pointer", transition:"all 0.2s",
+                background: tab===t.id ? grad : "#fff",
+                color: tab===t.id ? "#fff" : "#888",
+                boxShadow: tab===t.id ? `0 4px 16px ${accent}44` : "0 2px 8px rgba(0,0,0,0.05)" }}>
+              {t.icon} {t.label}
+            </button>
+          ))}
+        </div>
 
-        {!loading && tab === "bookings" && (
-          <div className="table-wrap">
-            <div className="table-header">
-              <div className="table-title">All Bookings</div>
-              <div className="table-count">{bookings.length} total</div>
+        {/* Table */}
+        <div style={{ background:"#fff", borderRadius:20,
+          boxShadow:"0 4px 20px rgba(0,0,0,0.05)", border:"1px solid rgba(0,0,0,0.05)",
+          overflow:"hidden" }}>
+          {loading ? (
+            <div style={{ padding:"60px", textAlign:"center" }}>
+              <div style={{ width:40,height:40,border:`3px solid ${accent}22`,borderTopColor:accent,
+                borderRadius:"50%",animation:"spinSlow 1s linear infinite",margin:"0 auto 14px"}}/>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#bbb" }}>Loading…</div>
             </div>
-            {bookings.length === 0 ? <div className="empty-admin">No bookings yet</div> : (
-              <table>
-                <thead><tr><th>#</th><th>Passenger</th><th>Route</th><th>Date & Time</th><th>Amount</th><th>Status</th></tr></thead>
+          ) : (
+            <div style={{ overflowX:"auto" }}>
+              <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                <thead>
+                  <tr style={{ background:"#f8f8fa", borderBottom:"1px solid rgba(0,0,0,0.05)" }}>
+                    {tab==="bookings" && ["ID","Airline","Route","Passenger","Price","Date"].map(h=>(
+                      <th key={h} style={{ padding:"13px 18px", textAlign:"left",
+                        fontFamily:"'Space Mono',monospace", fontSize:9.5, color:"#aaa",
+                        letterSpacing:"0.1em", fontWeight:700 }}>{h}</th>
+                    ))}
+                    {tab==="users" && ["ID","Name","Email","Joined"].map(h=>(
+                      <th key={h} style={{ padding:"13px 18px", textAlign:"left",
+                        fontFamily:"'Space Mono',monospace", fontSize:9.5, color:"#aaa",
+                        letterSpacing:"0.1em", fontWeight:700 }}>{h}</th>
+                    ))}
+                    {tab==="waitlist" && ["ID","Email","Ref Code","Referred By","Joined"].map(h=>(
+                      <th key={h} style={{ padding:"13px 18px", textAlign:"left",
+                        fontFamily:"'Space Mono',monospace", fontSize:9.5, color:"#aaa",
+                        letterSpacing:"0.1em", fontWeight:700 }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
                 <tbody>
-                  {bookings.map(b => (
-                    <tr key={b.id}>
-                      <td style={{fontFamily:"Space Mono",fontSize:"11px",color:"#475569"}}>#{b.id}</td>
-                      <td className="td-highlight">{b.passenger_name}</td>
-                      <td><div className="td-route"><span style={{color:"#e2e8f0",fontWeight:"500"}}>{b.from_city}</span><span style={{color:"#475569",margin:"0 4px"}}>→</span><span style={{color:"#e2e8f0",fontWeight:"500"}}>{b.to_city}</span></div></td>
-                      <td>{formatDate(b.departure_time)} {formatTime(b.departure_time)}</td>
-                      <td className="td-price">₹{b.price?.toLocaleString()}</td>
-                      <td><span className="td-badge badge-confirmed">✓ Confirmed</span></td>
+                  {tab==="bookings" && bookings.map((b,i)=>(
+                    <tr key={i} style={{ borderBottom:"1px solid rgba(0,0,0,0.03)" }}>
+                      <td style={{ padding:"13px 18px", fontFamily:"'Space Mono',monospace", fontSize:11, color:"#ccc" }}>#{b.id}</td>
+                      <td style={{ padding:"13px 18px", fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:13, color:"#0a0a0a" }}>{b.airline} <span style={{ fontWeight:400, color:"#bbb", fontSize:11 }}>{b.flight_no}</span></td>
+                      <td style={{ padding:"13px 18px", fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#555" }}>{b.from_city} → {b.to_city}</td>
+                      <td style={{ padding:"13px 18px", fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#555" }}>{b.passenger_name}</td>
+                      <td style={{ padding:"13px 18px", fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:13, color:accent }}>₹{Number(b.price).toLocaleString()}</td>
+                      <td style={{ padding:"13px 18px", fontFamily:"'Space Mono',monospace", fontSize:10, color:"#bbb" }}>{b.booked_at?new Date(b.booked_at).toLocaleDateString("en-IN"):"—"}</td>
                     </tr>
                   ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        )}
-
-        {!loading && tab === "users" && (
-          <div className="table-wrap">
-            <div className="table-header">
-              <div className="table-title">All Users</div>
-              <div className="table-count">{users.length} registered</div>
-            </div>
-            {users.length === 0 ? <div className="empty-admin">No users yet</div> : (
-              <table>
-                <thead><tr><th>#</th><th>Name</th><th>Email</th><th>User ID</th><th>Role</th></tr></thead>
-                <tbody>
-                  {users.map((u, i) => (
-                    <tr key={u.id}>
-                      <td style={{fontFamily:"Space Mono",fontSize:"11px",color:"#475569"}}>#{i+1}</td>
-                      <td className="td-highlight">{u.name}</td>
-                      <td>{u.email}</td>
-                      <td style={{fontFamily:"Space Mono",fontSize:"11px",color:"#475569"}}>{u.id}</td>
-                      <td><span className="td-badge badge-user">User</span></td>
+                  {tab==="users" && users.map((u,i)=>(
+                    <tr key={i} style={{ borderBottom:"1px solid rgba(0,0,0,0.03)" }}>
+                      <td style={{ padding:"13px 18px", fontFamily:"'Space Mono',monospace", fontSize:11, color:"#ccc" }}>#{u.id}</td>
+                      <td style={{ padding:"13px 18px", fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:13, color:"#0a0a0a" }}>{u.name}</td>
+                      <td style={{ padding:"13px 18px", fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#555" }}>{u.email}</td>
+                      <td style={{ padding:"13px 18px", fontFamily:"'Space Mono',monospace", fontSize:10, color:"#bbb" }}>{u.created_at?new Date(u.created_at).toLocaleDateString("en-IN"):"—"}</td>
                     </tr>
                   ))}
+                  {tab==="waitlist" && waitlist.map((w,i)=>(
+                    <tr key={i} style={{ borderBottom:"1px solid rgba(0,0,0,0.03)" }}>
+                      <td style={{ padding:"13px 18px", fontFamily:"'Space Mono',monospace", fontSize:11, color:"#ccc" }}>#{w.id}</td>
+                      <td style={{ padding:"13px 18px", fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#555" }}>{w.email}</td>
+                      <td style={{ padding:"13px 18px", fontFamily:"'Space Mono',monospace", fontSize:11, color:accent }}>{w.ref_code}</td>
+                      <td style={{ padding:"13px 18px", fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#bbb" }}>{w.referred_by||"—"}</td>
+                      <td style={{ padding:"13px 18px", fontFamily:"'Space Mono',monospace", fontSize:10, color:"#bbb" }}>{w.joined_at?new Date(w.joined_at).toLocaleDateString("en-IN"):"—"}</td>
+                    </tr>
+                  ))}
+                  {activeData.length === 0 && (
+                    <tr><td colSpan={6} style={{ padding:"40px", textAlign:"center",
+                      fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#ccc" }}>
+                      No {tab} yet
+                    </td></tr>
+                  )}
                 </tbody>
               </table>
-            )}
-          </div>
-        )}
-
-        {!loading && tab === "routes" && (
-          <>
-            <div className="table-header" style={{background:"rgba(15,17,26,0.8)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:"14px 14px 0 0",marginBottom:0}}>
-              <div className="table-title">Popular Routes</div>
-              <div className="table-count">{topRoutes.length} routes</div>
             </div>
-            {topRoutes.length === 0 ? (
-              <div className="empty-admin" style={{background:"rgba(15,17,26,0.8)",border:"1px solid rgba(255,255,255,0.06)",borderTop:"none",borderRadius:"0 0 14px 14px"}}>No booking data yet</div>
-            ) : (
-              <div style={{background:"rgba(15,17,26,0.8)",border:"1px solid rgba(255,255,255,0.06)",borderTop:"none",borderRadius:"0 0 14px 14px",padding:"20px"}}>
-                <div className="routes-grid">
-                  {topRoutes.map(([route, count]) => (
-                    <div className="route-card" key={route}>
-                      <div className="route-name">{route}</div>
-                      <div className="route-count">{count}</div>
-                      <div className="route-label">bookings</div>
-                      <div className="route-bar"><div className="route-bar-fill" style={{width:`${(count/maxRoute)*100}%`}}/></div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
 }
-
-export default AdminDashboard;

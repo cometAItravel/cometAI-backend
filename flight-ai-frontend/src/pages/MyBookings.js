@@ -1,179 +1,223 @@
-import { useState, useEffect } from "react";
-import axios from "axios";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
-const API = "https://cometai-backend.onrender.com";
-
-const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=DM+Sans:wght@300;400;500&display=swap');
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #01020a; color: #e8eaf6; font-family: 'DM Sans', sans-serif; min-height: 100vh; }
-
-  .stars-bg { position:fixed; inset:0; z-index:0; pointer-events:none; background: radial-gradient(ellipse at 15% 50%, rgba(99,43,200,0.28) 0%, transparent 55%), radial-gradient(ellipse at 85% 20%, rgba(25,90,220,0.22) 0%, transparent 50%), #01020a; }
-  .star { position:absolute; border-radius:50%; background:white; animation:twinkle var(--d,3s) ease-in-out infinite var(--delay,0s); }
-  @keyframes twinkle { 0%,100%{opacity:var(--min-op,.2);transform:scale(1);}50%{opacity:1;transform:scale(1.5);} }
-  @keyframes fadeUp { from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);} }
-
-  .page-wrap { position:relative; z-index:1; min-height:100vh; padding:0 20px 60px; max-width:900px; margin:0 auto; }
-
-  .nav { display:flex; align-items:center; justify-content:space-between; padding:20px 0 32px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:40px; }
-  .nav-logo { font-family:'Orbitron',sans-serif; font-size:18px; font-weight:800; background:linear-gradient(90deg,#818cf8,#c084fc); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; cursor:pointer; }
-  .btn-ghost { background:transparent; border:1px solid rgba(129,140,248,0.35); color:#a5b4fc; padding:8px 16px; border-radius:8px; font-family:'DM Sans',sans-serif; font-size:13px; cursor:pointer; transition:all 0.2s; }
-  .btn-ghost:hover { background:rgba(129,140,248,0.1); }
-
-  .page-title { font-family:'Orbitron',sans-serif; font-size:24px; font-weight:800; background:linear-gradient(135deg,#e0e7ff,#a5b4fc); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:8px; animation:fadeUp 0.5s ease both; }
-  .page-sub { font-size:14px; color:rgba(165,180,252,0.4); margin-bottom:32px; animation:fadeUp 0.5s ease 0.1s both; }
-
-  .bookings-grid { display:flex; flex-direction:column; gap:16px; animation:fadeUp 0.5s ease 0.2s both; }
-
-  .booking-card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:20px; transition:all 0.2s; position:relative; overflow:hidden; }
-  .booking-card::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(99,102,241,0.04) 0%,transparent 60%); pointer-events:none; }
-  .booking-card:hover { border-color:rgba(129,140,248,0.3); }
-
-  .booking-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
-  .booking-id { font-size:11px; letter-spacing:1px; color:rgba(165,180,252,0.4); }
-  .booking-status { padding:4px 10px; border-radius:20px; font-size:11px; background:rgba(52,211,153,0.1); border:1px solid rgba(52,211,153,0.2); color:#6ee7b7; }
-
-  .booking-route { display:flex; align-items:center; gap:16px; margin-bottom:16px; }
-  .route-city-block { }
-  .route-city-name { font-family:'Orbitron',sans-serif; font-size:18px; font-weight:800; color:#e0e7ff; }
-  .route-city-label { font-size:11px; color:rgba(165,180,252,0.4); margin-top:2px; }
-  .route-arrow { font-size:20px; color:rgba(129,140,248,0.4); }
-
-  .booking-details { display:flex; gap:24px; flex-wrap:wrap; padding-top:16px; border-top:1px solid rgba(255,255,255,0.05); }
-  .detail-item { }
-  .detail-label { font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:rgba(165,180,252,0.35); margin-bottom:4px; }
-  .detail-value { font-size:14px; color:#e0e7ff; font-weight:500; }
-  .detail-price { font-family:'Orbitron',sans-serif; font-size:16px; font-weight:800; background:linear-gradient(135deg,#a5f3fc,#818cf8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-
-  .empty-state { text-align:center; padding:80px 20px; animation:fadeUp 0.5s ease both; }
-  .empty-icon { font-size:52px; margin-bottom:16px; opacity:0.4; }
-  .empty-title { font-family:'Orbitron',sans-serif; font-size:16px; color:rgba(165,180,252,0.3); margin-bottom:12px; }
-  .empty-sub { font-size:14px; color:rgba(165,180,252,0.2); margin-bottom:24px; }
-  .btn-search { background:linear-gradient(135deg,#6366f1,#8b5cf6); border:none; color:white; padding:12px 28px; border-radius:12px; font-family:'DM Sans',sans-serif; font-size:14px; font-weight:500; cursor:pointer; transition:all 0.2s; }
-  .btn-search:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(99,102,241,0.4); }
-
-  .loading { text-align:center; padding:60px; color:rgba(129,140,248,0.6); font-family:'Orbitron',sans-serif; font-size:11px; letter-spacing:3px; animation:pulse 1.5s ease infinite; }
-  @keyframes pulse { 0%,100%{opacity:0.5}50%{opacity:1} }
+const CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(22px);}to{opacity:1;transform:translateY(0);}}
+  @keyframes floatUD{0%,100%{transform:translateY(0);}50%{transform:translateY(-9px);}}
+  @keyframes orbitRing{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+  @keyframes planeOrbit{from{transform:rotate(0deg) translateX(22px) rotate(0deg);}to{transform:rotate(360deg) translateX(22px) rotate(-360deg);}}
+  @keyframes spinSlow{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
 `;
 
-function Stars() {
-  const stars = Array.from({length:80},(_,i)=>({id:i,x:Math.random()*100,y:Math.random()*100,size:Math.random()*2+0.3,duration:Math.random()*5+2,delay:Math.random()*6,minOp:Math.random()*0.15+0.05}));
-  return<div className="stars-bg">{stars.map(s=><div key={s.id} className="star" style={{left:`${s.x}%`,top:`${s.y}%`,width:s.size,height:s.size,'--d':`${s.duration}s`,'--delay':`${s.delay}s`,'--min-op':s.minOp}}/>)}</div>;
-}
-
-function formatDate(dt){
-  if(!dt)return"—";
-  return new Date(dt).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});
-}
-function formatTime(dt){
-  if(!dt)return"—";
-  return new Date(dt).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false});
-}
-
-function MyBookings(){
-  const [bookings,setBookings]=useState([]);
-  const [loading,setLoading]=useState(true);
-  const [error,setError]=useState("");
-  const navigate=useNavigate();
-
-  useEffect(()=>{
-    const fetchBookings=async()=>{
-      const token=localStorage.getItem("token");
-      if(!token){ navigate("/login"); return; }
-      try{
-        const response=await axios.get(`${API}/my-bookings`,{
-          headers:{Authorization:`Bearer ${token}`}
-        });
-        setBookings(response.data);
-      }catch(err){
-        console.error(err);
-        if(err.response?.status===401||err.response?.status===403){
-          localStorage.removeItem("token");
-          navigate("/login");
-        } else {
-          setError("Failed to load bookings. Please try again.");
-        }
-      }
-      setLoading(false);
-    };
-    fetchBookings();
-  },[navigate]);
-
-  return(
-    <>
-      <style>{styles}</style>
-      <Stars/>
-      <div className="page-wrap">
-        <nav className="nav">
-          <div className="nav-logo" onClick={()=>navigate("/")}>☄️ CometAI</div>
-          <button className="btn-ghost" onClick={()=>navigate("/search")}>← Search Flights</button>
-        </nav>
-
-        <div className="page-title">My Bookings</div>
-        <div className="page-sub">Your flight booking history</div>
-
-        {loading&&<div className="loading">Loading your bookings...</div>}
-
-        {!loading&&error&&(
-          <div style={{background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.25)",color:"#fca5a5",padding:"16px",borderRadius:"12px",fontSize:"14px"}}>
-            ⚠ {error}
-          </div>
-        )}
-
-        {!loading&&!error&&bookings.length===0&&(
-          <div className="empty-state">
-            <div className="empty-icon">✈️</div>
-            <div className="empty-title">No bookings yet</div>
-            <div className="empty-sub">Your confirmed flights will appear here</div>
-            <button className="btn-search" onClick={()=>navigate("/search")}>Search Flights →</button>
-          </div>
-        )}
-
-        {!loading&&bookings.length>0&&(
-          <div className="bookings-grid">
-            {bookings.map(booking=>(
-              <div className="booking-card" key={booking.id}>
-                <div className="booking-top">
-                  <div className="booking-id">Booking #{booking.id}</div>
-                  <div className="booking-status">✓ Confirmed</div>
-                </div>
-                <div className="booking-route">
-                  <div className="route-city-block">
-                    <div className="route-city-name">{booking.from_city?.slice(0,3).toUpperCase()}</div>
-                    <div className="route-city-label">{booking.from_city}</div>
-                  </div>
-                  <div className="route-arrow">✈</div>
-                  <div className="route-city-block">
-                    <div className="route-city-name">{booking.to_city?.slice(0,3).toUpperCase()}</div>
-                    <div className="route-city-label">{booking.to_city}</div>
-                  </div>
-                </div>
-                <div className="booking-details">
-                  <div className="detail-item">
-                    <div className="detail-label">Passenger</div>
-                    <div className="detail-value">{booking.passenger_name}</div>
-                  </div>
-                  <div className="detail-item">
-                    <div className="detail-label">Date</div>
-                    <div className="detail-value">{formatDate(booking.departure_time)}</div>
-                  </div>
-                  <div className="detail-item">
-                    <div className="detail-label">Time</div>
-                    <div className="detail-value">{formatTime(booking.departure_time)}</div>
-                  </div>
-                  <div className="detail-item">
-                    <div className="detail-label">Amount</div>
-                    <div className="detail-price">₹{booking.price?.toLocaleString()}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </>
+function AlvrynIcon({ size = 40, spin = false }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 60 60" fill="none">
+      <defs>
+        <linearGradient id="mg1" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#00B89C"/><stop offset="100%" stopColor="#34D399"/>
+        </linearGradient>
+        <linearGradient id="mg2" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FF6B6B"/><stop offset="100%" stopColor="#FFD93D"/>
+        </linearGradient>
+      </defs>
+      <ellipse cx="30" cy="30" rx="27" ry="11" stroke="url(#mg1)" strokeWidth="1.2" strokeDasharray="5 3" opacity="0.45"
+        style={spin?{animation:"orbitRing 5s linear infinite",transformOrigin:"30px 30px"}:{}}/>
+      <text x="10" y="47" fontFamily="'Syne',sans-serif" fontWeight="900" fontSize="40" fill="url(#mg1)">A</text>
+      <g style={spin?{animation:"planeOrbit 5s linear infinite",transformOrigin:"30px 30px"}:{}}>
+        <path d="M57 30 L50 26 L52 30 L50 34 Z" fill="url(#mg2)"/>
+        <path d="M51 26.5 L51 22 L54 27 Z" fill="url(#mg2)" opacity="0.75"/>
+      </g>
+    </svg>
   );
 }
 
-export default MyBookings;
+function AuroraBackground({ colors }) {
+  const ref = useRef(null);
+  const raf = useRef(null);
+  useEffect(() => {
+    const c = ref.current; if (!c) return;
+    const ctx = c.getContext("2d");
+    let W = c.offsetWidth, H = c.offsetHeight; c.width=W; c.height=H;
+    const blobs=Array.from({length:5},(_,i)=>({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-0.5)*0.45,vy:(Math.random()-0.5)*0.45,r:200+Math.random()*160,ci:i%colors.length}));
+    const resize=()=>{W=c.offsetWidth;H=c.offsetHeight;c.width=W;c.height=H;};
+    window.addEventListener("resize",resize);
+    const draw=()=>{ctx.clearRect(0,0,W,H);blobs.forEach(b=>{b.x+=b.vx;b.y+=b.vy;if(b.x<-b.r||b.x>W+b.r)b.vx*=-1;if(b.y<-b.r||b.y>H+b.r)b.vy*=-1;const g=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,b.r);g.addColorStop(0,colors[b.ci%colors.length]+"22");g.addColorStop(1,"transparent");ctx.fillStyle=g;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();});raf.current=requestAnimationFrame(draw);};
+    draw();
+    return()=>{cancelAnimationFrame(raf.current);window.removeEventListener("resize",resize);};
+  },[colors]);
+  return <canvas ref={ref} style={{position:"fixed",inset:0,width:"100%",height:"100%",pointerEvents:"none",zIndex:0}}/>;
+}
+
+export default function MyBookings() {
+  const navigate = useNavigate();
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const accent = "#00B89C";
+  const grad = "linear-gradient(135deg,#00B89C,#34D399)";
+
+  useEffect(() => {
+    if (!localStorage.getItem("token")) { navigate("/login"); return; }
+    const fetch_ = async () => {
+      try {
+        const res = await fetch("https://cometai-backend.onrender.com/my-bookings", {
+          headers:{ Authorization:`Bearer ${localStorage.getItem("token")}` },
+        });
+        const data = await res.json();
+        if (Array.isArray(data)) setBookings(data);
+        else setError("Could not load bookings");
+      } catch { setError("Server error"); }
+      finally { setLoading(false); }
+    };
+    fetch_();
+  }, [navigate]);
+
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#f8f8fa", position:"relative", overflowX:"hidden",
+      fontFamily:"'DM Sans',sans-serif" }}>
+      <style>{CSS}</style>
+      <AuroraBackground colors={["#00B89C","#34D399","#6EE7B7"]}/>
+
+      {/* Sticky nav */}
+      <nav style={{ position:"sticky", top:0, zIndex:200, height:66, padding:"0 6%",
+        display:"flex", alignItems:"center", justifyContent:"space-between",
+        background:"rgba(248,248,250,0.9)", backdropFilter:"blur(22px)",
+        borderBottom:"1px solid rgba(0,0,0,0.05)" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, cursor:"pointer" }}
+          onClick={()=>navigate("/")}>
+          <div style={{ animation:"floatUD 4s ease-in-out infinite" }}>
+            <AlvrynIcon size={38} spin/>
+          </div>
+          <div>
+            <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:900, fontSize:16,
+              color:"#0a0a0a", letterSpacing:"-0.04em" }}>ALVRYN</div>
+            <div style={{ fontFamily:"'Space Mono',monospace", fontSize:7,
+              color:accent, letterSpacing:"0.18em" }}>TRAVEL BEYOND</div>
+          </div>
+        </div>
+        <div style={{ display:"flex", gap:10 }}>
+          <button onClick={()=>navigate("/search")}
+            style={{ padding:"8px 18px", borderRadius:10, fontSize:13, fontWeight:700,
+              fontFamily:"'Syne',sans-serif", color:"#fff", border:"none", cursor:"pointer",
+              background:grad, boxShadow:`0 4px 14px ${accent}44` }}>
+            + New Search
+          </button>
+          <button onClick={()=>{ localStorage.removeItem("token"); localStorage.removeItem("user"); navigate("/login"); }}
+            style={{ padding:"8px 18px", borderRadius:10, fontSize:13, fontWeight:600,
+              fontFamily:"'DM Sans',sans-serif", color:"#e53935", cursor:"pointer",
+              background:"#fff0f0", border:"1.5px solid rgba(229,57,53,0.2)" }}>
+            Sign Out
+          </button>
+        </div>
+      </nav>
+
+      <div style={{ position:"relative", zIndex:1, maxWidth:820, margin:"0 auto", padding:"48px 6% 80px" }}>
+
+        {/* Header */}
+        <div style={{ marginBottom:44, animation:"fadeUp 0.6s both" }}>
+          <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10,
+            color:accent, letterSpacing:"0.2em", marginBottom:10 }}>MY BOOKINGS</div>
+          <h1 style={{ fontFamily:"'Syne',sans-serif", fontWeight:900,
+            fontSize:"clamp(26px,4vw,50px)", color:"#0a0a0a", marginBottom:6 }}>Your Trips</h1>
+          <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, color:"#888" }}>
+            Hello {user.name?.split(" ")[0] || "Traveller"} — all your bookings are here.
+          </p>
+        </div>
+
+        {/* Loading */}
+        {loading && (
+          <div style={{ textAlign:"center", padding:"60px 0" }}>
+            <div style={{ width:44, height:44, border:`3px solid ${accent}22`,
+              borderTopColor:accent, borderRadius:"50%",
+              animation:"spinSlow 1s linear infinite", margin:"0 auto 16px" }}/>
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#bbb" }}>
+              Loading your bookings…
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div style={{ padding:"16px 20px", borderRadius:14, background:"#FFF0F0",
+            border:"1px solid #FFCDD2", fontFamily:"'DM Sans',sans-serif",
+            fontSize:14, color:"#C62828" }}>{error}</div>
+        )}
+
+        {/* Empty */}
+        {!loading && bookings.length === 0 && !error && (
+          <div style={{ textAlign:"center", padding:"80px 20px" }}>
+            <div style={{ fontSize:72, marginBottom:20, animation:"floatUD 3s ease-in-out infinite" }}>🎫</div>
+            <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:22,
+              color:"#ccc", marginBottom:10 }}>No bookings yet</div>
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, color:"#ddd", marginBottom:28 }}>
+              Book your first flight or bus with Alvryn AI
+            </div>
+            <button onClick={()=>navigate("/search")}
+              style={{ padding:"13px 32px", borderRadius:13, fontSize:15, fontWeight:700,
+                fontFamily:"'Syne',sans-serif", color:"#fff", border:"none", cursor:"pointer",
+                background:grad, boxShadow:`0 6px 22px ${accent}44` }}>
+              Search Now ✈
+            </button>
+          </div>
+        )}
+
+        {/* Booking cards */}
+        <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+          {bookings.map((b, i) => (
+            <div key={b.id || i}
+              style={{ padding:"24px 28px", background:"#fff", borderRadius:20,
+                boxShadow:"0 4px 20px rgba(0,0,0,0.06)", border:"1px solid rgba(0,0,0,0.05)",
+                animation:`fadeUp 0.5s ${i*80}ms both`,
+                transition:"all 0.25s" }}
+              onMouseEnter={e=>{ e.currentTarget.style.borderColor=accent+"44"; e.currentTarget.style.transform="translateY(-2px)"; }}
+              onMouseLeave={e=>{ e.currentTarget.style.borderColor="rgba(0,0,0,0.05)"; e.currentTarget.style.transform="translateY(0)"; }}>
+              <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:16 }}>
+                  <div style={{ width:48, height:48, borderRadius:14,
+                    background:`${accent}12`, display:"flex", alignItems:"center",
+                    justifyContent:"center", fontSize:24, flexShrink:0 }}>✈️</div>
+                  <div>
+                    <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:800,
+                      fontSize:18, color:"#0a0a0a", marginBottom:4 }}>
+                      {b.from_city || "—"} → {b.to_city || "—"}
+                    </div>
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#aaa", marginBottom:2 }}>
+                      {b.airline}{b.flight_no ? ` · ${b.flight_no}` : ""}
+                      {b.departure_time ? ` · ${new Date(b.departure_time).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}` : ""}
+                    </div>
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#bbb" }}>
+                      Passenger: {b.passenger_name}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ textAlign:"right", flexShrink:0 }}>
+                  <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:900,
+                    fontSize:22, color:accent, marginBottom:8 }}>
+                    ₹{Number(b.price).toLocaleString()}
+                  </div>
+                  <div style={{ display:"inline-flex", alignItems:"center", gap:5,
+                    padding:"4px 12px", borderRadius:100,
+                    background:`${accent}12`, border:`1px solid ${accent}22` }}>
+                    <span style={{ width:6, height:6, borderRadius:"50%",
+                      background:accent, display:"inline-block" }}/>
+                    <span style={{ fontFamily:"'Space Mono',monospace", fontSize:9.5,
+                      color:accent }}>CONFIRMED</span>
+                  </div>
+                  {b.booked_at && (
+                    <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10,
+                      color:"#ccc", marginTop:6 }}>
+                      {new Date(b.booked_at).toLocaleDateString("en-IN")}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

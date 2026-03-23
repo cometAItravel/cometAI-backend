@@ -1,591 +1,735 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
-const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
-
+const SHARED_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
   html { scroll-behavior: smooth; }
-
-  body {
-    background: #01020a;
-    color: #e8eaf6;
-    font-family: 'DM Sans', sans-serif;
-    overflow-x: hidden;
-  }
-
-  /* ── STARS ── */
-  .stars-fixed {
-    position: fixed; inset: 0; z-index: 0; pointer-events: none;
-    background:
-      radial-gradient(ellipse at 15% 40%, rgba(63,43,150,0.2) 0%, transparent 55%),
-      radial-gradient(ellipse at 85% 15%, rgba(25,90,180,0.15) 0%, transparent 50%),
-      radial-gradient(ellipse at 50% 85%, rgba(100,30,140,0.12) 0%, transparent 45%),
-      #01020a;
-  }
-  .star {
-    position: absolute; border-radius: 50%; background: white;
-    animation: twinkle var(--d,3s) ease-in-out infinite var(--delay,0s);
-  }
-  @keyframes twinkle {
-    0%,100%{opacity:var(--o,.15);transform:scale(1);}
-    50%{opacity:1;transform:scale(1.4);}
-  }
-  .shooting-star {
-    position: fixed; top:0; left:0; width:2px; height:2px;
-    background:white; border-radius:50%; pointer-events:none; z-index:1;
-  }
-  .shooting-star::after {
-    content:''; position:absolute; top:50%; right:0; transform:translateY(-50%);
-    width:140px; height:1px;
-    background:linear-gradient(90deg,rgba(255,255,255,0),rgba(165,180,252,0.7),white);
-    border-radius:2px;
-  }
-  @keyframes shoot {
-    0%{transform:translate(0,0) rotate(var(--angle));opacity:1;}
-    70%{opacity:1;}
-    100%{transform:translate(var(--tx),var(--ty)) rotate(var(--angle));opacity:0;}
-  }
-
-  /* ── NAV ── */
-  .landing-nav {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 20px 60px;
-    background: rgba(1,2,10,0.6);
-    backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255,255,255,0.04);
-    animation: slideDown 0.6s ease both;
-  }
-  @keyframes slideDown { from{opacity:0;transform:translateY(-20px);} to{opacity:1;transform:translateY(0);} }
-
-  .nav-logo {
-    font-family: 'Orbitron', sans-serif; font-size: 20px; font-weight: 900; letter-spacing: 2px;
-    background: linear-gradient(90deg, #818cf8, #c084fc, #38bdf8);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-    cursor: pointer;
-  }
-
-  .nav-links { display: flex; align-items: center; gap: 36px; }
-  .nav-link {
-    font-size: 13px; color: rgba(165,180,252,0.5); cursor: pointer;
-    transition: color 0.2s; letter-spacing: 0.5px; text-decoration: none;
-    font-weight: 400;
-  }
-  .nav-link:hover { color: #a5b4fc; }
-
-  .nav-cta {
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
-    border: none; color: white; padding: 10px 24px; border-radius: 10px;
-    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
-    cursor: pointer; transition: all 0.2s; letter-spacing: 0.3px;
-  }
-  .nav-cta:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99,102,241,0.4); }
-
-  /* ── HERO ── */
-  .hero-section {
-    position: relative; z-index: 1;
-    min-height: 100vh;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    text-align: center; padding: 120px 24px 80px;
-  }
-
-  .hero-badge {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: rgba(99,102,241,0.1); border: 1px solid rgba(129,140,248,0.25);
-    border-radius: 20px; padding: 6px 16px; margin-bottom: 32px;
-    font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
-    color: #a5b4fc; font-weight: 500;
-    animation: fadeUp 0.8s ease 0.2s both;
-  }
-  .badge-dot { width: 6px; height: 6px; background: #6ee7b7; border-radius: 50%; animation: blink 2s ease infinite; }
-  @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
-
-  .hero-title {
-    font-family: 'Orbitron', sans-serif;
-    font-size: clamp(36px, 7vw, 80px);
-    font-weight: 900; line-height: 1.05; letter-spacing: 2px;
-    margin-bottom: 12px;
-    animation: fadeUp 0.8s ease 0.3s both;
-  }
-  .hero-title-line1 {
-    background: linear-gradient(135deg, #ffffff 0%, #e0e7ff 50%, #a5b4fc 100%);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-    display: block;
-  }
-  .hero-title-line2 {
-    background: linear-gradient(135deg, #818cf8 0%, #c084fc 50%, #38bdf8 100%);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-    display: block;
-  }
-
-  .hero-sub {
-    font-size: clamp(16px, 2vw, 20px); color: rgba(180,190,255,0.5);
-    font-weight: 300; max-width: 560px; line-height: 1.7; margin: 20px auto 48px;
-    animation: fadeUp 0.8s ease 0.4s both;
-    font-style: italic;
-  }
-
-  .hero-ctas {
-    display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
-    animation: fadeUp 0.8s ease 0.5s both;
-  }
-
-  .btn-primary-hero {
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
-    border: none; color: white; padding: 16px 36px; border-radius: 14px;
-    font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 500;
-    cursor: pointer; transition: all 0.25s; letter-spacing: 0.3px;
-  }
-  .btn-primary-hero:hover { transform: translateY(-3px); box-shadow: 0 12px 36px rgba(99,102,241,0.5); }
-
-  .btn-secondary-hero {
-    background: transparent; border: 1px solid rgba(129,140,248,0.3);
-    color: #a5b4fc; padding: 16px 36px; border-radius: 14px;
-    font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 400;
-    cursor: pointer; transition: all 0.25s; letter-spacing: 0.3px;
-  }
-  .btn-secondary-hero:hover { background: rgba(129,140,248,0.1); border-color: rgba(129,140,248,0.6); transform: translateY(-2px); }
-
-  .hero-stats {
-    display: flex; gap: 48px; justify-content: center; margin-top: 72px;
-    animation: fadeUp 0.8s ease 0.7s both; flex-wrap: wrap;
-  }
-  .stat-item { text-align: center; }
-  .stat-value { font-family: 'Orbitron', sans-serif; font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #a5f3fc, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-  .stat-label { font-size: 12px; color: rgba(165,180,252,0.35); letter-spacing: 1px; margin-top: 4px; text-transform: uppercase; }
-
-  .scroll-indicator {
-    position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
-    display: flex; flex-direction: column; align-items: center; gap: 8px;
-    animation: fadeUp 1s ease 1s both;
-  }
-  .scroll-text { display: none; }
-  }
-  .scroll-text { font-size: 10px; letter-spacing: 3px; color: rgba(165,180,252,0.25); text-transform: uppercase; }
-  .scroll-line { width: 1px; height: 40px; background: linear-gradient(180deg, rgba(129,140,248,0.4), transparent); animation: scrollAnim 2s ease infinite; }
-  @keyframes scrollAnim { 0%{transform:scaleY(0);transform-origin:top;} 50%{transform:scaleY(1);transform-origin:top;} 51%{transform-origin:bottom;} 100%{transform:scaleY(0);transform-origin:bottom;} }
-
-  @keyframes fadeUp { from{opacity:0;transform:translateY(32px);} to{opacity:1;transform:translateY(0);} }
-
-  /* ── SECTION WRAPPER ── */
-  .section { position: relative; z-index: 1; padding: 100px 24px; max-width: 1100px; margin: 0 auto; }
-  .section-eyebrow { font-size: 11px; letter-spacing: 4px; text-transform: uppercase; color: #818cf8; margin-bottom: 16px; font-weight: 500; text-align: center; }
-  .section-title { font-family: 'Orbitron', sans-serif; font-size: clamp(24px,4vw,40px); font-weight: 800; text-align: center; background: linear-gradient(135deg, #e0e7ff, #a5b4fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 16px; }
-  .section-sub { text-align: center; font-size: 16px; color: rgba(165,180,252,0.4); font-weight: 300; max-width: 500px; margin: 0 auto 64px; line-height: 1.7; }
-
-  /* ── HOW IT WORKS ── */
-  .how-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-
-  .how-card {
-    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 20px; padding: 36px 28px; transition: all 0.3s; position: relative; overflow: hidden;
-  }
-  .how-card::before { content:''; position:absolute; inset:0; opacity:0; transition:opacity 0.3s; border-radius:20px; }
-  .how-card:nth-child(1)::before { background: radial-gradient(ellipse at 50% 0%, rgba(99,102,241,0.12), transparent 70%); }
-  .how-card:nth-child(2)::before { background: radial-gradient(ellipse at 50% 0%, rgba(139,92,246,0.12), transparent 70%); }
-  .how-card:nth-child(3)::before { background: radial-gradient(ellipse at 50% 0%, rgba(56,189,248,0.12), transparent 70%); }
-  .how-card:hover { border-color: rgba(129,140,248,0.25); transform: translateY(-6px); box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
-  .how-card:hover::before { opacity: 1; }
-
-  .how-number { font-family: 'Orbitron', sans-serif; font-size: 11px; letter-spacing: 3px; color: rgba(129,140,248,0.4); margin-bottom: 20px; }
-  .how-icon { font-size: 36px; margin-bottom: 20px; display: block; filter: drop-shadow(0 0 12px rgba(129,140,248,0.4)); }
-  .how-title { font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 600; color: #e0e7ff; margin-bottom: 12px; letter-spacing: 0.5px; }
-  .how-desc { font-size: 14px; color: rgba(165,180,252,0.45); line-height: 1.8; font-weight: 300; }
-  .how-example {
-    margin-top: 20px; padding: 14px 16px; background: rgba(99,102,241,0.08);
-    border: 1px solid rgba(129,140,248,0.12); border-radius: 10px;
-    font-size: 12px; color: rgba(165,180,252,0.5); font-style: italic; line-height: 1.6;
-  }
-  .how-example strong { color: #a5b4fc; font-style: normal; font-weight: 500; }
-
-  /* ── FEATURES ── */
-  .features-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
-  .feature-card {
-    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
-    border-radius: 16px; padding: 28px; display: flex; gap: 20px; align-items: flex-start;
-    transition: all 0.25s;
-  }
-  .feature-card:hover { border-color: rgba(129,140,248,0.2); background: rgba(255,255,255,0.04); transform: translateX(4px); }
-  .feature-icon-wrap { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
-  .feature-icon-wrap.purple { background: rgba(99,102,241,0.15); border: 1px solid rgba(129,140,248,0.2); }
-  .feature-icon-wrap.teal   { background: rgba(20,184,166,0.12); border: 1px solid rgba(45,212,191,0.2); }
-  .feature-icon-wrap.amber  { background: rgba(245,158,11,0.12); border: 1px solid rgba(251,191,36,0.2); }
-  .feature-icon-wrap.blue   { background: rgba(56,189,248,0.12); border: 1px solid rgba(125,211,252,0.2); }
-  .feature-icon-wrap.green  { background: rgba(52,211,153,0.12); border: 1px solid rgba(110,231,183,0.2); }
-  .feature-icon-wrap.coral  { background: rgba(239,68,68,0.1);   border: 1px solid rgba(252,165,165,0.2); }
-  .feature-content {}
-  .feature-title { font-size: 15px; font-weight: 500; color: #c7d2fe; margin-bottom: 6px; }
-  .feature-desc { font-size: 13px; color: rgba(165,180,252,0.4); line-height: 1.7; font-weight: 300; }
-
-  /* ── WHATSAPP DEMO ── */
-  .whatsapp-section { position: relative; z-index: 1; padding: 100px 24px; }
-  .whatsapp-inner { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; }
-  .whatsapp-content {}
-  .whatsapp-tag { display: inline-block; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.25); border-radius: 20px; padding: 5px 14px; font-size: 11px; letter-spacing: 2px; color: #6ee7b7; text-transform: uppercase; margin-bottom: 24px; }
-  .whatsapp-title { font-family: 'Orbitron', sans-serif; font-size: clamp(22px,3.5vw,36px); font-weight: 800; color: #e0e7ff; margin-bottom: 16px; line-height: 1.2; }
-  .whatsapp-desc { font-size: 15px; color: rgba(165,180,252,0.45); line-height: 1.8; font-weight: 300; margin-bottom: 32px; }
-  .whatsapp-features { display: flex; flex-direction: column; gap: 12px; }
-  .wa-feature { display: flex; align-items: center; gap: 12px; font-size: 14px; color: rgba(165,180,252,0.5); }
-  .wa-check { width: 20px; height: 20px; background: rgba(52,211,153,0.15); border: 1px solid rgba(52,211,153,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #6ee7b7; flex-shrink: 0; }
-
-  /* WhatsApp chat mockup */
-  .wa-chat {
-    background: #0a1520; border: 1px solid rgba(52,211,153,0.15); border-radius: 20px;
-    overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,0.5);
-  }
-  .wa-header { background: rgba(52,211,153,0.08); padding: 16px 20px; border-bottom: 1px solid rgba(52,211,153,0.1); display: flex; align-items: center; gap: 12px; }
-  .wa-avatar { width: 36px; height: 36px; background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; }
-  .wa-name { font-size: 14px; font-weight: 500; color: #e0e7ff; }
-  .wa-status { font-size: 11px; color: #6ee7b7; }
-  .wa-messages { padding: 20px; display: flex; flex-direction: column; gap: 12px; }
-  .wa-msg { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; }
-  .wa-msg.user { background: rgba(99,102,241,0.2); border: 1px solid rgba(129,140,248,0.2); color: #c7d2fe; align-self: flex-end; border-radius: 12px 12px 2px 12px; }
-  .wa-msg.bot { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); color: rgba(165,180,252,0.7); align-self: flex-start; border-radius: 12px 12px 12px 2px; }
-  .wa-msg.bot strong { color: #a5b4fc; }
-  .wa-time { font-size: 10px; color: rgba(165,180,252,0.25); margin-top: 4px; text-align: right; }
-
-  /* ── CTA SECTION ── */
-  .cta-section {
-    position: relative; z-index: 1; padding: 80px 24px 120px; text-align: center;
-  }
-  .cta-inner {
-    max-width: 700px; margin: 0 auto;
-    background: rgba(255,255,255,0.02); border: 1px solid rgba(129,140,248,0.15);
-    border-radius: 28px; padding: 64px 48px;
-    position: relative; overflow: hidden;
-  }
-  .cta-inner::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse at 50% 0%, rgba(99,102,241,0.15), transparent 70%); pointer-events:none; }
-  .cta-title { font-family:'Orbitron',sans-serif; font-size:clamp(24px,4vw,40px); font-weight:800; background:linear-gradient(135deg,#e0e7ff,#a5b4fc,#c084fc); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:16px; }
-  .cta-sub { font-size:16px; color:rgba(165,180,252,0.4); font-weight:300; line-height:1.7; margin-bottom:40px; }
-  .cta-btns { display:flex; gap:16px; justify-content:center; flex-wrap:wrap; }
-
-  /* ── FOOTER ── */
-  .landing-footer {
-    position: relative; z-index: 1; padding: 40px 60px;
-    border-top: 1px solid rgba(255,255,255,0.04);
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .footer-logo { font-family:'Orbitron',sans-serif; font-size:16px; font-weight:800; background:linear-gradient(90deg,#818cf8,#c084fc); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-  .footer-text { font-size:12px; color:rgba(165,180,252,0.2); }
-  .footer-links { display:flex; gap:24px; }
-  .footer-link { font-size:12px; color:rgba(165,180,252,0.3); cursor:pointer; transition:color 0.2s; text-decoration:none; }
-  .footer-link:hover { color:#a5b4fc; }
-
-  /* ── DIVIDER ── */
-  .section-divider { width:100%; height:1px; background:linear-gradient(90deg,transparent,rgba(129,140,248,0.15),transparent); margin:0 auto; }
-
-  @media(max-width:768px){
-    .how-grid { grid-template-columns: 1fr; }
-    .features-grid { grid-template-columns: 1fr; }
-    .whatsapp-inner { grid-template-columns: 1fr; }
-    .landing-nav { padding: 16px 24px; }
-    .nav-links { display: none; }
-    .landing-footer { flex-direction: column; gap: 16px; text-align: center; }
-  }
+  @keyframes fadeUp    { from{opacity:0;transform:translateY(22px);}to{opacity:1;transform:translateY(0);} }
+  @keyframes floatUD   { 0%,100%{transform:translateY(0);}50%{transform:translateY(-9px);} }
+  @keyframes blink     { 50%{opacity:0;} }
+  @keyframes gradShift { 0%,100%{background-position:0% 50%;}50%{background-position:100% 50%;} }
+  @keyframes planeOrbit{ from{transform:rotate(0deg) translateX(22px) rotate(0deg);}to{transform:rotate(360deg) translateX(22px) rotate(-360deg);} }
+  @keyframes orbitRing { from{transform:rotate(0deg);}to{transform:rotate(360deg);} }
+  @keyframes pulseRing { 0%{transform:translate(-50%,-50%) scale(1);opacity:0.4;}100%{transform:translate(-50%,-50%) scale(2.3);opacity:0;} }
+  ::-webkit-scrollbar{width:3px;}
+  ::-webkit-scrollbar-thumb{background:#6C63FF;border-radius:2px;}
 `;
 
-function Stars() {
-  const stars = Array.from({length:100},(_,i)=>({
-    id:i, x:Math.random()*100, y:Math.random()*100,
-    size:Math.random()*2+0.3, d:Math.random()*5+2,
-    delay:Math.random()*6, o:Math.random()*0.15+0.05,
-  }));
-  return(
-    <div className="stars-fixed">
-      {stars.map(s=>(
-        <div key={s.id} className="star" style={{
-          left:`${s.x}%`, top:`${s.y}%`, width:s.size, height:s.size,
-          '--d':`${s.d}s`, '--delay':`${s.delay}s`, '--o':s.o,
-        }}/>
-      ))}
+function AlvrynIcon({ size = 40, spin = false }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 60 60" fill="none">
+      <defs>
+        <linearGradient id="ig_a2" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#6C63FF"/><stop offset="100%" stopColor="#00C2FF"/>
+        </linearGradient>
+        <linearGradient id="ig_p2" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FF6B6B"/><stop offset="100%" stopColor="#FFD93D"/>
+        </linearGradient>
+      </defs>
+      <ellipse cx="30" cy="30" rx="27" ry="11"
+        stroke="url(#ig_a2)" strokeWidth="1.2" strokeDasharray="5 3" opacity="0.45"
+        style={spin ? { animation:"orbitRing 5s linear infinite", transformOrigin:"30px 30px" } : {}}/>
+      <text x="10" y="47" fontFamily="'Syne',sans-serif" fontWeight="900"
+        fontSize="40" fill="url(#ig_a2)">A</text>
+      <g style={spin ? { animation:"planeOrbit 5s linear infinite", transformOrigin:"30px 30px" } : {}}>
+        <path d="M57 30 L50 26 L52 30 L50 34 Z" fill="url(#ig_p2)"/>
+        <path d="M51 26.5 L51 22 L54 27 Z" fill="url(#ig_p2)" opacity="0.75"/>
+      </g>
+    </svg>
+  );
+}
+
+function AuroraBackground({ colors, opacity = 1 }) {
+  const ref = useRef(null);
+  const raf = useRef(null);
+  useEffect(() => {
+    const c = ref.current; if (!c) return;
+    const ctx = c.getContext("2d");
+    let W = c.offsetWidth, H = c.offsetHeight;
+    c.width = W; c.height = H;
+    const blobs = Array.from({ length: 5 }, (_, i) => ({
+      x: Math.random()*W, y: Math.random()*H,
+      vx: (Math.random()-0.5)*0.5, vy: (Math.random()-0.5)*0.5,
+      r: 200+Math.random()*180, ci: i % colors.length,
+    }));
+    const resize = () => { W=c.offsetWidth; H=c.offsetHeight; c.width=W; c.height=H; };
+    window.addEventListener("resize", resize);
+    const draw = () => {
+      ctx.clearRect(0,0,W,H);
+      blobs.forEach(b => {
+        b.x+=b.vx; b.y+=b.vy;
+        if(b.x<-b.r||b.x>W+b.r) b.vx*=-1;
+        if(b.y<-b.r||b.y>H+b.r) b.vy*=-1;
+        const g=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,b.r);
+        g.addColorStop(0, colors[b.ci%colors.length]+"28");
+        g.addColorStop(1,"transparent");
+        ctx.fillStyle=g; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill();
+      });
+      raf.current=requestAnimationFrame(draw);
+    };
+    draw();
+    return () => { cancelAnimationFrame(raf.current); window.removeEventListener("resize",resize); };
+  }, [colors]);
+  return <canvas ref={ref} style={{ position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",zIndex:0,opacity }}/>;
+}
+
+// ── SPLASH SCREEN — ALVRYN types in big ──────────────────────────────────────
+function SplashScreen({ onDone }) {
+  const [text, setText] = useState("");
+  const [phase, setPhase] = useState("typing");
+  const full = "ALVRYN";
+  useEffect(() => {
+    let i = 0;
+    const type = () => {
+      if (i <= full.length) {
+        setText(full.slice(0, i)); i++;
+        setTimeout(type, i === 1 ? 300 : 120);
+      } else {
+        setTimeout(() => setPhase("fading"), 900);
+        setTimeout(() => onDone(), 1800);
+      }
+    };
+    setTimeout(type, 400);
+  }, [onDone]);
+  return (
+    <div style={{
+      position:"fixed", inset:0, zIndex:9999, background:"#f8f8fa",
+      display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+      opacity: phase==="fading" ? 0 : 1,
+      transition:"opacity 0.8s cubic-bezier(0.4,0,0.2,1)",
+      pointerEvents: phase==="fading" ? "none" : "all",
+    }}>
+      <AuroraBackground colors={["#6C63FF","#00C2FF","#a78bfa"]} opacity={0.45}/>
+      <div style={{ position:"relative", zIndex:2, textAlign:"center" }}>
+        <div style={{ animation:"floatUD 3s ease-in-out infinite", marginBottom:28 }}>
+          <AlvrynIcon size={68} spin/>
+        </div>
+        <div style={{
+          fontFamily:"'Syne',sans-serif", fontWeight:900,
+          fontSize:"clamp(72px,15vw,150px)",
+          background:"linear-gradient(135deg,#6C63FF,#00C2FF)",
+          WebkitBackgroundClip:"text", backgroundClip:"text", WebkitTextFillColor:"transparent",
+          letterSpacing:"-0.05em", lineHeight:1, minWidth:"5ch",
+        }}>
+          {text}<span style={{ animation:"blink 0.7s step-end infinite", WebkitTextFillColor:"#6C63FF" }}>|</span>
+        </div>
+        <div style={{
+          fontFamily:"'Space Mono',monospace", fontSize:"clamp(11px,1.5vw,14px)",
+          color:"#bbb", letterSpacing:"0.3em", marginTop:20,
+          opacity: text.length===full.length ? 1 : 0,
+          transform: text.length===full.length ? "translateY(0)" : "translateY(8px)",
+          transition:"all 0.5s ease",
+        }}>TRAVEL BEYOND BOUNDARIES</div>
+      </div>
     </div>
   );
 }
 
-function ShootingStars() {
-  const [stars,setStars]=useState([]);
-  useEffect(()=>{
-    let id=0;
-    const launch=()=>{
-      const x=Math.random()*70,y=Math.random()*35,dist=500+Math.random()*300,angle=25+Math.random()*20;
-      const rad=(angle*Math.PI)/180;
-      const star={id:id++,x,y,tx:Math.cos(rad)*dist,ty:Math.sin(rad)*dist,angle,dur:700+Math.random()*700};
-      setStars(p=>[...p,star]);
-      setTimeout(()=>setStars(p=>p.filter(s=>s.id!==star.id)),star.dur+100);
-      setTimeout(launch,1500+Math.random()*4000);
-    };
-    const t=setTimeout(launch,1000);
-    return()=>clearTimeout(t);
-  },[]);
-  return<>{stars.map(s=><div key={s.id} className="shooting-star" style={{left:`${s.x}%`,top:`${s.y}%`,'--angle':`${s.angle}deg`,'--tx':`${s.tx}px`,'--ty':`${s.ty}px`,animation:`shoot ${s.dur}ms ease-out forwards`}}/>)}</>;
+function TypeWriter({ phrases, style }) {
+  const [pi, setPi] = useState(0);
+  const [text, setText] = useState("");
+  const [del, setDel] = useState(false);
+  const [ci, setCi] = useState(0);
+  useEffect(() => {
+    const w = phrases[pi % phrases.length];
+    if (!del) {
+      if (ci < w.length) { const t=setTimeout(()=>{setText(w.slice(0,ci+1));setCi(c=>c+1);},72); return()=>clearTimeout(t); }
+      else { const t=setTimeout(()=>setDel(true),2200); return()=>clearTimeout(t); }
+    } else {
+      if (ci > 0) { const t=setTimeout(()=>{setText(w.slice(0,ci-1));setCi(c=>c-1);},42); return()=>clearTimeout(t); }
+      else { setDel(false); setPi(p=>p+1); }
+    }
+  }, [ci, del, pi, phrases]);
+  return <span style={style}>{text}<span style={{animation:"blink 0.9s step-end infinite"}}>|</span></span>;
 }
+
+function Reveal({ children, delay=0, style }) {
+  const ref = useRef(null);
+  const [vis, setVis] = useState(false);
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e])=>{ if(e.isIntersecting) setVis(true); },{threshold:0.1});
+    if(ref.current) obs.observe(ref.current);
+    return ()=>obs.disconnect();
+  }, []);
+  return (
+    <div ref={ref} style={{ opacity:vis?1:0, transform:vis?"translateY(0)":"translateY(30px)",
+      transition:`opacity 0.7s ${delay}ms ease, transform 0.7s ${delay}ms cubic-bezier(0.22,1,0.36,1)`, ...style }}>
+      {children}
+    </div>
+  );
+}
+
+function TiltCard({ children, style }) {
+  const [t, setT] = useState({ rx:0, ry:0, s:1 });
+  return (
+    <div
+      onMouseMove={e=>{ const r=e.currentTarget.getBoundingClientRect(); setT({rx:((e.clientY-r.top)/r.height-0.5)*-12,ry:((e.clientX-r.left)/r.width-0.5)*12,s:1.02}); }}
+      onMouseLeave={()=>setT({rx:0,ry:0,s:1})}
+      style={{ transform:`perspective(900px) rotateX(${t.rx}deg) rotateY(${t.ry}deg) scale(${t.s})`,
+        transition:"transform 0.25s cubic-bezier(0.34,1.56,0.64,1)", ...style }}>
+      {children}
+    </div>
+  );
+}
+
+function Counter({ end, suffix="" }) {
+  const [n, setN] = useState(0);
+  const ref = useRef(null);
+  const started = useRef(false);
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e])=>{
+      if(e.isIntersecting&&!started.current) {
+        started.current=true;
+        const s=Date.now();
+        const step=()=>{ const p=Math.min((Date.now()-s)/1800,1); setN(Math.round((1-Math.pow(1-p,3))*end)); if(p<1) requestAnimationFrame(step); };
+        requestAnimationFrame(step);
+      }
+    },{threshold:0.4});
+    if(ref.current) obs.observe(ref.current);
+    return ()=>obs.disconnect();
+  }, [end]);
+  return <span ref={ref}>{n.toLocaleString()}{suffix}</span>;
+}
+
+const PALETTES = [
+  { blobs:["#6C63FF","#00C2FF","#a78bfa"], accent:"#6C63FF", grad:"linear-gradient(135deg,#6C63FF,#00C2FF)" },
+  { blobs:["#00B89C","#34D399","#6EE7B7"], accent:"#00B89C", grad:"linear-gradient(135deg,#00B89C,#34D399)" },
+  { blobs:["#FF6B6B","#FF8C42","#FFD93D"], accent:"#FF6B6B", grad:"linear-gradient(135deg,#FF6B6B,#FFD93D)" },
+  { blobs:["#3B82F6","#6366F1","#8B5CF6"], accent:"#3B82F6", grad:"linear-gradient(135deg,#3B82F6,#8B5CF6)" },
+  { blobs:["#EC4899","#F43F5E","#FB923C"], accent:"#EC4899", grad:"linear-gradient(135deg,#EC4899,#FB923C)" },
+];
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const [splashDone, setSplashDone] = useState(false);
+  const [heroReady, setHeroReady] = useState(false);
+  const [themeIdx, setThemeIdx] = useState(0);
+  const [navScrolled, setNavScrolled] = useState(false);
+  const T = PALETTES[themeIdx];
+
+  const onSplashDone = useCallback(() => { setSplashDone(true); setTimeout(()=>setHeroReady(true),100); }, []);
+
   useEffect(() => {
-    fetch("https://cometai-backend.onrender.com/test").catch(()=>{});
-    const t = setInterval(() => fetch("https://cometai-backend.onrender.com/test").catch(()=>{}), 14*60*1000);
-    return () => clearInterval(t);
+    const fn = () => {
+      setNavScrolled(window.scrollY > 40);
+      setThemeIdx(Math.min(Math.floor(window.scrollY/window.innerHeight), PALETTES.length-1));
+    };
+    window.addEventListener("scroll", fn, { passive:true });
+    return () => window.removeEventListener("scroll", fn);
   }, []);
+
+  const goSearch = useCallback(() => {
+    navigate(localStorage.getItem("token") ? "/search" : "/login");
+  }, [navigate]);
+
+  const line1 = "Travel Beyond";
+  const line2 = "Boundaries.";
+
+  const features = [
+    { icon:"🧠", title:"AI Natural Search",  desc:"Type like texting. 'Cheapest BLR to GOA this Friday' and you're done.", color:"#6C63FF" },
+    { icon:"✈️", title:"Flight Booking",     desc:"500+ routes, real-time fares, instant seat lock + email confirmation.", color:"#00C2FF" },
+    { icon:"🚌", title:"Bus Booking",        desc:"AC, Sleeper, Semi-Sleeper. Book buses directly from Alvryn.", color:"#00B89C" },
+    { icon:"💬", title:"WhatsApp Native",    desc:"Search, book, get your ticket — without opening a browser.", color:"#25D366" },
+    { icon:"⚡", title:"60-Second Booking",  desc:"Search to boarding pass in under a minute. Zero friction.", color:"#FF6B6B" },
+    { icon:"🔒", title:"Zero Hidden Fees",   desc:"Price you see is price you pay. Always transparent.", color:"#F59E0B" },
+  ];
 
   return (
     <>
-      <style>{styles}</style>
-      <Stars/>
-      <ShootingStars/>
+      <style>{SHARED_CSS}</style>
+      {!splashDone && <SplashScreen onDone={onSplashDone}/>}
+      <div style={{ opacity:splashDone?1:0, transition:"opacity 0.6s ease", fontFamily:"'DM Sans',sans-serif" }}>
 
-      {/* ── NAV ── */}
-      <nav className="landing-nav">
-        <div className="nav-logo">☄️ COMETAI</div>
-        <div className="nav-links">
-          <a className="nav-link" href="#how">How it works</a>
-          <a className="nav-link" href="#features">Features</a>
-          <a className="nav-link" href="#whatsapp">WhatsApp</a>
-        </div>
-        <div style={{display:"flex",gap:"12px"}}>
-          <button className="btn-secondary-hero" style={{padding:"10px 20px",fontSize:"13px",borderRadius:"10px"}} onClick={()=>navigate("/login")}>Login</button>
-          <button className="nav-cta" onClick={()=>navigate("/register")}>Get Started →</button>
-        </div>
-      </nav>
-
-      {/* ── HERO ── */}
-      <section className="hero-section">
-        <div className="hero-badge">
-          <span className="badge-dot"/>
-          Now live — AI + WhatsApp booking
-        </div>
-
-        <h1 className="hero-title">
-          <span className="hero-title-line1">Book Flights</span>
-          <span className="hero-title-line2">Like Never Before</span>
-        </h1>
-
-        <p className="hero-sub">
-          Search, compare and book flights using our website, AI assistant, or simply by sending a WhatsApp message.
-        </p>
-
-        <div className="hero-ctas">
-          <button className="btn-primary-hero" onClick={()=>navigate("/register")}>
-            🚀 Start Booking Free
-          </button>
-          <button className="btn-secondary-hero" onClick={()=>navigate("/login")}>
-            Sign in →
-          </button>
-        </div>
-
-        <div className="hero-stats">
-          <div className="stat-item">
-            <div className="stat-value">3</div>
-            <div className="stat-label">Ways to book</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-value">14+</div>
-            <div className="stat-label">Cities covered</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-value">AI</div>
-            <div className="stat-label">Powered search</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-value">₹0</div>
-            <div className="stat-label">Booking fees</div>
-          </div>
-        </div>
-
-        <div className="scroll-indicator">
-          <div className="scroll-text">Scroll</div>
-          <div className="scroll-line"/>
-        </div>
-      </section>
-
-      <div className="section-divider"/>
-
-      {/* ── HOW IT WORKS ── */}
-      <section className="section" id="how">
-        <p className="section-eyebrow">✦ Three ways to book</p>
-        <h2 className="section-title">Your flight. Your way.</h2>
-        <p className="section-sub">Choose how you want to book — a classic search, an AI conversation, or a WhatsApp message.</p>
-
-        <div className="how-grid">
-          <div className="how-card">
-            <div className="how-number">01 — WEBSITE</div>
-            <span className="how-icon">🌐</span>
-            <div className="how-title">Classic Search</div>
-            <div className="how-desc">Pick your origin, destination and date from our sleek space-themed interface. Filter by price, airline and departure time.</div>
-            <div className="how-example">
-              <strong>Bangalore → Mumbai</strong><br/>
-              20 Mar · Sort by price · Filter: Morning flights
+        {/* NAVBAR */}
+        <nav style={{
+          position:"fixed", top:0, left:0, right:0, zIndex:1000, height:66, padding:"0 6%",
+          display:"flex", alignItems:"center", justifyContent:"space-between",
+          background: navScrolled ? "rgba(248,248,250,0.88)" : "transparent",
+          backdropFilter: navScrolled ? "blur(22px)" : "none",
+          borderBottom: navScrolled ? "1px solid rgba(0,0,0,0.05)" : "none",
+          transition:"all 0.4s ease",
+        }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10, cursor:"pointer" }}
+            onClick={()=>window.scrollTo({top:0,behavior:"smooth"})}>
+            <div style={{ animation:"floatUD 4s ease-in-out infinite" }}><AlvrynIcon size={42} spin/></div>
+            <div>
+              <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:900, fontSize:18,
+                color:"#0a0a0a", letterSpacing:"-0.04em", lineHeight:1.1 }}>ALVRYN</div>
+              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:8,
+                color:T.accent, letterSpacing:"0.18em" }}>TRAVEL BEYOND</div>
             </div>
           </div>
-
-          <div className="how-card">
-            <div className="how-number">02 — AI SEARCH</div>
-            <span className="how-icon">🤖</span>
-            <div className="how-title">AI Assistant</div>
-            <div className="how-desc">Just type what you want in plain English. Our AI understands cities, dates, preferences and finds the best options instantly.</div>
-            <div className="how-example">
-              <strong>"cheapest flight bangalore to goa next friday"</strong><br/>
-              AI finds 4 flights · Sorted by price
-            </div>
+          <div style={{ display:"flex", gap:28 }}>
+            {["How it works","Features","Flights","Buses"].map(l => (
+              <span key={l} style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:500,
+                color:"#0a0a0a", opacity:0.65, cursor:"pointer", transition:"opacity 0.2s" }}
+                onMouseEnter={e=>e.target.style.opacity=1}
+                onMouseLeave={e=>e.target.style.opacity=0.65}>{l}</span>
+            ))}
           </div>
-
-          <div className="how-card">
-            <div className="how-number">03 — WHATSAPP</div>
-            <span className="how-icon">💬</span>
-            <div className="how-title">WhatsApp Booking</div>
-            <div className="how-desc">Send a message to our bot. It shows you flights, remembers your seat preference and sends a payment link — all without opening a browser.</div>
-            <div className="how-example">
-              <strong>User:</strong> "blr to mumbai tomorrow"<br/>
-              <strong>Bot:</strong> Here are 3 flights. Reply 1, 2 or 3.
-            </div>
+          <div style={{ display:"flex", gap:10 }}>
+            <button onClick={()=>navigate("/login")}
+              style={{ padding:"9px 22px", borderRadius:12, fontSize:14, fontWeight:600,
+                fontFamily:"'DM Sans',sans-serif", background:"transparent", color:"#0a0a0a",
+                border:"1.5px solid rgba(0,0,0,0.13)", cursor:"pointer" }}>Sign In</button>
+            <button onClick={()=>navigate("/register")}
+              style={{ padding:"9px 22px", borderRadius:12, fontSize:14, fontWeight:700,
+                fontFamily:"'Syne',sans-serif", color:"#fff", border:"none", cursor:"pointer",
+                background:T.grad, boxShadow:`0 4px 18px ${T.accent}44`,
+                transition:"transform 0.2s" }}
+              onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
+              onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>Get Started</button>
           </div>
-        </div>
-      </section>
+        </nav>
 
-      <div className="section-divider"/>
+        {/* ══ HERO ══ */}
+        <section style={{ minHeight:"100vh", background:"#f8f8fa",
+          display:"flex", alignItems:"center", position:"relative", overflow:"hidden", padding:"0 6%" }}>
+          <AuroraBackground colors={PALETTES[0].blobs}/>
+          <div style={{ position:"relative", zIndex:2, paddingTop:80, width:"100%",
+            display:"flex", alignItems:"center", justifyContent:"space-between", gap:40 }}>
+            <div style={{ maxWidth:600 }}>
+              {/* Badge */}
+              <div style={{
+                display:"inline-flex", alignItems:"center", gap:8,
+                padding:"8px 18px", borderRadius:100,
+                background:`${T.accent}0F`, border:`1px solid ${T.accent}28`,
+                marginBottom:44,
+                opacity:heroReady?1:0, transform:heroReady?"translateY(0)":"translateY(-14px)",
+                transition:"all 0.5s ease",
+              }}>
+                <span style={{ width:7, height:7, borderRadius:"50%", background:T.accent,
+                  boxShadow:`0 0 8px ${T.accent}`, display:"inline-block" }}/>
+                <span style={{ fontFamily:"'Space Mono',monospace", fontSize:10,
+                  color:T.accent, letterSpacing:"0.13em" }}>NOW LIVE · INDIA'S SMARTEST TRAVEL AI</span>
+              </div>
 
-      {/* ── FEATURES ── */}
-      <section className="section" id="features">
-        <p className="section-eyebrow">✦ Built different</p>
-        <h2 className="section-title">Everything you need</h2>
-        <p className="section-sub">Every feature designed to make booking faster, smarter and more personal.</p>
-
-        <div className="features-grid">
-          <div className="feature-card">
-            <div className="feature-icon-wrap purple">🧠</div>
-            <div className="feature-content">
-              <div className="feature-title">Natural language AI search</div>
-              <div className="feature-desc">Type "flights tomorrow from Bangalore to Delhi under 5000" — the AI parses cities, dates and budget automatically.</div>
-            </div>
-          </div>
-
-          <div className="feature-card">
-            <div className="feature-icon-wrap teal">⚡</div>
-            <div className="feature-content">
-              <div className="feature-title">Instant results</div>
-              <div className="feature-desc">No page reloads. Flight results appear in under a second with real-time filtering and sorting.</div>
-            </div>
-          </div>
-
-          <div className="feature-card">
-            <div className="feature-icon-wrap amber">📅</div>
-            <div className="feature-content">
-              <div className="feature-title">Smart date detection</div>
-              <div className="feature-desc">Say "tomorrow", "next Friday" or "in 3 days" — the AI converts it to the exact date automatically.</div>
-            </div>
-          </div>
-
-          <div className="feature-card">
-            <div className="feature-icon-wrap blue">💳</div>
-            <div className="feature-content">
-              <div className="feature-title">Secure payments</div>
-              <div className="feature-desc">Pay by card, UPI or netbanking. Every transaction is encrypted and confirmed with a unique booking ID.</div>
-            </div>
-          </div>
-
-          <div className="feature-card">
-            <div className="feature-icon-wrap green">🎯</div>
-            <div className="feature-content">
-              <div className="feature-title">Smart filters</div>
-              <div className="feature-desc">Filter by airline, price range and departure time. Sort by cheapest, fastest or earliest departure.</div>
-            </div>
-          </div>
-
-          <div className="feature-card">
-            <div className="feature-icon-wrap coral">📱</div>
-            <div className="feature-content">
-              <div className="feature-title">WhatsApp-first for India</div>
-              <div className="feature-desc">500M+ Indians use WhatsApp daily. Book without downloading an app — just message our bot and you're done.</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <div className="section-divider"/>
-
-      {/* ── WHATSAPP DEMO ── */}
-      <section className="whatsapp-section" id="whatsapp">
-        <div className="whatsapp-inner">
-          <div className="whatsapp-content">
-            <div className="whatsapp-tag">✦ Coming soon</div>
-            <h2 className="whatsapp-title">Book on WhatsApp.<br/>No app needed.</h2>
-            <p className="whatsapp-desc">India's first WhatsApp-native flight booking. Message our AI bot like you'd text a friend — and it handles everything from search to payment.</p>
-            <div className="whatsapp-features">
-              {[
-                "Understands natural language in Hindi and English",
-                "Remembers your seat preference for next booking",
-                "Sends Razorpay payment link directly in chat",
-                "Booking confirmation and PNR via WhatsApp",
-              ].map((f,i)=>(
-                <div className="wa-feature" key={i}>
-                  <div className="wa-check">✓</div>
-                  <span>{f}</span>
+              {/* KINETIC TITLE — each char drops in, forced single line */}
+              <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:900, lineHeight:1, userSelect:"none" }}>
+                <div style={{ whiteSpace:"nowrap" }}>
+                  {line1.split("").map((ch,i)=>(
+                    <span key={i} style={{
+                      display:"inline-block",
+                      opacity:heroReady?1:0,
+                      transform:heroReady?"translateY(0) rotate(0deg)":"translateY(80px) rotate(9deg)",
+                      transition:`opacity 0.55s ${i*55}ms cubic-bezier(0.22,1,0.36,1),transform 0.65s ${i*55}ms cubic-bezier(0.34,1.56,0.64,1)`,
+                      fontSize:"clamp(38px,5.5vw,82px)", color:"#0a0a0a", letterSpacing:"-0.03em",
+                    }}>{ch===" "?"\u00A0":ch}</span>
+                  ))}
                 </div>
+                <div style={{ whiteSpace:"nowrap" }}>
+                  {line2.split("").map((ch,i)=>(
+                    <span key={i} style={{
+                      display:"inline-block",
+                      opacity:heroReady?1:0,
+                      transform:heroReady?"translateY(0) rotate(0deg)":"translateY(80px) rotate(-7deg)",
+                      transition:`opacity 0.55s ${line1.length*55+120+i*55}ms cubic-bezier(0.22,1,0.36,1),transform 0.65s ${line1.length*55+120+i*55}ms cubic-bezier(0.34,1.56,0.64,1)`,
+                      fontSize:"clamp(38px,5.5vw,82px)",
+                      background:T.grad, WebkitBackgroundClip:"text", backgroundClip:"text",
+                      WebkitTextFillColor:"transparent", letterSpacing:"-0.03em",
+                    }}>{ch===" "?"\u00A0":ch}</span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Typewriter */}
+              <div style={{ marginTop:26, marginBottom:46, fontSize:"clamp(15px,1.8vw,21px)",
+                color:"#555", lineHeight:1.5,
+                opacity:heroReady?1:0, transform:heroReady?"translateY(0)":"translateY(14px)",
+                transition:"all 0.6s 1.6s ease" }}>
+                Book flights & buses with{" "}
+                <TypeWriter phrases={["plain English.","a WhatsApp message.","AI superpowers.","zero hidden fees."]}
+                  style={{ fontWeight:700, color:T.accent }}/>
+              </div>
+
+              {/* CTAs */}
+              <div style={{ display:"flex", gap:13, flexWrap:"wrap",
+                opacity:heroReady?1:0, transform:heroReady?"translateY(0)":"translateY(14px)",
+                transition:"all 0.6s 1.9s ease" }}>
+                <button onClick={goSearch}
+                  style={{ padding:"15px 36px", borderRadius:14, fontSize:16, fontWeight:800,
+                    fontFamily:"'Syne',sans-serif", color:"#fff", border:"none", cursor:"pointer",
+                    background:T.grad, backgroundSize:"200% 200%", animation:"gradShift 4s ease infinite",
+                    boxShadow:`0 10px 36px ${T.accent}44` }}>Search Flights ✈</button>
+                <button onClick={goSearch}
+                  style={{ padding:"15px 36px", borderRadius:14, fontSize:16, fontWeight:700,
+                    fontFamily:"'DM Sans',sans-serif", color:"#0a0a0a", border:"1.5px solid rgba(0,0,0,0.1)",
+                    background:"#fff", boxShadow:"0 4px 16px rgba(0,0,0,0.06)", cursor:"pointer" }}>Book a Bus 🚌</button>
+                <button onClick={()=>navigate("/register")}
+                  style={{ padding:"15px 24px", borderRadius:14, fontSize:15, fontWeight:600,
+                    fontFamily:"'DM Sans',sans-serif", color:"#888", background:"transparent",
+                    border:"1.5px solid rgba(0,0,0,0.1)", cursor:"pointer" }}>Create Account →</button>
+              </div>
+
+              {/* Trust */}
+              <div style={{ display:"flex", gap:20, marginTop:38, flexWrap:"wrap",
+                opacity:heroReady?1:0, transition:"opacity 0.6s 2.2s ease" }}>
+                {["🔒 Secure","📧 Instant Tickets","💬 WhatsApp","500+ Routes"].map(b=>(
+                  <span key={b} style={{ fontFamily:"'Space Mono',monospace", fontSize:10,
+                    color:"#bbb", letterSpacing:"0.05em" }}>{b}</span>
+                ))}
+              </div>
+            </div>
+
+            {/* Search mockup */}
+            <div style={{ flexShrink:0, animation:"floatUD 6s ease-in-out infinite",
+              opacity:heroReady?1:0, transition:"opacity 0.7s 2.4s ease" }}>
+              <SearchMockupCard accent={T.accent}/>
+            </div>
+          </div>
+          {/* Scroll cue */}
+          <div style={{ position:"absolute", bottom:32, left:"50%", transform:"translateX(-50%)",
+            display:"flex", flexDirection:"column", alignItems:"center", gap:6,
+            animation:"floatUD 2.2s ease-in-out infinite" }}>
+            <span style={{ fontFamily:"'Space Mono',monospace", fontSize:9, color:"#ccc", letterSpacing:"0.18em" }}>SCROLL</span>
+            <div style={{ width:1, height:32, background:`linear-gradient(to bottom,${T.accent}70,transparent)` }}/>
+          </div>
+        </section>
+
+        {/* ══ SECTION 2 — HOW IT WORKS ══ */}
+        <section style={{ minHeight:"100vh", background:"#f8f8fa", position:"relative",
+          overflow:"hidden", padding:"120px 6%", display:"flex", alignItems:"center" }}>
+          <AuroraBackground colors={PALETTES[1].blobs}/>
+          <div style={{ position:"relative", zIndex:2, width:"100%" }}>
+            <Reveal>
+              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:PALETTES[1].accent,
+                letterSpacing:"0.2em", marginBottom:14 }}>HOW IT WORKS</div>
+              <h2 style={{ fontFamily:"'Syne',sans-serif", fontWeight:900,
+                fontSize:"clamp(30px,4.5vw,60px)", color:"#0a0a0a", lineHeight:1.05,
+                marginBottom:10, whiteSpace:"nowrap" }}>Book like you text a friend.</h2>
+              <h2 style={{ fontFamily:"'Syne',sans-serif", fontWeight:900,
+                fontSize:"clamp(30px,4.5vw,60px)", lineHeight:1.05, marginBottom:60,
+                background:PALETTES[1].grad, WebkitBackgroundClip:"text",
+                backgroundClip:"text", WebkitTextFillColor:"transparent", whiteSpace:"nowrap" }}>
+                No learning curve.
+              </h2>
+            </Reveal>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:22 }}>
+              {[
+                { n:"01", icon:"💬", title:"Type Naturally", desc:"'Flights BLR to GOA Friday under ₹3500' — Alvryn understands context, dates and budgets." },
+                { n:"02", icon:"⚡", title:"AI Finds Best",  desc:"Searches across airlines and bus operators in real time. Ranked by value." },
+                { n:"03", icon:"✅", title:"Book in Seconds", desc:"Pick, confirm, done. Ticket arrives via email + WhatsApp instantly." },
+              ].map((s,i)=>(
+                <Reveal key={i} delay={i*130}>
+                  <TiltCard style={{ padding:"36px 28px", background:"#fff", borderRadius:20,
+                    boxShadow:"0 4px 22px rgba(0,0,0,0.05)", border:"1px solid rgba(0,0,0,0.05)", cursor:"default" }}>
+                    <div style={{ fontSize:36, marginBottom:16 }}>{s.icon}</div>
+                    <div style={{ fontFamily:"'Space Mono',monospace", fontWeight:700, fontSize:24,
+                      color:PALETTES[1].accent, marginBottom:10 }}>{s.n}</div>
+                    <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:18,
+                      color:"#0a0a0a", marginBottom:12 }}>{s.title}</div>
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#777", lineHeight:1.65 }}>{s.desc}</div>
+                  </TiltCard>
+                </Reveal>
+              ))}
+            </div>
+            <Reveal delay={360}>
+              <div style={{ marginTop:40, padding:"16px 22px", borderRadius:14, display:"inline-flex",
+                alignItems:"center", gap:14,
+                background:`${PALETTES[1].accent}0C`, border:`1px solid ${PALETTES[1].accent}20` }}>
+                <span style={{ fontSize:20 }}>🔐</span>
+                <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#555" }}>
+                  Free account needed to search & book — takes 30 seconds.{" "}
+                  <span onClick={()=>navigate("/register")}
+                    style={{ color:PALETTES[1].accent, cursor:"pointer", fontWeight:700, textDecoration:"underline" }}>
+                    Sign up free →
+                  </span>
+                </span>
+              </div>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* ══ SECTION 3 — FEATURES ══ */}
+        <section style={{ minHeight:"100vh", background:"#f8f8fa", position:"relative",
+          overflow:"hidden", padding:"120px 6%" }}>
+          <AuroraBackground colors={PALETTES[2].blobs}/>
+          <div style={{ position:"relative", zIndex:2 }}>
+            <Reveal style={{ textAlign:"center" }}>
+              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:PALETTES[2].accent,
+                letterSpacing:"0.2em", marginBottom:14 }}>FEATURES</div>
+              <h2 style={{ fontFamily:"'Syne',sans-serif", fontWeight:900,
+                fontSize:"clamp(28px,4vw,54px)", color:"#0a0a0a", marginBottom:10 }}>
+                Everything you need.
+              </h2>
+              <h2 style={{ fontFamily:"'Syne',sans-serif", fontWeight:900,
+                fontSize:"clamp(28px,4vw,54px)", marginBottom:64,
+                background:PALETTES[2].grad, WebkitBackgroundClip:"text",
+                backgroundClip:"text", WebkitTextFillColor:"transparent" }}>
+                Nothing you don't.
+              </h2>
+            </Reveal>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:20 }}>
+              {features.map((f,i)=>(
+                <Reveal key={i} delay={i*70}>
+                  <TiltCard style={{ padding:"32px 26px", background:"#fff", borderRadius:20,
+                    boxShadow:"0 4px 18px rgba(0,0,0,0.05)", border:"1px solid rgba(0,0,0,0.05)",
+                    cursor:"default", transition:"transform 0.3s,box-shadow 0.3s" }}>
+                    <div style={{ fontSize:34, marginBottom:16 }}>{f.icon}</div>
+                    <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:18,
+                      color:"#0a0a0a", marginBottom:10 }}>{f.title}</div>
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#777", lineHeight:1.65 }}>
+                      {f.desc}
+                    </div>
+                    <div style={{ marginTop:22, height:3, borderRadius:2, width:"55%",
+                      background:`linear-gradient(90deg,${f.color},transparent)` }}/>
+                  </TiltCard>
+                </Reveal>
               ))}
             </div>
           </div>
+        </section>
 
-          <div className="wa-chat">
-            <div className="wa-header">
-              <div className="wa-avatar">☄️</div>
+        {/* ══ SECTION 4 — STATS ══ */}
+        <section style={{ minHeight:"50vh", background:"#f8f8fa", position:"relative",
+          overflow:"hidden", padding:"110px 6%", display:"flex", alignItems:"center" }}>
+          <AuroraBackground colors={PALETTES[3].blobs}/>
+          <div style={{ position:"relative", zIndex:2, width:"100%", textAlign:"center" }}>
+            <Reveal>
+              <h2 style={{ fontFamily:"'Syne',sans-serif", fontWeight:900,
+                fontSize:"clamp(24px,3.5vw,48px)", color:"#0a0a0a", marginBottom:60 }}>
+                Alvryn is growing fast 🚀
+              </h2>
+            </Reveal>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:22 }}>
+              {[
+                {val:12000,suf:"+",label:"Waitlist Members"},
+                {val:98,suf:"%",label:"Satisfaction Rate"},
+                {val:500,suf:"+",label:"Routes Covered"},
+                {val:60,suf:"s",label:"Avg Booking Time"},
+              ].map((s,i)=>(
+                <Reveal key={i} delay={i*85}>
+                  <TiltCard style={{ padding:"38px 16px", background:"#fff", borderRadius:20,
+                    boxShadow:"0 4px 18px rgba(0,0,0,0.05)", cursor:"default" }}>
+                    <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:900, fontSize:44,
+                      color:PALETTES[3].accent, lineHeight:1 }}>
+                      <Counter end={s.val} suffix={s.suf}/>
+                    </div>
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#999", marginTop:8 }}>
+                      {s.label}
+                    </div>
+                  </TiltCard>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ══ SECTION 5 — WHATSAPP ══ */}
+        <section style={{ minHeight:"75vh", background:"#f8f8fa", position:"relative",
+          overflow:"hidden", padding:"110px 6%", display:"flex", alignItems:"center" }}>
+          <AuroraBackground colors={PALETTES[4].blobs}/>
+          <div style={{ position:"relative", zIndex:2, width:"100%",
+            display:"grid", gridTemplateColumns:"1fr 1fr", gap:80, alignItems:"center" }}>
+            <Reveal>
+              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:PALETTES[4].accent,
+                letterSpacing:"0.2em", marginBottom:18 }}>WHATSAPP NATIVE</div>
+              <h2 style={{ fontFamily:"'Syne',sans-serif", fontWeight:900,
+                fontSize:"clamp(26px,3.8vw,50px)", color:"#0a0a0a", lineHeight:1.05,
+                marginBottom:10, whiteSpace:"nowrap" }}>Your entire trip.</h2>
+              <h2 style={{ fontFamily:"'Syne',sans-serif", fontWeight:900,
+                fontSize:"clamp(26px,3.8vw,50px)", lineHeight:1.05, marginBottom:26,
+                background:PALETTES[4].grad, WebkitBackgroundClip:"text",
+                backgroundClip:"text", WebkitTextFillColor:"transparent", whiteSpace:"nowrap" }}>
+                One chat thread.
+              </h2>
+              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, color:"#666",
+                lineHeight:1.7, marginBottom:32 }}>
+                Flights and buses, all inside WhatsApp. No app download needed.
+              </p>
+              <div style={{ marginBottom:32, padding:"13px 18px", borderRadius:12,
+                background:"rgba(0,0,0,0.03)", border:"1px solid rgba(0,0,0,0.07)",
+                display:"inline-block" }}>
+                <span style={{ fontFamily:"'Space Mono',monospace", fontSize:11, color:"#555" }}>
+                  📱 +1-415-523-8886 · code: <strong style={{ color:"#0a0a0a" }}>join meal-biggest</strong>
+                </span>
+              </div>
               <div>
-                <div className="wa-name">CometAI Travel Bot</div>
-                <div className="wa-status">● Online</div>
+                <button onClick={goSearch}
+                  style={{ padding:"14px 32px", borderRadius:13, fontSize:15, fontWeight:700,
+                    fontFamily:"'Syne',sans-serif", color:"#fff", border:"none", cursor:"pointer",
+                    background:PALETTES[4].grad, boxShadow:`0 8px 26px ${PALETTES[4].accent}44` }}>
+                  Book a Flight Now ✈
+                </button>
+              </div>
+            </Reveal>
+            <Reveal delay={180}>
+              <TiltCard style={{ maxWidth:310, margin:"0 auto", cursor:"default" }}>
+                <div style={{ borderRadius:24, overflow:"hidden",
+                  boxShadow:"0 28px 70px rgba(0,0,0,0.12)", border:"1px solid rgba(0,0,0,0.04)" }}>
+                  <div style={{ background:"#128C7E", padding:"14px 18px",
+                    display:"flex", alignItems:"center", gap:12 }}>
+                    <div style={{ width:38, height:38, borderRadius:"50%", background:"#fff",
+                      display:"flex", alignItems:"center", justifyContent:"center" }}>
+                      <AlvrynIcon size={26} spin/>
+                    </div>
+                    <div>
+                      <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:800, color:"#fff", fontSize:14 }}>Alvryn</div>
+                      <div style={{ fontSize:11, color:"rgba(255,255,255,0.7)" }}>● online</div>
+                    </div>
+                  </div>
+                  <div style={{ background:"#E5DDD5", padding:"14px 12px",
+                    display:"flex", flexDirection:"column", gap:9 }}>
+                    {[
+                      { me:false, msg:"Flight BLR to DEL 28th March under ₹5000 🙏" },
+                      { me:true,  msg:"Found 3 flights! ✈️\nSkyWings · ₹3,840 · 6:10AM\nBluJet · ₹4,120 · 9:30AM\nReply 1 or 2 to book" },
+                      { me:false, msg:"1" },
+                      { me:true,  msg:"✅ Booked!\nSkyWings · ₹3,840\nTicket sent to email 📧" },
+                    ].map((m,i)=>(
+                      <div key={i} style={{ display:"flex", justifyContent:m.me?"flex-end":"flex-start" }}>
+                        <div style={{ maxWidth:"86%", padding:"9px 13px",
+                          borderRadius:m.me?"18px 18px 4px 18px":"18px 18px 18px 4px",
+                          background:m.me?"#DCF8C6":"#fff", fontSize:12, lineHeight:1.55,
+                          whiteSpace:"pre-line", fontFamily:"'DM Sans',sans-serif", color:"#1a1a1a",
+                          boxShadow:"0 1px 3px rgba(0,0,0,0.08)",
+                          animation:`fadeUp 0.4s ${i*140+300}ms both` }}>
+                          {m.msg}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </TiltCard>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* ══ FINAL CTA ══ */}
+        <section style={{ minHeight:"70vh", background:"#f8f8fa", position:"relative",
+          overflow:"hidden", padding:"120px 6%", display:"flex", alignItems:"center",
+          justifyContent:"center", textAlign:"center" }}>
+          <AuroraBackground colors={PALETTES[0].blobs}/>
+          {[160,280,400].map((r,i)=>(
+            <div key={i} style={{ position:"absolute", width:r, height:r, borderRadius:"50%",
+              border:`1px solid ${PALETTES[0].accent}18`, top:"50%", left:"50%",
+              animation:`pulseRing ${2.5+i}s ease-out infinite`, animationDelay:`${i*0.7}s` }}/>
+          ))}
+          <div style={{ position:"relative", zIndex:2, maxWidth:620 }}>
+            <Reveal>
+              <div style={{ animation:"floatUD 4s ease-in-out infinite", marginBottom:28 }}>
+                <AlvrynIcon size={70} spin/>
+              </div>
+              <h2 style={{ fontFamily:"'Syne',sans-serif", fontWeight:900,
+                fontSize:"clamp(34px,5.5vw,70px)", color:"#0a0a0a", lineHeight:1.02, marginBottom:20 }}>
+                Ready to fly
+              </h2>
+              <h2 style={{ fontFamily:"'Syne',sans-serif", fontWeight:900,
+                fontSize:"clamp(34px,5.5vw,70px)", lineHeight:1.02, marginBottom:24,
+                background:PALETTES[0].grad, WebkitBackgroundClip:"text",
+                backgroundClip:"text", WebkitTextFillColor:"transparent" }}>smarter?</h2>
+              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:17, color:"#777",
+                lineHeight:1.7, marginBottom:48 }}>
+                India's most intelligent travel booking platform. Best fares on flights and buses, instantly.
+              </p>
+              <div style={{ display:"flex", gap:14, justifyContent:"center", flexWrap:"wrap" }}>
+                <button onClick={()=>navigate("/register")}
+                  style={{ padding:"16px 42px", borderRadius:14, fontSize:16, fontWeight:900,
+                    fontFamily:"'Syne',sans-serif", color:"#fff", border:"none", cursor:"pointer",
+                    background:PALETTES[0].grad, backgroundSize:"200% 200%",
+                    animation:"gradShift 3s ease infinite",
+                    boxShadow:`0 12px 46px ${PALETTES[0].accent}44` }}>
+                  Create Free Account ✈
+                </button>
+                <button onClick={()=>navigate("/login")}
+                  style={{ padding:"16px 34px", borderRadius:14, fontSize:16, fontWeight:600,
+                    fontFamily:"'DM Sans',sans-serif", color:"#0a0a0a", background:"#fff",
+                    border:"1.5px solid rgba(0,0,0,0.1)",
+                    boxShadow:"0 4px 16px rgba(0,0,0,0.05)", cursor:"pointer" }}>
+                  Sign In →
+                </button>
+              </div>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* FOOTER */}
+        <footer style={{ background:"#f2f2f4", borderTop:"1px solid rgba(0,0,0,0.06)", padding:"40px 6%" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
+            flexWrap:"wrap", gap:20 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <AlvrynIcon size={32}/>
+              <div>
+                <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:900, fontSize:15, color:"#0a0a0a" }}>ALVRYN</div>
+                <div style={{ fontFamily:"'Space Mono',monospace", fontSize:8, color:PALETTES[0].accent, letterSpacing:"0.18em" }}>TRAVEL BEYOND BOUNDARIES</div>
               </div>
             </div>
-            <div className="wa-messages">
-              <div className="wa-msg user">blr to mumbai tomorrow<div className="wa-time">10:42</div></div>
-              <div className="wa-msg bot">
-                Here are flights for <strong>16 Mar, BLR→BOM</strong>:<br/><br/>
-                1. IndiGo 6E-732 · 07:00 · <strong>₹3,500</strong><br/>
-                2. SpiceJet SG-101 · 11:00 · <strong>₹3,200</strong><br/>
-                3. Akasa QP-204 · 18:00 · <strong>₹4,100</strong><br/><br/>
-                Reply <strong>1, 2 or 3</strong> to book.
-                <div className="wa-time">10:42</div>
-              </div>
-              <div className="wa-msg user">2 window seat<div className="wa-time">10:43</div></div>
-              <div className="wa-msg bot">
-                ✅ <strong>SpiceJet SG-101</strong> selected<br/>
-                Window seat 12A assigned<br/><br/>
-                💳 Pay ₹3,200 to confirm:<br/>
-                <strong>pay.cometai.in/bk291</strong>
-                <div className="wa-time">10:43</div>
-              </div>
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#aaa" }}>© 2026 Alvryn · Built with ☕ in Bangalore</div>
+            <div style={{ display:"flex", gap:24 }}>
+              {["Privacy","Terms","Contact"].map(l=>(
+                <span key={l} style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#aaa", cursor:"pointer" }}>{l}</span>
+              ))}
             </div>
           </div>
-        </div>
-      </section>
-
-      <div className="section-divider"/>
-
-      {/* ── CTA ── */}
-      <section className="cta-section">
-        <div className="cta-inner">
-          <h2 className="cta-title">Ready for takeoff?</h2>
-          <p className="cta-sub">Join CometAI Travel and experience the future of flight booking — free, fast and intelligent.</p>
-          <div className="cta-btns">
-            <button className="btn-primary-hero" onClick={()=>navigate("/register")}>
-              🚀 Create Free Account
-            </button>
-            <button className="btn-secondary-hero" onClick={()=>navigate("/login")}>
-              Already have an account
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* ── FOOTER ── */}
-      <footer className="landing-footer">
-        <div className="footer-logo">☄️ COMETAI</div>
-        <div className="footer-text">© 2026 CometAI Travel. Built with ❤️ in India.</div>
-        <div className="footer-links">
-          <span className="footer-link">Privacy</span>
-<span className="footer-link">Terms</span>
-<span className="footer-link">Contact</span>
-        </div>
-      </footer>
+        </footer>
+      </div>
     </>
+  );
+}
+
+// ── Small search mockup card used in hero ─────────────────────────────────────
+function SearchMockupCard({ accent }) {
+  const queries = [
+    "Flights BLR → GOA Friday under ₹3500",
+    "Bus Hyderabad to Chennai 6 AM",
+    "Cheapest flight Delhi next week",
+  ];
+  const [qi, setQi] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setQi(q => (q+1) % queries.length), 3200);
+    return () => clearInterval(t);
+  }, [queries.length]);
+  const results = [
+    { name:"SkyWings", code:"SW-204", time:"06:10→08:55", price:"₹3,240", tag:"CHEAPEST" },
+    { name:"BluJet",   code:"BJ-501", time:"09:30→12:15", price:"₹3,840", tag:"" },
+    { name:"AirFlow",  code:"AF-173", time:"14:20→17:05", price:"₹4,100", tag:"" },
+  ];
+  return (
+    <div style={{ width:460, background:"#fff", borderRadius:22,
+      boxShadow:"0 32px 80px rgba(0,0,0,0.10)", overflow:"hidden",
+      border:"1px solid rgba(0,0,0,0.05)" }}>
+      <div style={{ background:"#f4f4f6", padding:"12px 16px",
+        display:"flex", alignItems:"center", gap:7, borderBottom:"1px solid rgba(0,0,0,0.05)" }}>
+        {["#FF5F57","#FFBD2E","#28CA41"].map(c=>(
+          <div key={c} style={{ width:11, height:11, borderRadius:"50%", background:c }}/>
+        ))}
+        <div style={{ flex:1, background:"#fff", borderRadius:7, padding:"5px 12px",
+          marginLeft:8, fontSize:11, color:"#bbb", fontFamily:"'DM Sans',sans-serif" }}>alvryn.in/search</div>
+      </div>
+      <div style={{ padding:"18px 18px 8px" }}>
+        <div style={{ background:"#f8f8fa", borderRadius:12, padding:"12px 15px",
+          display:"flex", alignItems:"center", gap:10, border:`1.5px solid ${accent}33` }}>
+          <span style={{ fontSize:15 }}>🔍</span>
+          <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#555", flex:1 }}>
+            {queries[qi]}<span style={{ animation:"blink 0.9s step-end infinite", color:accent }}>|</span>
+          </span>
+        </div>
+      </div>
+      <div style={{ padding:"8px 18px 18px", display:"flex", flexDirection:"column", gap:8 }}>
+        {results.map((f,i)=>(
+          <div key={i} style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
+            padding:"12px 14px", borderRadius:11,
+            background: i===0 ? `${accent}0E` : "#fafafa",
+            border:`1px solid ${i===0 ? accent+"26" : "rgba(0,0,0,0.04)"}` }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ width:32, height:32, borderRadius:9, background:`${accent}14`,
+                display:"flex", alignItems:"center", justifyContent:"center", fontSize:15 }}>✈️</div>
+              <div>
+                <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:12.5, color:"#111" }}>
+                  {f.name} <span style={{ fontWeight:400, color:"#ccc", fontSize:11 }}>{f.code}</span>
+                </div>
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11.5, color:"#999" }}>{f.time}</div>
+              </div>
+            </div>
+            <div style={{ textAlign:"right" }}>
+              <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:14,
+                color: i===0 ? accent : "#111" }}>{f.price}</div>
+              {f.tag && <div style={{ fontFamily:"'Space Mono',monospace", fontSize:8,
+                background:accent, color:"#fff", padding:"2px 5px", borderRadius:4, marginTop:2 }}>{f.tag}</div>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

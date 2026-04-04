@@ -690,7 +690,7 @@ app.post("/whatsapp", async (req, res) => {
         const f = sorted[0];
         const fromCode = CITY_TO_IATA[session.from] || session.from.slice(0,3).toUpperCase();
         const toCode   = CITY_TO_IATA[session.to]   || session.to.slice(0,3).toUpperCase();
-        const link = \`https://www.aviasales.com/search/\${fromCode}\${session.dateStr||""}\${toCode}1?marker=714667&trs=512951&sub_id=alvryn_whatsapp\`;
+const link = `https://www.aviasales.com/search/${fromCode}${session.dateStr||""}${toCode}1?marker=714667&trs=512951&sub_id=alvryn_whatsapp`;
         reply = \`💰 *Cheapest option for \${session.from.toUpperCase()} → \${session.to.toUpperCase()}*\n\n✈️ \${f.airline}\n⏰ \${new Date(f.departure_time).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false})}\n💰 Approx ₹\${f.price.toLocaleString()}–₹\${Math.round(f.price*1.2).toLocaleString()}\n\n💡 Morning flights are usually 15–20% cheaper on this route.\n\n👉 Check live prices:\n\${link}\n\n_Prices may vary. Live availability on partner site._\`;
         const twiml = new twilio.twiml.MessagingResponse();
         twiml.message(reply);

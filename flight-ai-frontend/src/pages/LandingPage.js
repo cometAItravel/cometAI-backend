@@ -45,7 +45,7 @@ const AlvrynIcon = ({ size = 44, color = "#6C63FF", animate = false }) => (
     <defs>
       <linearGradient id="icon_g" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stopColor="#c9a84c"/>
-        <stop offset="50%" stopColor="#00C2FF"/>
+        <stop offset="50%" stopColor="#f0d080"/>
         <stop offset="100%" stopColor="#8B6914"/>
       </linearGradient>
       <filter id="icon_glow">
@@ -337,12 +337,12 @@ export default function LandingPage() {
   const [sec2Ref, sec2Offset] = useParallax(0.12);
 
   const features = [
-    { icon:"🧠", title:"AI Natural Search", desc:"Type like texting — any language, typos, Hindi-English mix. Alvryn understands everything.", color:"#6C63FF" },
-    { icon:"✈️", title:"Flight Booking", desc:"500+ domestic & international routes. Real-time fares, instant confirmation.", color:"#0284C7" },
-    { icon:"🚌", title:"Bus Booking", desc:"AC Sleeper, Semi-Sleeper across 30+ intercity routes. Book instantly.", color:"#059669" },
-    { icon:"💺", title:"Seat Selection", desc:"Pick your exact seat on flights and buses — window, aisle, or any preference.", color:"#EA580C" },
-    { icon:"💬", title:"WhatsApp Native", desc:"Book entire trips without opening a browser. Just message Alvryn AI.", color:"#25D366" },
-    { icon:"🔒", title:"Zero Hidden Fees", desc:"The price you see is the price you pay. Always.", color:"#7C3AED" },
+    { icon:"🧠", title:"AI Natural Search",  desc:"Type like texting — any language, typos, Hindi-English mix. Alvryn understands everything.", color:"#c9a84c" },
+    { icon:"✈️", title:"Flight Booking",     desc:"Domestic and international routes. Best fares via trusted partners, instantly.", color:"#0284C7" },
+    { icon:"🚌", title:"Bus Booking",        desc:"AC Sleeper, Semi-Sleeper buses across 50+ intercity routes in India.", color:"#059669" },
+    { icon:"🏨", title:"Hotel Booking",      desc:"Hotels worldwide — from budget stays to luxury resorts. Best prices via partner.", color:"#EA580C" },
+    { icon:"💬", title:"WhatsApp Native",    desc:"Book flights, buses and hotels entirely inside WhatsApp. No app needed.", color:"#25D366" },
+    { icon:"🔒", title:"Zero Hidden Fees",   desc:"The price you see is the price you pay. We may earn a small commission at no cost to you.", color:"#7C3AED" },
   ];
 
   return (
@@ -414,8 +414,9 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="nav-links" style={{ display:"flex", gap:32 }}>
-            {["How it works","Features","Flights","Buses"].map(l => (
-              <span key={l} style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:500, color:T.text, opacity:0.6, cursor:"pointer", transition:"opacity 0.2s" }}
+            {[["How it works","how-it-works"],["Features","features"],["Flights","cta"],["Buses","cta"]].map(([l,id]) => (
+              <span key={l} onClick={()=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth"});}}
+                style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:500, color:T.text, opacity:0.6, cursor:"pointer", transition:"opacity 0.2s" }}
                 onMouseEnter={e=>e.target.style.opacity=1} onMouseLeave={e=>e.target.style.opacity=0.6}>{l}</span>
             ))}
           </div>
@@ -467,8 +468,9 @@ export default function LandingPage() {
                 {/* Typewriter sub */}
                 <div style={{ fontSize:"clamp(16px,2vw,21px)", color:"#666", lineHeight:1.6, marginTop:24, marginBottom:48,
                   opacity: heroReady ? 1 : 0, transform: heroReady ? "translateY(0)" : "translateY(14px)", transition:"all 0.7s 1.8s ease" }}>
-                  Book flights & buses with{" "}
-                  <TypeText color={T.accent} phrases={["plain English.","a WhatsApp message.","AI superpowers.","zero hidden fees.","any language."]}/>
+                  Flights, buses and hotels — all in one sentence.
+                  <br/>No filters. No confusion. Just tell Alvryn what you want.{" "}
+                  <TypeText color={T.accent} phrases={["plain English.","a WhatsApp message.","in any language.","zero hidden fees.","even with typos."]}/>
                 </div>
 
                 {/* CTAs */}
@@ -495,9 +497,12 @@ export default function LandingPage() {
                 {/* Trust pills */}
                 <div style={{ display:"flex", gap:24, marginTop:40, flexWrap:"wrap",
                   opacity: heroReady ? 0.6 : 0, transition:"opacity 0.7s 2.4s ease" }}>
-                  {["🔒 Secure","📧 Instant Tickets","💬 WhatsApp","500+ Routes"].map(b => (
+                  {["⚡ AI-Powered","📊 Real-time results","🔒 Trusted partners","500+ Routes"].map(b => (
                     <span key={b} style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:"#999", letterSpacing:"0.05em" }}>{b}</span>
                   ))}
+                  <div style={{ width:"100%", marginTop:4, fontFamily:"'DM Sans',sans-serif", fontSize:12, color:"#bbb" }}>
+                    Powered by AI · Real-time results · Trusted booking partners
+                  </div>
                 </div>
               </div>
 
@@ -519,7 +524,7 @@ export default function LandingPage() {
         {/* ══════════════════════════════════
             HOW IT WORKS
         ══════════════════════════════════ */}
-        <section ref={sec2Ref} style={{ minHeight:"100vh", background:THEMES[1].bg, position:"relative", overflow:"hidden", padding:"110px 5%", display:"flex", alignItems:"center", transition:"background 1.5s ease" }}>
+        <section id="how-it-works" ref={sec2Ref} style={{ minHeight:"100vh", background:THEMES[1].bg, position:"relative", overflow:"hidden", padding:"110px 5%", display:"flex", alignItems:"center", transition:"background 1.5s ease" }}>
           <div style={{ position:"absolute", top:"50%", right:"-8%", width:500, height:500, borderRadius:"50%",
             background:`radial-gradient(circle,${THEMES[1].accent}08,transparent 70%)`,
             transform:`translateY(calc(-50% + ${sec2Offset}px))`, pointerEvents:"none", transition:"transform 0.1s linear" }}/>
@@ -566,7 +571,7 @@ export default function LandingPage() {
         {/* ══════════════════════════════════
             FEATURES
         ══════════════════════════════════ */}
-        <section style={{ minHeight:"100vh", background:THEMES[2].bg, position:"relative", overflow:"hidden", padding:"110px 5%", transition:"background 1.5s ease" }}>
+        <section id="features" style={{ minHeight:"100vh", background:THEMES[2].bg, position:"relative", overflow:"hidden", padding:"110px 5%", transition:"background 1.5s ease" }}>
           <div style={{ position:"absolute", top:0, left:0, right:0, bottom:0, background:`radial-gradient(ellipse at 25% 60%,${THEMES[2].accent}06 0%,transparent 55%)`, pointerEvents:"none" }}/>
           <div style={{ position:"relative", zIndex:2 }}>
             <Reveal style={{ textAlign:"center" }}>
@@ -606,10 +611,10 @@ export default function LandingPage() {
             </Reveal>
             <div className="stats-grid" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:22 }}>
               {[
-                { val:12000, suf:"+", label:"Waitlist Members" },
+                { val:500,  suf:"+", label:"Routes Available" },
                 { val:98,    suf:"%", label:"Satisfaction Rate" },
                 { val:500,   suf:"+", label:"Routes Covered" },
-                { val:60,    suf:"s", label:"Avg Booking Time" },
+                { val:60,    suf:"s", label:"Avg Search Time" },
               ].map((s, i) => (
                 <Reveal key={i} delay={i * 90}>
                   <BorderGlowCard accentColor={THEMES[3].accent} style={{ borderRadius:20 }}>
@@ -727,6 +732,178 @@ export default function LandingPage() {
           </div>
         </section>
 
+
+        {/* ══ AI EXPERIENCE SECTION ══ */}
+        <section style={{ background:THEMES[1].bg, position:"relative", overflow:"hidden", padding:"100px 5%", transition:"background 1.5s ease" }}>
+          <div style={{ position:"relative", zIndex:2, maxWidth:960, margin:"0 auto" }}>
+            <Reveal style={{ textAlign:"center", marginBottom:60 }}>
+              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:THEMES[1].accent, letterSpacing:"0.22em", marginBottom:16 }}>AI INTELLIGENCE</div>
+              <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", color:THEMES[1].text, lineHeight:1.05, marginBottom:10 }}>Not just search.</div>
+              <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", lineHeight:1.05, background:THEMES[1].grad, WebkitBackgroundClip:"text", backgroundClip:"text", WebkitTextFillColor:"transparent" }}>Smart travel decisions.</div>
+              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, color:"#666", lineHeight:1.7, maxWidth:580, margin:"20px auto 0" }}>
+                Alvryn doesn't just show options — it tells you which one to pick and why. Like having a travel expert in your pocket.
+              </p>
+            </Reveal>
+
+            {/* Sample AI response UI */}
+            <div className="wa-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:48, alignItems:"center" }}>
+              <Reveal>
+                <div style={{ background:"rgba(255,255,255,0.9)", backdropFilter:"blur(10px)", borderRadius:22, overflow:"hidden", boxShadow:"0 20px 60px rgba(0,0,0,0.08)", border:"1px solid rgba(201,168,76,0.2)" }}>
+                  <div style={{ background:"linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)", backgroundSize:"200% 200%", padding:"14px 20px", display:"flex", alignItems:"center", gap:10 }}>
+                    <div style={{ width:32, height:32, borderRadius:"50%", background:"rgba(255,255,255,0.3)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>✈️</div>
+                    <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:700, color:"#1a1410", fontSize:15 }}>Alvryn AI Response</div>
+                  </div>
+                  <div style={{ padding:"20px" }}>
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#555", marginBottom:14, lineHeight:1.6 }}>
+                      ✈️ I found the best options for your trip from Bangalore to Mumbai.
+                    </div>
+                    <div style={{ background:"rgba(201,168,76,0.08)", borderRadius:12, padding:"12px 14px", marginBottom:10, border:"1px solid rgba(201,168,76,0.2)" }}>
+                      <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:"#8B6914", marginBottom:6 }}>💡 AI INSIGHT</div>
+                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#1a1410" }}>Morning flights are typically 18% cheaper for this route. Booking now usually saves ₹400–₹800 vs last-minute.</div>
+                    </div>
+                    {[
+                      { label:"🏷️ Likely cheapest", range:"₹3,200–₹3,800", tag:"CHEAPEST", why:"Early morning departure, no frills" },
+                      { label:"⚡ Fastest option",   range:"₹4,200–₹4,800", tag:"FASTEST",  why:"Direct, 1h 45m, premium airline" },
+                      { label:"⭐ Best overall",     range:"₹3,800–₹4,400", tag:"TOP PICK", why:"Good timing, highly rated airline" },
+                    ].map((opt,i)=>(
+                      <div key={i} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 12px", borderRadius:10, background:i===2?"rgba(201,168,76,0.08)":"transparent", border:i===2?"1px solid rgba(201,168,76,0.25)":"1px solid transparent", marginBottom:6 }}>
+                        <div>
+                          <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#1a1410", fontWeight:600 }}>{opt.label}</div>
+                          <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:"#888", marginTop:2 }}>{opt.why}</div>
+                        </div>
+                        <div style={{ textAlign:"right" }}>
+                          <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:700, fontSize:15, color:"#8B6914" }}>{opt.range}</div>
+                          <div style={{ fontFamily:"'Space Mono',monospace", fontSize:8, color:i===2?"#c9a84c":"#aaa", marginTop:2 }}>{opt.tag}</div>
+                        </div>
+                      </div>
+                    ))}
+                    <div style={{ fontSize:11, color:"#bbb", fontFamily:"'DM Sans',sans-serif", marginTop:8, marginBottom:14 }}>
+                      Prices may vary. Live availability shown on partner site.
+                    </div>
+                    <button style={{ width:"100%", padding:"11px", borderRadius:11, fontSize:14, fontWeight:700, fontFamily:"'Cormorant Garamond',serif", letterSpacing:"0.06em", color:"#1a1410", border:"none", cursor:"pointer", background:"linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)", backgroundSize:"200% 200%" }}>
+                      Check Live Prices →
+                    </button>
+                  </div>
+                </div>
+              </Reveal>
+              <Reveal delay={180}>
+                <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+                  <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:THEMES[1].accent, letterSpacing:"0.18em", marginBottom:4 }}>DECISION SHORTCUTS</div>
+                  <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(22px,3vw,36px)", color:THEMES[1].text, lineHeight:1.1, marginBottom:8 }}>Make decisions instantly.</div>
+                  {[
+                    { icon:"💰", label:"Cheapest", desc:"Show the lowest-cost option across all platforms for your route and date." },
+                    { icon:"⚡", label:"Fastest",  desc:"Prioritise direct routes and early arrivals. No long layovers." },
+                    { icon:"😌", label:"Best comfort", desc:"Highest-rated option balancing price, timing and airline quality." },
+                  ].map((item,i)=>(
+                    <div key={i} style={{ display:"flex", gap:16, padding:"18px 20px", background:"rgba(255,255,255,0.88)", backdropFilter:"blur(10px)", borderRadius:16, border:"1px solid rgba(201,168,76,0.15)", boxShadow:"0 4px 14px rgba(0,0,0,0.04)" }}>
+                      <div style={{ fontSize:28, flexShrink:0 }}>{item.icon}</div>
+                      <div>
+                        <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:700, fontSize:18, color:"#1a1410", marginBottom:5 }}>{item.label}</div>
+                        <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#666", lineHeight:1.6 }}>{item.desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Reveal>
+            </div>
+          </div>
+        </section>
+
+        {/* ══ PLAN MY TRIP ══ */}
+        <section style={{ background:THEMES[2].bg, position:"relative", overflow:"hidden", padding:"100px 5%", transition:"background 1.5s ease" }}>
+          <div style={{ position:"relative", zIndex:2, maxWidth:900, margin:"0 auto" }}>
+            <Reveal style={{ textAlign:"center", marginBottom:56 }}>
+              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:THEMES[2].accent, letterSpacing:"0.22em", marginBottom:16 }}>PLAN MY TRIP</div>
+              <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", color:THEMES[2].text, lineHeight:1.05, marginBottom:10 }}>Not sure where to go?</div>
+              <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", lineHeight:1.05, background:THEMES[2].grad, WebkitBackgroundClip:"text", backgroundClip:"text", WebkitTextFillColor:"transparent" }}>Let Alvryn plan it for you.</div>
+              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, color:"#666", lineHeight:1.7, maxWidth:520, margin:"20px auto 0" }}>
+                Just tell Alvryn your budget and days. Get a full trip plan — flight, bus, hotel and estimated costs — instantly.
+              </p>
+            </Reveal>
+            <div className="wa-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:40, alignItems:"flex-start" }}>
+              <Reveal>
+                <div style={{ background:"rgba(255,255,255,0.9)", borderRadius:20, padding:"28px 24px", boxShadow:"0 8px 30px rgba(0,0,0,0.07)", border:"1px solid rgba(201,168,76,0.18)" }}>
+                  <div style={{ fontFamily:"'Space Mono',monospace", fontSize:9, color:"#888", letterSpacing:"0.15em", marginBottom:12 }}>YOU TYPE</div>
+                  <div style={{ background:"rgba(201,168,76,0.07)", borderRadius:12, padding:"14px 16px", fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#1a1410", lineHeight:1.6, border:"1px solid rgba(201,168,76,0.2)", marginBottom:20 }}>
+                    "I have ₹5000 and 2 days — suggest a trip from Bangalore"
+                  </div>
+                  <div style={{ fontFamily:"'Space Mono',monospace", fontSize:9, color:"#888", letterSpacing:"0.15em", marginBottom:12 }}>ALVRYN SUGGESTS</div>
+                  <div style={{ borderRadius:14, overflow:"hidden", border:"1px solid rgba(201,168,76,0.2)" }}>
+                    <div style={{ background:"linear-gradient(135deg,#c9a84c,#f0d080)", padding:"12px 16px" }}>
+                      <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:700, fontSize:18, color:"#1a1410" }}>🌴 Destination: Goa</div>
+                    </div>
+                    <div style={{ padding:"16px", background:"rgba(255,255,255,0.95)" }}>
+                      {[
+                        ["✈️ Travel",  "Approx ₹2,400–₹2,800 round trip"],
+                        ["🏨 Stay",    "Approx ₹1,200–₹1,800 (1 night)"],
+                        ["🍽️ Extras", "Budget ₹700–₹1,000"],
+                        ["💰 Total",   "Approx ₹4,300–₹5,600"],
+                      ].map(([k,v])=>(
+                        <div key={k} style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:"1px solid rgba(201,168,76,0.08)", fontFamily:"'DM Sans',sans-serif", fontSize:13 }}>
+                          <span style={{ color:"#555" }}>{k}</span>
+                          <span style={{ color:"#1a1410", fontWeight:600 }}>{v}</span>
+                        </div>
+                      ))}
+                      <div style={{ fontSize:11, color:"#bbb", marginTop:10, fontFamily:"'DM Sans',sans-serif" }}>Prices are estimates. Live prices shown on partner site.</div>
+                    </div>
+                  </div>
+                </div>
+              </Reveal>
+              <Reveal delay={160}>
+                <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+                  {[
+                    { dest:"🌴 Goa",    budget:"₹4,000–₹6,000", days:"2–3 days", why:"Beaches, nightlife, great value from Bangalore" },
+                    { dest:"🌿 Coorg",  budget:"₹2,500–₹4,000", days:"1–2 days", why:"Coffee estates, waterfalls, peaceful getaway" },
+                    { dest:"🏔️ Ooty",   budget:"₹2,000–₹3,500", days:"1–2 days", why:"Hill station, tea gardens, cool weather" },
+                    { dest:"🌊 Pondicherry", budget:"₹3,000–₹5,000", days:"2 days", why:"French architecture, beaches, great food" },
+                  ].map((d,i)=>(
+                    <div key={i} style={{ padding:"18px 20px", background:"rgba(255,255,255,0.88)", backdropFilter:"blur(10px)", borderRadius:16, border:"1px solid rgba(201,168,76,0.15)", boxShadow:"0 4px 14px rgba(0,0,0,0.04)" }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6 }}>
+                        <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:700, fontSize:18, color:"#1a1410" }}>{d.dest}</div>
+                        <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:"#8B6914" }}>{d.budget}</div>
+                      </div>
+                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:"#888", marginBottom:4 }}>{d.days}</div>
+                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#555", lineHeight:1.5 }}>{d.why}</div>
+                    </div>
+                  ))}
+                  <div style={{ padding:"14px 18px", background:"rgba(201,168,76,0.07)", borderRadius:14, border:"1px solid rgba(201,168,76,0.2)", fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#555" }}>
+                    💬 Also works on WhatsApp — just message us your budget and days.
+                  </div>
+                </div>
+              </Reveal>
+            </div>
+          </div>
+        </section>
+
+        {/* ══ TRUSTED PARTNERS ══ */}
+        <section style={{ background:"#faf8f4", position:"relative", overflow:"hidden", padding:"70px 5%", transition:"background 1.5s ease" }}>
+          <div style={{ position:"relative", zIndex:2, maxWidth:860, margin:"0 auto", textAlign:"center" }}>
+            <Reveal>
+              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:THEMES[0].accent, letterSpacing:"0.22em", marginBottom:16 }}>OUR PARTNERS</div>
+              <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(22px,3.5vw,44px)", color:"#1a1410", marginBottom:10 }}>Book with trusted platforms.</div>
+              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, color:"#666", lineHeight:1.7, maxWidth:520, margin:"0 auto 40px" }}>
+                Alvryn helps you find the best options — bookings are completed securely on leading travel platforms.
+              </p>
+              <div style={{ display:"flex", gap:20, justifyContent:"center", flexWrap:"wrap", marginBottom:28 }}>
+                {[
+                  { name:"Aviasales",   icon:"✈️", desc:"Flights worldwide", color:"#e8f4ff" },
+                  { name:"RedBus",      icon:"🚌", desc:"Buses across India", color:"#fff3e8" },
+                  { name:"Booking.com", icon:"🏨", desc:"Hotels worldwide",  color:"#e8fff3" },
+                ].map(p=>(
+                  <div key={p.name} style={{ padding:"20px 28px", background:p.color, borderRadius:16, border:"1px solid rgba(0,0,0,0.06)", minWidth:160, flex:1, maxWidth:220 }}>
+                    <div style={{ fontSize:28, marginBottom:8 }}>{p.icon}</div>
+                    <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:700, fontSize:18, color:"#1a1410", marginBottom:4 }}>{p.name}</div>
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:"#666" }}>{p.desc}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#aaa", lineHeight:1.7 }}>
+                Alvryn is a travel discovery platform. We may earn a commission from partner links at no extra cost to you.
+              </div>
+            </Reveal>
+          </div>
+        </section>
+
         {/* BLOG SECTION */}
         <section style={{ background:"#f5f3ef", position:"relative", overflow:"hidden", padding:"100px 5%", transition:"background 1.5s ease" }}>
           <div style={{ position:"relative", zIndex:2, maxWidth:960, margin:"0 auto" }}>
@@ -772,13 +949,13 @@ export default function LandingPage() {
         {/* ══════════════════════════════════
             FINAL CTA
         ══════════════════════════════════ */}
-        <section style={{ minHeight:"60vh", background:THEMES[0].bg, position:"relative", overflow:"hidden", padding:"110px 5%", display:"flex", alignItems:"center", justifyContent:"center", textAlign:"center", transition:"background 1.5s ease" }}>
+        <section id="cta" style={{ minHeight:"60vh", background:THEMES[0].bg, position:"relative", overflow:"hidden", padding:"110px 5%", display:"flex", alignItems:"center", justifyContent:"center", textAlign:"center", transition:"background 1.5s ease" }}>
           <div style={{ position:"relative", zIndex:2, maxWidth:640 }}>
             <Reveal>
               <div style={{ animation:"floatY 4s ease-in-out infinite", marginBottom:30 }}>
                 <AlvrynIcon size={72} animate/>
               </div>
-              <BlurText text="Ready to fly smarter?" style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(36px,6vw,76px)", color:"#0a0a0a", lineHeight:1.05, display:"block", marginBottom:24 }}/>
+              <BlurText text="Start planning your next trip." style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(32px,5vw,66px)", color:"#1a1410", lineHeight:1.05, display:"block", marginBottom:24 }}/>
               <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:17, color:"#666", lineHeight:1.7, marginBottom:52 }}>
                 India's most intelligent travel booking platform. Best fares on flights and buses, instantly.
               </p>

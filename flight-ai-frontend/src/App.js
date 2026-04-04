@@ -1,4 +1,4 @@
-/* eslint-disable no-useless-escape */
+/* eslint-disable no-useless-escape, no-unused-vars */
 /**
  * ALVRYN — App.js
  * Flights via TravelPayouts/Aviasales (trs=512951, shmarker=714667)
@@ -433,6 +433,47 @@ const BUS_ROUTES = [
   {from:"Kolkata",  to:"Guwahati",   dur:"12h",   dep:"17:00",arr:"05:00",price:900,  type:"AC Sleeper",   op:"Assam SRTC"},
   {from:"Kolkata",  to:"Siliguri",   dur:"8h",    dep:"20:00",arr:"04:00",price:700,  type:"AC Sleeper",   op:"NBSTC"},
   {from:"Kolkata",  to:"Ranchi",     dur:"6h",    dep:"07:00",arr:"13:00",price:550,  type:"AC Seater",    op:"JSTC"},
+  // More South India routes
+  {from:"Bangalore",to:"Salem",      dur:"3h 30m",dep:"07:30",arr:"11:00",price:320,  type:"AC Seater",    op:"KSRTC"},
+  {from:"Bangalore",to:"Salem",      dur:"3h 30m",dep:"14:00",arr:"17:30",price:300,  type:"AC Seater",    op:"SRM Travels"},
+  {from:"Bangalore",to:"Vellore",    dur:"3h",    dep:"06:30",arr:"09:30",price:280,  type:"AC Seater",    op:"TNSTC"},
+  {from:"Bangalore",to:"Trichy",     dur:"6h",    dep:"22:00",arr:"04:00",price:550,  type:"AC Sleeper",   op:"TNSTC"},
+  {from:"Bangalore",to:"Tirunelveli",dur:"9h",    dep:"21:00",arr:"06:00",price:750,  type:"AC Sleeper",   op:"Parveen Travels"},
+  {from:"Bangalore",to:"Nagercoil",  dur:"10h",   dep:"20:30",arr:"06:30",price:800,  type:"AC Sleeper",   op:"KSRTC"},
+  {from:"Bangalore",to:"Pondicherry",dur:"5h",    dep:"07:00",arr:"12:00",price:450,  type:"AC Seater",    op:"TNSTC"},
+  {from:"Bangalore",to:"Ooty",       dur:"5h",    dep:"07:30",arr:"12:30",price:380,  type:"AC Seater",    op:"KSRTC"},
+  {from:"Bangalore",to:"Dharmapuri", dur:"3h",    dep:"08:00",arr:"11:00",price:260,  type:"AC Seater",    op:"KSRTC"},
+  {from:"Bangalore",to:"Hosur",      dur:"1h 30m",dep:"07:00",arr:"08:30",price:120,  type:"AC Seater",    op:"KSRTC"},
+  {from:"Chennai",  to:"Trichy",     dur:"5h",    dep:"07:00",arr:"12:00",price:400,  type:"AC Seater",    op:"TNSTC"},
+  {from:"Chennai",  to:"Salem",      dur:"4h",    dep:"07:30",arr:"11:30",price:300,  type:"AC Seater",    op:"TNSTC"},
+  {from:"Chennai",  to:"Vellore",    dur:"2h 30m",dep:"07:00",arr:"09:30",price:200,  type:"AC Seater",    op:"TNSTC"},
+  {from:"Chennai",  to:"Pondicherry",dur:"3h",    dep:"07:00",arr:"10:00",price:220,  type:"AC Seater",    op:"TNSTC"},
+  {from:"Chennai",  to:"Tirunelveli",dur:"8h",    dep:"21:00",arr:"05:00",price:600,  type:"AC Sleeper",   op:"Parveen Travels"},
+  {from:"Chennai",  to:"Nagercoil",  dur:"9h",    dep:"20:30",arr:"05:30",price:650,  type:"AC Sleeper",   op:"TNSTC"},
+  {from:"Chennai",  to:"Ooty",       dur:"7h",    dep:"22:00",arr:"05:00",price:550,  type:"AC Sleeper",   op:"TNSTC"},
+  {from:"Chennai",  to:"Thanjavur",  dur:"6h",    dep:"22:30",arr:"04:30",price:480,  type:"AC Sleeper",   op:"TNSTC"},
+  {from:"Coimbatore",to:"Chennai",   dur:"7h",    dep:"21:00",arr:"04:00",price:600,  type:"AC Sleeper",   op:"TNSTC"},
+  {from:"Coimbatore",to:"Bangalore", dur:"4h",    dep:"07:00",arr:"11:00",price:380,  type:"AC Seater",    op:"KSRTC"},
+  {from:"Coimbatore",to:"Ooty",      dur:"1h 30m",dep:"06:00",arr:"07:30",price:120,  type:"AC Seater",    op:"TNSTC"},
+  {from:"Coimbatore",to:"Trivandrum",dur:"8h",    dep:"22:00",arr:"06:00",price:700,  type:"AC Sleeper",   op:"KSRTC"},
+  {from:"Coimbatore",to:"Madurai",   dur:"3h",    dep:"07:00",arr:"10:00",price:280,  type:"AC Seater",    op:"TNSTC"},
+  {from:"Madurai",  to:"Chennai",    dur:"8h",    dep:"21:00",arr:"05:00",price:580,  type:"AC Sleeper",   op:"TNSTC"},
+  {from:"Madurai",  to:"Trichy",     dur:"2h",    dep:"07:00",arr:"09:00",price:180,  type:"AC Seater",    op:"TNSTC"},
+  {from:"Madurai",  to:"Nagercoil",  dur:"3h",    dep:"07:00",arr:"10:00",price:250,  type:"AC Seater",    op:"TNSTC"},
+  {from:"Madurai",  to:"Tirunelveli",dur:"2h",    dep:"07:00",arr:"09:00",price:180,  type:"AC Seater",    op:"TNSTC"},
+  {from:"Madurai",  to:"Coimbatore", dur:"3h",    dep:"07:30",arr:"10:30",price:280,  type:"AC Seater",    op:"TNSTC"},
+  {from:"Trivandrum",to:"Kochi",     dur:"4h",    dep:"07:00",arr:"11:00",price:350,  type:"AC Seater",    op:"KSRTC"},
+  {from:"Kochi",    to:"Trivandrum", dur:"4h",    dep:"07:30",arr:"11:30",price:350,  type:"AC Seater",    op:"KSRTC"},
+  {from:"Kochi",    to:"Bangalore",  dur:"10h",   dep:"22:00",arr:"08:00",price:950,  type:"AC Sleeper",   op:"KSRTC"},
+  {from:"Kochi",    to:"Chennai",    dur:"8h",    dep:"22:00",arr:"06:00",price:800,  type:"AC Sleeper",   op:"TNSTC"},
+  {from:"Kochi",    to:"Coimbatore", dur:"4h 30m",dep:"07:00",arr:"11:30",price:380,  type:"AC Seater",    op:"KSRTC"},
+  // More North/Central India
+  {from:"Delhi",    to:"Manali",     dur:"14h",   dep:"17:00",arr:"07:00",price:1100, type:"Semi-Sleeper", op:"HRTC"},
+  {from:"Delhi",    to:"Rishikesh",  dur:"6h",    dep:"06:00",arr:"12:00",price:520,  type:"AC Seater",    op:"Uttarakhand Roadways"},
+  {from:"Delhi",    to:"Mathura",    dur:"3h",    dep:"07:00",arr:"10:00",price:320,  type:"AC Seater",    op:"UP Roadways"},
+  {from:"Jaipur",   to:"Ajmer",      dur:"2h 30m",dep:"07:00",arr:"09:30",price:200,  type:"AC Seater",    op:"RSRTC"},
+  {from:"Lucknow",  to:"Agra",       dur:"5h",    dep:"07:00",arr:"12:00",price:420,  type:"AC Seater",    op:"UP SRTC"},
+  {from:"Lucknow",  to:"Varanasi",   dur:"5h",    dep:"07:00",arr:"12:00",price:380,  type:"AC Seater",    op:"UP SRTC"},
 ];
 
 // ─── HOTEL DESTINATIONS ───────────────────────────────────────────────────────
@@ -676,6 +717,53 @@ function SeatModal({passengers,onConfirm,onCancel}){
 // ═══════════════════════════════════════════════════════
 //  SEARCH PAGE
 // ═══════════════════════════════════════════════════════
+// ─── AI INSIGHT GENERATOR ─────────────────────────────────────────────────────
+function getFlightInsight(from, to, flights) {
+  if (!flights || flights.length === 0) return null;
+  const prices = flights.map(f => f.price);
+  const min = Math.min(...prices), max = Math.max(...prices);
+  const morningFlights = flights.filter(f => { const h = new Date(f.departure_time).getHours(); return h >= 5 && h < 12; });
+  const eveningFlights = flights.filter(f => { const h = new Date(f.departure_time).getHours(); return h >= 17; });
+  const morningAvg = morningFlights.length ? Math.round(morningFlights.reduce((s,f)=>s+f.price,0)/morningFlights.length) : null;
+  const eveningAvg = eveningFlights.length ? Math.round(eveningFlights.reduce((s,f)=>s+f.price,0)/eveningFlights.length) : null;
+  const diff = morningAvg && eveningAvg ? Math.round(Math.abs(morningAvg-eveningAvg)/eveningAvg*100) : 0;
+  if (diff > 5 && morningAvg < eveningAvg) return `💡 Morning flights on this route are typically ${diff}% cheaper. Booking early usually saves ₹${Math.round((eveningAvg-morningAvg)/100)*100}–₹${Math.round((eveningAvg-morningAvg)/100)*100+200}.`;
+  if (min !== max) return `💡 Fares on this route range from ₹${min.toLocaleString()} to ₹${max.toLocaleString()}. Prices may vary — check live availability for the latest fares.`;
+  return `💡 Based on typical pricing patterns, booking earlier usually gets you a better fare on this route.`;
+}
+
+function getBusInsight(from, to, buses) {
+  if (!buses || buses.length === 0) return null;
+  const nightBuses = buses.filter(b => { const h = parseInt(b.dep.split(":")[0]); return h >= 20 || h < 5; });
+  const dayBuses   = buses.filter(b => { const h = parseInt(b.dep.split(":")[0]); return h >= 6 && h < 18; });
+  if (nightBuses.length > 0 && dayBuses.length > 0) return `💡 Night buses on this route are often faster as they avoid traffic. ${nightBuses.length} overnight option${nightBuses.length>1?"s":""} available.`;
+  if (nightBuses.length > 0) return `💡 Overnight buses are popular on this route — you save on accommodation and arrive fresh.`;
+  return `💡 Multiple operators serve this route. Compare timing and bus type before booking.`;
+}
+
+// Smart label for a flight result
+function getFlightLabel(flight, allFlights) {
+  if (!allFlights || allFlights.length < 2) return null;
+  const sorted = [...allFlights].sort((a,b)=>a.price-b.price);
+  const dep = new Date(flight.departure_time).getHours();
+  if (flight.id === sorted[0].id) return { text:"🏷️ Likely Cheapest", color:"#059669" };
+  const earliest = [...allFlights].sort((a,b)=>new Date(a.departure_time)-new Date(b.departure_time));
+  if (flight.id === earliest[0].id) return { text:"⚡ Earliest Departure", color:"#0284C7" };
+  if (allFlights.length >= 3 && flight.id === sorted[Math.floor(sorted.length/2)].id) return { text:"⭐ Best Overall", color:"#c9a84c" };
+  if (dep >= 5 && dep < 12) return { text:"🌅 Morning Flight", color:"#8B6914" };
+  return null;
+}
+
+function getBusLabel(bus, allBuses) {
+  if (!allBuses || allBuses.length < 2) return null;
+  const sorted = [...allBuses].sort((a,b)=>a.price-b.price);
+  if (bus === sorted[0]) return { text:"🏷️ Likely Cheapest", color:"#059669" };
+  if (bus.type === "AC Sleeper") return { text:"⭐ Most Comfortable", color:"#c9a84c" };
+  const h = parseInt(bus.dep.split(":")[0]);
+  if (h >= 20 || h < 5) return { text:"🌙 Overnight — Save on Stay", color:"#7C3AED" };
+  return null;
+}
+
 function SearchPage(){
   const navigate = useNavigate();
   const [travelType,    setTravelType]    = useState("flight");
@@ -703,10 +791,11 @@ function SearchPage(){
   const [loading,       setLoading]       = useState(false);
   const [searched,      setSearched]      = useState(false);
   const [flights,       setFlights]       = useState([]);
+  const [flightInsight, setFlightInsight] = useState(null);
+  const [busInsight,    setBusInsight]    = useState(null);
   const [buses,         setBuses]         = useState([]);
   const [filtered,      setFiltered]      = useState([]);
-  const [showSeats,     setShowSeats]     = useState(false);
-  const [pendingLink,   setPendingLink]   = useState("");
+
   const [filterTime,    setFilterTime]    = useState("any");
   const [filterMaxPrice,setFilterMaxPrice]= useState(20000);
   const [sortBy,        setSortBy]        = useState("price");
@@ -759,16 +848,7 @@ function SearchPage(){
 
   const handleFlightDeal = (fromName, toName) => {
     track("view_deal", `${fromName} → ${toName}`, "web");
-    setPendingLink({ fromName, toName });
-    setShowSeats(true);
-  };
-
-  const handleSeatsConfirmed = () => {
-    setShowSeats(false);
-    if (pendingLink) {
-      openFlightLink(pendingLink.fromName, pendingLink.toName, date, passengers);
-      setPendingLink("");
-    }
+    openFlightLink(fromName, toName, date, passengers);
   };
 
   const searchFlights = async () => {
@@ -784,6 +864,7 @@ function SearchPage(){
         setFlights([{ id:"aff", airline:"Search via partner", flight_no:"", from_city:fromCity.name, to_city:toCity.name, departure_time:null, arrival_time:null, price:0, affiliate:true }]);
       } else {
         setFlights(data);
+        setFlightInsight(getFlightInsight(fromCity.name, toCity.name, data));
         setFilterMaxPrice(Math.max(...data.map(f=>f.price))+1000);
       }
     } catch(e) {
@@ -849,6 +930,7 @@ function SearchPage(){
       if (/morning|subah|காலை/i.test(q)) results = results.filter(b=>{const h=parseInt(b.dep.split(":")[0]);return h>=5&&h<12;});
       if (/night|raat|evening|sham|இரவு/i.test(q)) results = results.filter(b=>{const h=parseInt(b.dep.split(":")[0]);return h>=18||h<5;});
       setBuses(results);
+      setBusInsight(getBusInsight(busFrom, busTo, results));
       setFilterMaxPrice(results.length>0?Math.max(...results.map(b=>b.price))+500:5000);
       if (results.length === 0) setAiError(`No buses found from ${from} to ${to}. Redirecting to RedBus for more options.`);
       setLoading(false);
@@ -904,7 +986,7 @@ function SearchPage(){
       {showBusFromModal && <BusCityModal title="Bus departure city" onSelect={c=>{setBusFrom(c);setShowBusFromModal(false);}} onClose={()=>setShowBusFromModal(false)} exclude={busTo}/>}
       {showBusToModal   && <BusCityModal title="Bus destination city" onSelect={c=>{setBusTo(c);setShowBusToModal(false);}} onClose={()=>setShowBusToModal(false)} exclude={busFrom}/>}
       {showHotelModal   && <HotelCityModal title="Select hotel city" onSelect={c=>{setHotelCity(c);setShowHotelModal(false);}} onClose={()=>setShowHotelModal(false)}/>}
-      {showSeats && <SeatModal passengers={passengers} onConfirm={handleSeatsConfirmed} onCancel={()=>setShowSeats(false)}/>}
+      {/* Seat modal removed — going direct to partner */}
 
       {/* NAV */}
       <nav style={{position:"sticky",top:0,zIndex:200,height:66,padding:"0 5%",display:"flex",alignItems:"center",justifyContent:"space-between",background:navScrolled?"rgba(250,248,244,0.95)":"rgba(250,248,244,0.82)",backdropFilter:"blur(22px)",borderBottom:"1px solid rgba(201,168,76,0.12)",transition:"all 0.3s"}}>
@@ -1145,7 +1227,7 @@ function SearchPage(){
                 <div style={{display:"flex",alignItems:"center",gap:12,background:"#fafaf8",borderRadius:14,padding:"4px 4px 4px 18px",border:`1.5px solid rgba(201,168,76,0.3)`,marginBottom:8}}>
                   <span style={{fontSize:18,opacity:0.7}}>🤖</span>
                   <input value={aiQuery} onChange={e=>{setAiQuery(e.target.value);setAiError("");}} onKeyDown={e=>e.key==="Enter"&&searchAI()}
-                    placeholder={travelType==="hotel"?"Try: \"hotels in goa\" or \"hotel bangalore\"":travelType==="bus"?"Try: \"bus frm bangaluru to chennai kal\"":"Try: \"flights frm bangaluru to mumbai kal\""}
+                    placeholder={travelType==="hotel"?"e.g. hotels in Goa, best hotels Mumbai under 2000":travelType==="bus"?"e.g. bus Bangalore to Chennai tomorrow night":"e.g. cheap flights BLR to GOA this weekend, 2 day trip under 5000"}
                     style={{flex:1,background:"transparent",border:"none",outline:"none",fontFamily:"'DM Sans',sans-serif",fontSize:15,color:"#1a1410",padding:"12px 0"}}/>
                 </div>
                 {aiError&&<div style={{padding:"10px 14px",borderRadius:10,background:"#FFF0F0",border:"1px solid #FFCDD2",fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"#cc2222",marginBottom:8,fontWeight:500}}>{aiError}</div>}
@@ -1190,8 +1272,14 @@ function SearchPage(){
         {!loading && searched && (
           <>
             {filtered.length > 0 && (
-              <div style={{fontFamily:"'Space Mono',monospace",fontSize:10,color:"#7a6a5a",letterSpacing:"0.15em",marginBottom:14,fontWeight:700}}>
+              <div style={{fontFamily:"'Space Mono',monospace",fontSize:10,color:"#7a6a5a",letterSpacing:"0.15em",marginBottom:10,fontWeight:700}}>
                 {travelType==="bus"?`${filtered.length} BUSES FOUND`:travelType==="hotel"?"":travelType==="flight"&&!filtered[0]?.affiliate?`${filtered.length} FLIGHTS FOUND`:""}
+              </div>
+            )}
+            {/* AI Insight bar */}
+            {!loading && searched && (flightInsight||busInsight) && (
+              <div style={{marginBottom:14,padding:"12px 18px",background:"rgba(201,168,76,0.08)",borderRadius:12,border:"1px solid rgba(201,168,76,0.22)",display:"flex",alignItems:"flex-start",gap:10,animation:"fadeUp 0.4s both"}}>
+                <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"#5a4a3a",lineHeight:1.6}}>{travelType==="bus"?busInsight:flightInsight}</div>
               </div>
             )}
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
@@ -1211,9 +1299,9 @@ function SearchPage(){
                       <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:14,color:"#555",marginBottom:18}}>Live fares available via our partner — best prices guaranteed</p>
                       <button onClick={()=>handleFlightDeal(flight.from_city, flight.to_city)}
                         style={{padding:"13px 32px",borderRadius:13,fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.08em",color:"#1a1410",border:"none",cursor:"pointer",background:GRAD,backgroundSize:"200% 200%",animation:"gradShift 3s ease infinite",boxShadow:`0 4px 14px rgba(201,168,76,0.44)`}}>
-                        View Best Price →
+                        Check Live Prices →
                       </button>
-                      <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#bbb",marginTop:10}}>Opens on partner site · Best price guaranteed</div>
+                      <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#bbb",marginTop:10}}>Live prices on partner site · may vary</div>
                     </div>
                   ) : (
                     // Real flight card
@@ -1252,14 +1340,14 @@ function SearchPage(){
                       </div>
                       <div className="results-card-bottom" style={{display:"flex",alignItems:"center",justifyContent:"space-between",paddingTop:14,borderTop:"1px solid rgba(201,168,76,0.12)"}}>
                         <div>
-                          <div style={{fontFamily:"'Space Mono',monospace",fontSize:10,color:"#777",letterSpacing:"0.1em",fontWeight:600}}>FROM</div>
+                          <div style={{fontFamily:"'Space Mono',monospace",fontSize:9,color:"#777",letterSpacing:"0.1em",fontWeight:600}}>APPROX FROM</div>
                           <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:28,color:GOLD_DARK}}>₹{(flight.price*passengers).toLocaleString()}</div>
                           <div style={{fontSize:13,color:"#555",fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>{passengers} pax · {cabinClass}</div>
                         </div>
                         <button onClick={()=>handleFlightDeal(flight.from_city, flight.to_city)}
                           style={{padding:"12px 26px",borderRadius:12,fontSize:14,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.06em",color:"#1a1410",border:"none",cursor:"pointer",background:GRAD,backgroundSize:"200% 200%",animation:"gradShift 3s ease infinite",boxShadow:`0 4px 14px rgba(201,168,76,0.44)`,transition:"transform 0.2s"}}
                           onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
-                          onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>View Deal →</button>
+                          onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>Check Live Prices →</button>
                       </div>
                     </>
                   )}
@@ -1272,7 +1360,7 @@ function SearchPage(){
                 <div style={{background:"rgba(255,255,255,0.88)",backdropFilter:"blur(10px)",borderRadius:18,padding:"30px 26px",boxShadow:"0 4px 16px rgba(0,0,0,0.05)",border:"1px solid rgba(201,168,76,0.12)",textAlign:"center",animation:"fadeUp 0.4s both"}}>
                   <div style={{fontSize:48,marginBottom:12}}>🚌</div>
                   <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:20,color:"#1a1410",marginBottom:8}}>More options available on RedBus</h3>
-                  <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:14,color:"#555",marginBottom:18}}>Check full schedule, seat availability and offers on RedBus for {busFrom} → {busTo}</p>
+                  <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:14,color:"#555",marginBottom:18}}>Check full schedule, live seat availability and offers on RedBus for {busFrom} → {busTo}</p>
                   <button onClick={()=>openBusLink(busFrom,busTo)}
                     style={{padding:"13px 32px",borderRadius:13,fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.08em",color:"#1a1410",border:"none",cursor:"pointer",background:GRAD,backgroundSize:"200% 200%",animation:"gradShift 3s ease infinite",boxShadow:`0 4px 14px rgba(201,168,76,0.44)`}}>
                     View on RedBus →
@@ -1324,7 +1412,7 @@ function SearchPage(){
                       <button onClick={()=>openBusLink(bus.from, bus.to)}
                         style={{padding:"12px 26px",borderRadius:12,fontSize:14,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.06em",color:"#1a1410",border:"none",cursor:"pointer",background:GRAD,backgroundSize:"200% 200%",animation:"gradShift 3s ease infinite",boxShadow:`0 4px 14px rgba(201,168,76,0.44)`,transition:"transform 0.2s"}}
                         onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
-                        onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>View on RedBus →</button>
+                        onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>Check Live Prices →</button>
                       <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#bbb"}}>Best price guaranteed</div>
                     </div>
                   </div>

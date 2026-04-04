@@ -658,146 +658,255 @@ const WA_BUS_ROUTES = [
 
 app.post("/whatsapp", async (req, res) => {
   const rawMsg = req.body.Body?.trim() || "";
-  const msg    = rawMsg.toLowerCase();
+  const msg    = rawMsg.toLowerCase().trim();
   const phone  = req.body.From;
   let reply    = "";
 
-  if (!userSessions[phone]) userSessions[phone] = { step:"idle", type:"none" };
+  if (!userSessions[phone]) userSessions[phone] = { step:"idle" };
   const session = userSessions[phone];
 
   try {
-    // Global reset
-    if (["hi","hello","hey","start","restart","cancel","reset","stop","menu"].some(w => msg.includes(w)) && session.step !== "idle") {
-      userSessions[phone] = { step:"idle", type:"none" };
-      reply = `✈️ *Alvryn AI*\n\nRestarted! What would you like to search?\n\n✈️ Type your flight route\n🚌 Type your bus route\n🏨 Type hotel city`;
+    // ── Global commands ────────────────────────────────────────────────────
+    const resetWords = ["hi","hello","hey","start","restart","cancel","reset","stop","menu","back","help","hlo","heyyy","heyy","hai","halo"];
+    if (resetWords.some(w => msg === w || msg.startsWith(w+" "))) {
+      userSessions[phone] = { step:"idle" };
+      reply = `✈️ *Alvryn AI — Your Travel Assistant*\n\nHi! I can help you search flights, buses and hotels.\n\n*Search flights:*\n_"flights bangalore to mumbai tomorrow"_\n_"blr to del kal cheap"_\n\n*Search buses:*\n_"bus bangalore to chennai tomorrow"_\n\n*Search hotels:*\n_"hotel in goa"_\n_"hotels bangalore"_\n\n*Plan a trip:*\n_"2 day trip to goa under 5000"_\n_"where can i go for 3000"_\n\nType your route in any language — English, Hindi, Tamil, Telugu, Kannada!`;
+      const twiml = new twilio.twiml.MessagingResponse();
+      twiml.message(reply);
+      return res.type("text/xml").send(twiml.toString());
     }
-    // Detect intent from idle
-    else if (session.step === "idle") {
 
-      const busKw  = /\b(bus|buses|coach|volvo|sleeper|seater|ksrtc|msrtc)\b/i;
-      const hotelKw= /\b(hotel|hotels|stay|room|rooms|accommodation|lodge|resort)\b/i;
+    // ── Detect intent ──────────────────────────────────────────────────────
+    const hotelKw  = /\b(hotel|hotels|stay|room|rooms|accommodation|lodge|resort|hostel|pg|guesthouse|where to stay|place to stay)\b/i;
+    const busKw    = /\b(bus|buses|coach|volvo|sleeper|seater|ksrtc|msrtc|tsrtc|rsrtc|redbus|ac bus|overnight bus)\b/i;
+    const tripKw   = /\b(plan|trip|travel|tour|visit|go to|suggest|recommend|itinerary|where.*go|vacation|holiday|2 day|3 day|\d day)\b/i;
+    const flightKw = /\b(flight|flights|fly|flying|plane|airways|airlines|air india|indigo|spicejet|vistara|akasa|ticket)\b/i;
 
-      if (hotelKw.test(msg)) {
-        // Hotel search
-        const { from } = extractCities(msg);
-        const city = from || msg.replace(/\b(hotel|hotels|stay|in|at|for|rooms?)\b/gi,"").trim().split(/\s+/)[0];
-        if (!city || city.length < 2) {
-          reply = `🏨 *Hotel Search*\n\nWhich city do you want hotels in?\n\nExamples:\n_hotel in goa_\n_hotels bangalore_\n_hotel mumbai_`;
-        } else {
-          const displayCity = city.charAt(0).toUpperCase() + city.slice(1);
-          await logEvent("hotel_search", `WhatsApp: ${displayCity}`, "whatsapp");
-          reply = `🏨 *Hotels in ${displayCity}*\n\nI'll find the best options for you on our partner site.\n\n👉 Tap to view hotels:\nhttps://www.booking.com/searchresults.html?ss=${encodeURIComponent(displayCity)}\n\n_Best prices guaranteed via our partner_`;
-        }
+    // ── Handle "I want low price / cheap / budget" during conversation ──────
+    const cheapWords = ["low price","cheap","sasta","budget","cheapest","affordable","kam price","lowest","uchan","vilai","rate","best price","good deal"];
+    if (cheapWords.some(w => msg.includes(w)) && session.step !== "idle") {
+      if (session.flights && session.flights.length > 0) {
+        const sorted = [...session.flights].sort((a,b)=>a.price-b.price);
+        const f = sorted[0];
+        const fromCode = CITY_TO_IATA[session.from] || session.from.slice(0,3).toUpperCase();
+        const toCode   = CITY_TO_IATA[session.to]   || session.to.slice(0,3).toUpperCase();
+        const link = \`https://www.aviasales.com/search/\${fromCode}\${session.dateStr||""}\${toCode}1?marker=714667&trs=512951&sub_id=alvryn_whatsapp\`;
+        reply = \`💰 *Cheapest option for \${session.from.toUpperCase()} → \${session.to.toUpperCase()}*\n\n✈️ \${f.airline}\n⏰ \${new Date(f.departure_time).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false})}\n💰 Approx ₹\${f.price.toLocaleString()}–₹\${Math.round(f.price*1.2).toLocaleString()}\n\n💡 Morning flights are usually 15–20% cheaper on this route.\n\n👉 Check live prices:\n\${link}\n\n_Prices may vary. Live availability on partner site._\`;
+        const twiml = new twilio.twiml.MessagingResponse();
+        twiml.message(reply);
+        return res.type("text/xml").send(twiml.toString());
       }
-      else if (busKw.test(msg)) {
-        // Bus search
-        const { from, to } = extractCities(msg);
-        if (!from || !to) {
-          reply = `🚌 *Alvryn AI — Bus Search*\n\nTell me your route naturally:\n\n_"bus bangalore to chennai tomorrow"_\n_"bus blr to hyd kal"_\n_"volvo mumbai to goa"_\n\nI understand any style of English, Hindi, Tamil!`;
-          session.step = "bus_search";
+      if (session.buses && session.buses.length > 0) {
+        const sorted = [...session.buses].sort((a,b)=>a.price-b.price);
+        const b = sorted[0];
+        reply = \`💰 *Cheapest bus: \${session.from.toUpperCase()} → \${session.to.toUpperCase()}*\n\n🚌 \${b.op}\n⏰ \${b.dep} → \${b.arr} · \${b.type}\n💰 Approx ₹\${b.price.toLocaleString()}\n\n👉 Check live prices on RedBus:\nhttps://www.redbus.in/bus-tickets/\${session.from.replace(/\s+/g,"-")}-to-\${session.to.replace(/\s+/g,"-")}\n\n_Prices may vary. Live availability on RedBus._\`;
+        const twiml = new twilio.twiml.MessagingResponse();
+        twiml.message(reply);
+        return res.type("text/xml").send(twiml.toString());
+      }
+    }
+
+    // ── "Where should I go" / Plan my trip ────────────────────────────────
+    const whereKw = /where.*go|suggest.*trip|plan.*trip|trip.*plan|\d+.*day.*under|under.*\d+.*day|kaha.*jao|kahan|suggest|recommend.*place|where.*travel/i;
+    if (whereKw.test(msg) || (tripKw.test(msg) && !flightKw.test(msg) && !busKw.test(msg))) {
+      const budget = extractBudget(msg);
+      const cities = extractCities(msg);
+      const fromCity = cities.from ? cities.from.charAt(0).toUpperCase()+cities.from.slice(1) : "Bangalore";
+      
+      const suggestions = [
+        { dest:"🌴 Goa",         budget:"₹3,500–₹5,500",  days:"2 days", why:"Beaches, food, nightlife. Best from Bangalore/Mumbai.", flight:true, bus:true },
+        { dest:"🌿 Coorg",       budget:"₹2,000–₹3,500",  days:"1–2 days",why:"Coffee estates, waterfalls. Perfect weekend escape.", flight:false, bus:true },
+        { dest:"🏔️ Ooty",        budget:"₹1,800–₹3,000",  days:"1–2 days",why:"Hill station, cool weather, scenic views.", flight:false, bus:true },
+        { dest:"🌊 Pondicherry", budget:"₹2,500–₹4,000",  days:"2 days", why:"French quarters, beaches, great cuisine.", flight:false, bus:true },
+        { dest:"🏛️ Mysore",      budget:"₹1,500–₹2,500",  days:"1 day",  why:"Palaces, culture, close to Bangalore.", flight:false, bus:true },
+      ].filter(s => !budget || parseInt(budget) >= parseInt(s.budget.split("–")[0].replace(/[₹,]/g,""))-500);
+
+      const top3 = suggestions.slice(0, 3);
+      reply = \`🗺️ *Trip Suggestions from \${fromCity}*
+
+\`;
+      if (budget) reply += \`Budget: approx ₹\${budget.toLocaleString()}
+
+\`;
+      top3.forEach((s,i) => {
+        reply += \`*\${i+1}. \${s.dest}*
+`;
+        reply += \`💰 Approx \${s.budget} total
+\`;
+        reply += \`📅 \${s.days}
+\`;
+        reply += \`💡 \${s.why}
+\`;
+        reply += s.bus ? \`🚌 Bus available
+\` : "";
+        reply += s.flight ? \`✈️ Flights available
+\` : "";
+        reply += \`
+\`;
+      });
+      reply += \`Reply *1*, *2*, or *3* to search flights/buses for that destination.
+\`;
+      reply += \`Or type *flights [city]* or *bus [city]* to search directly.\`;
+      session.tripSuggestions = top3;
+      session.from = fromCity.toLowerCase();
+      session.step = "trip_suggested";
+      await logEvent("trip_plan", \`WhatsApp plan from \${fromCity}\`, "whatsapp");
+    }
+    else if (session.step === "trip_suggested") {
+      const num = parseInt(msg.match(/^(\d+)/)?.[1]);
+      if (num && num >= 1 && num <= (session.tripSuggestions||[]).length) {
+        const dest = session.tripSuggestions[num-1];
+        const destName = dest.dest.replace(/[🌴🌿🏔️🌊🏛️]/u,"").trim();
+        reply = \`✈️ *Searching for \${session.from ? session.from.charAt(0).toUpperCase()+session.from.slice(1) : "your city"} → \${destName}*
+
+Type one of these to search:
+🚌 _"bus \${session.from||"bangalore"} to \${destName.toLowerCase()} tomorrow"_
+✈️ _"flights \${session.from||"bangalore"} to \${destName.toLowerCase()} this weekend"_
+
+Or I can search now — just say *search bus* or *search flight*.\`;
+        session.step = "idle";
+      } else {
+        reply = \`Please reply *1*, *2*, or *3* to pick a destination, or type a new search.\`;
+      }
+    }
+    else if (hotelKw.test(msg)) {
+      // Hotel search
+      const { from } = extractCities(msg);
+      let city = from;
+      if (!city) {
+        const cleaned = msg.replace(/\b(hotel|hotels|stay|in|at|for|rooms?|best|good|cheap|near)\b/gi,"").trim();
+        const words = cleaned.split(/\s+/).filter(w=>w.length>2);
+        city = words[0] || "";
+      }
+      if (!city || city.length < 2) {
+        session.step = "asking_hotel_city";
+        reply = \`🏨 *Hotel Search*\n\nWhich city do you want hotels in?\n\nExamples:\n_hotel in goa_\n_hotels bangalore_\n_hotels in mumbai under 2000_\`;
+      } else {
+        const displayCity = city.charAt(0).toUpperCase() + city.slice(1);
+        await logEvent("hotel_search", \`WhatsApp: \${displayCity}\`, "whatsapp");
+        reply = \`🏨 *Hotels in \${displayCity}*\n\n💡 I'll find the best options via our partner.\n\n👉 Tap to view hotels:\nhttps://www.booking.com/searchresults.html?ss=\${encodeURIComponent(displayCity)}\n\n_Best prices on Booking.com · Prices may vary_\`;
+        session.step = "idle";
+      }
+    }
+    else if (session.step === "asking_hotel_city") {
+      const displayCity = msg.charAt(0).toUpperCase() + msg.slice(1);
+      reply = \`🏨 *Hotels in \${displayCity}*\n\n👉 Tap to view:\nhttps://www.booking.com/searchresults.html?ss=\${encodeURIComponent(displayCity)}\n\n_Prices may vary. Live availability on Booking.com._\`;
+      session.step = "idle";
+    }
+    else if (busKw.test(msg)) {
+      // Bus search
+      const { from, to } = extractCities(msg);
+      if (!from || !to) {
+        session.step = "bus_search";
+        reply = \`🚌 *Bus Search*\n\nTell me your route:\n_"bus bangalore to chennai tomorrow"_\n_"bus blr to hyd kal"_\n\nI understand English, Hindi, Tamil and typos!\`;
+      } else {
+        const { date: targetDate, pastDate } = extractDate(msg);
+        if (pastDate) {
+          reply = \`⏰ That date is in the past! Please pick today or a future date.\`;
         } else {
-          const { date: targetDate, pastDate } = extractDate(msg);
-          if (pastDate) {
-            reply = `⏰ That date is in the past! Please search for today or a future date.`;
+          const buses = WA_BUS_ROUTES.filter(b => b.from === from && b.to === to);
+          await logEvent("bus_search", \`WhatsApp: \${from} → \${to}\`, "whatsapp");
+          if (buses.length === 0) {
+            reply = \`🚌 *\${from.toUpperCase()} → \${to.toUpperCase()}*\n\nNo buses in our list for this route.\n\n💡 Check live options and seat availability on RedBus:\n👉 https://www.redbus.in/bus-tickets/\${from.replace(/\s+/g,"-")}-to-\${to.replace(/\s+/g,"-")}\n\n_Live availability on RedBus · Prices may vary_\`;
           } else {
-            const buses = WA_BUS_ROUTES.filter(b => b.from === from && b.to === to);
-            await logEvent("bus_search", `WhatsApp: ${from} → ${to}`, "whatsapp");
-            if (buses.length === 0) {
-              reply = `🚌 *${from.toUpperCase()} → ${to.toUpperCase()}*\n\nLet me check more options on RedBus for you:\n👉 https://www.redbus.in/bus-tickets/${from.replace(/\s+/g,"-")}-to-${to.replace(/\s+/g,"-")}\n\n_Opens full schedule with live availability_`;
-            } else {
-              session.busList = buses; session.from = from; session.to = to; session.step = "bus_selecting";
-              reply = `🚌 *Buses: ${from.toUpperCase()} → ${to.toUpperCase()}*\n\n`;
-              buses.slice(0,4).forEach((b,i) => {
-                reply += `*${i+1}. ${b.op}*\n⏰ ${b.dep} → ${b.arr} · ${b.type}\n💰 ₹${b.price.toLocaleString()}\n\n`;
-              });
-              reply += `Reply *1* to *${Math.min(4,buses.length)}* to see booking link\nOr type *redbus* for more options`;
-            }
+            session.buses = buses; session.from = from; session.to = to; session.step = "bus_selecting";
+            const insight = buses.some(b=>{const h=parseInt(b.dep.split(":")[0]);return h>=20||h<5;}) ? "\n💡 Night buses are popular — you save on accommodation and arrive fresh." : "";
+            reply = \`🚌 *Buses: \${from.toUpperCase()} → \${to.toUpperCase()}*\${insight}\n\n\`;
+            buses.slice(0,4).forEach((b,i) => {
+              const cheap = i===0?"🏷️ Likely cheapest ":"";
+              reply += \`*\${i+1}. \${b.op}*\n⏰ \${b.dep} → \${b.arr} · \${b.type}\n💰 Approx ₹\${b.price.toLocaleString()} \${cheap}\n\n\`;
+            });
+            reply += \`Reply *1* to *\${Math.min(4,buses.length)}* to get the RedBus booking link\nOr type *redbus* for full schedule\`;
           }
         }
       }
-      else {
-        // Flight search (default)
-        const { from, to } = extractCities(msg);
-        if (!from || !to) {
-          reply = `✈️ *Alvryn AI*\n\nHi! I can help you search flights, buses and hotels.\n\n*Search flights:*\n_"flights bangalore to mumbai tomorrow"_\n_"blr to del kal cheap"_\n\n*Search buses:*\n_"bus bangalore to chennai tomorrow"_\n\n*Search hotels:*\n_"hotel in goa"_\n_"hotels bangalore"_`;
-        } else {
-          const { date: targetDate, pastDate } = extractDate(msg);
-          if (pastDate) {
-            reply = `⏰ That date is in the past! Please search for today or a future date.`;
-          } else if (!targetDate) {
-            session.step = "asking_date"; session.from = from; session.to = to;
-            reply = `✈️ *${from.toUpperCase()} → ${to.toUpperCase()}*\n\nWhat date do you want to fly?\nReply like: _"tomorrow"_, _"25 march"_, _"friday"_`;
-          } else {
-            await searchFlightsAndReply(session, from, to, targetDate, msg);
-            reply = session.lastReply;
-          }
-        }
-      }
-    }
-    else if (session.step === "asking_date") {
-      const { date: targetDate, pastDate } = extractDate(msg);
-      if (pastDate) reply = `⏰ That's a past date! Try: _"tomorrow"_, _"next friday"_`;
-      else if (!targetDate) reply = `Didn't catch the date. Try: _"tomorrow"_, _"25 march"_, _"next friday"_`;
-      else { await searchFlightsAndReply(session, session.from, session.to, targetDate, msg); reply = session.lastReply; }
     }
     else if (session.step === "bus_search") {
       const { from, to } = extractCities(msg);
-      if (!from || !to) reply = `Couldn't detect cities. Try: _"bus bangalore to chennai"_`;
-      else {
+      if (!from || !to) {
+        reply = \`Couldn't find the cities. Try: _"bus bangalore to chennai"_\`;
+      } else {
         const buses = WA_BUS_ROUTES.filter(b => b.from === from && b.to === to);
-        await logEvent("bus_search", `WhatsApp: ${from} → ${to}`, "whatsapp");
+        await logEvent("bus_search", \`WhatsApp: \${from} → \${to}\`, "whatsapp");
         if (buses.length === 0) {
-          reply = `🚌 No buses found from *${from}* to *${to}*.\n\nCheck RedBus for more:\nhttps://www.redbus.in/bus-tickets/${from.replace(/\s+/g,"-")}-to-${to.replace(/\s+/g,"-")}`;
-          userSessions[phone] = { step:"idle", type:"none" };
+          reply = \`🚌 No buses found from *\${from}* to *\${to}*. Try RedBus for more options:\nhttps://www.redbus.in/bus-tickets/\${from.replace(/\s+/g,"-")}-to-\${to.replace(/\s+/g,"-")}\`;
+          session.step = "idle";
         } else {
-          session.busList = buses; session.from = from; session.to = to; session.step = "bus_selecting";
-          reply = `🚌 *Buses: ${from.toUpperCase()} → ${to.toUpperCase()}*\n\n`;
+          session.buses = buses; session.from = from; session.to = to; session.step = "bus_selecting";
+          reply = \`🚌 *Buses: \${from.toUpperCase()} → \${to.toUpperCase()}*\n\n\`;
           buses.slice(0,4).forEach((b,i) => {
-            reply += `*${i+1}. ${b.op}*\n⏰ ${b.dep} → ${b.arr} · ${b.type}\n💰 ₹${b.price.toLocaleString()}\n\n`;
+            reply += \`*\${i+1}. \${b.op}*\n⏰ \${b.dep} → \${b.arr} · \${b.type}\n💰 Approx ₹\${b.price.toLocaleString()}\n\n\`;
           });
-          reply += `Reply *1* to *${Math.min(4,buses.length)}* to see booking link`;
+          reply += \`Reply *1* to *\${Math.min(4,buses.length)}* to get booking link\`;
         }
       }
     }
     else if (session.step === "bus_selecting") {
-      if (msg === "redbus" || msg.includes("more")) {
-        reply = `🚌 View all options on RedBus:\nhttps://www.redbus.in/bus-tickets/${session.from.replace(/\s+/g,"-")}-to-${session.to.replace(/\s+/g,"-")}`;
-        userSessions[phone] = { step:"idle", type:"none" };
+      if (msg === "redbus" || msg.includes("more option") || msg.includes("all buses")) {
+        reply = \`🚌 View full schedule on RedBus:\nhttps://www.redbus.in/bus-tickets/\${(session.from||"").replace(/\s+/g,"-")}-to-\${(session.to||"").replace(/\s+/g,"-")}\n\n_Live availability and seat selection on RedBus_\`;
+        session.step = "idle";
       } else {
         const num = parseInt(msg.match(/^(\d+)/)?.[1]);
-        if (!num || num < 1 || num > (session.busList||[]).length) {
-          reply = `Please reply with *1* to *${Math.min(4,(session.busList||[]).length)}*, or *redbus* for more options.`;
+        if (!num || num < 1 || num > (session.buses||[]).length) {
+          reply = \`Please reply *1* to *\${Math.min(4,(session.buses||[]).length)}*, or type *redbus* for more options.\`;
         } else {
-          const bus = session.busList[num-1];
-          reply = `✅ *${bus.op}*\n🚌 ${session.from.toUpperCase()} → ${session.to.toUpperCase()}\n⏰ ${bus.dep} → ${bus.arr}\n💰 ₹${bus.price.toLocaleString()} · ${bus.type}\n\n👉 Book on RedBus:\nhttps://www.redbus.in/bus-tickets/${session.from.replace(/\s+/g,"-")}-to-${session.to.replace(/\s+/g,"-")}\n\n_Opens RedBus for live availability and seat selection_`;
-          userSessions[phone] = { step:"idle", type:"none" };
+          const b = session.buses[num-1];
+          reply = \`✅ *\${b.op}*\n🚌 \${(session.from||"").toUpperCase()} → \${(session.to||"").toUpperCase()}\n⏰ \${b.dep} → \${b.arr}\n💰 Approx ₹\${b.price.toLocaleString()} · \${b.type}\n\n💡 Prices may vary slightly on the booking site.\n\n👉 Book on RedBus (opens with your route):\nhttps://www.redbus.in/bus-tickets/\${(session.from||"").replace(/\s+/g,"-")}-to-\${(session.to||"").replace(/\s+/g,"-")}\n\n_Live seat availability on RedBus_\`;
+          session.step = "idle";
         }
       }
     }
     else if (session.step === "flight_selecting") {
       const num = parseInt(msg.match(/^(\d+)/)?.[1]);
-      if (!num) reply = `Please reply with a number like *1*, *2*, or *3*.\nOr type *cancel* to start over.`;
-      else if (num < 1 || num > (session.flights||[]).length) reply = `Pick a number between *1* and *${(session.flights||[]).length}*.`;
-      else {
+      if (!num) {
+        reply = \`Please reply with a number like *1*, *2*, or *3*.\nOr type *cancel* to start a new search.\`;
+      } else if (num < 1 || num > (session.flights||[]).length) {
+        reply = \`Pick a number between *1* and *\${(session.flights||[]).length}*.\`;
+      } else {
         const f = session.flights[num-1];
         const fromCode = CITY_TO_IATA[session.from] || session.from.slice(0,3).toUpperCase();
         const toCode   = CITY_TO_IATA[session.to]   || session.to.slice(0,3).toUpperCase();
-        const dateStr  = session.dateStr || "";
-        const link = `https://www.aviasales.com/search/${fromCode}${dateStr}${toCode}1?marker=714667&trs=512951&sub_id=alvryn_whatsapp`;
-        reply = `✈️ *${f.airline} selected*\n⏰ ${new Date(f.departure_time).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false})}\n💰 ₹${f.price.toLocaleString()}\n\n👉 Book now:\n${link}\n\n_Opens our partner site — best price guaranteed_`;
-        await logEvent("view_deal", `WhatsApp flight: ${session.from} → ${session.to}`, "whatsapp");
-        userSessions[phone] = { step:"idle", type:"none" };
+        const link = \`https://www.aviasales.com/search/\${fromCode}\${session.dateStr||""}\${toCode}1?marker=714667&trs=512951&sub_id=alvryn_whatsapp\`;
+        const dep = new Date(f.departure_time).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false});
+        reply = \`✈️ *\${f.airline}*\n\${(session.from||"").toUpperCase()} → \${(session.to||"").toUpperCase()}\n⏰ Departs \${dep}\n💰 Approx ₹\${f.price.toLocaleString()}–₹\${Math.round(f.price*1.2).toLocaleString()}\n\n💡 Prices may vary. Click to check live availability:\n👉 \${link}\n\n_Opens our partner site · Secure booking_\`;
+        await logEvent("view_deal", \`WhatsApp flight: \${session.from} → \${session.to}\`, "whatsapp");
+        session.step = "idle";
       }
     }
-    else {
-      reply = `Type *restart* to start a new search.`;
-      userSessions[phone] = { step:"idle", type:"none" };
+    else if (session.step === "asking_date") {
+      const { date: targetDate, pastDate } = extractDate(msg);
+      if (pastDate) reply = \`⏰ That's a past date! Try: _"tomorrow"_, _"next friday"_, _"25 april"_\`;
+      else if (!targetDate) reply = \`Didn't catch the date. Try: _"tomorrow"_, _"next friday"_, _"25 march"_\`;
+      else { await searchFlightsAndReply(session, session.from, session.to, targetDate, msg); reply = session.lastReply; }
     }
-
+    else {
+      // Default: try as flight search
+      const { from, to } = extractCities(msg);
+      if (from && to) {
+        const { date: targetDate, pastDate } = extractDate(msg);
+        if (pastDate) {
+          reply = \`⏰ That date is in the past! Please search for today or a future date.\`;
+        } else if (!targetDate) {
+          session.step = "asking_date"; session.from = from; session.to = to;
+          reply = \`✈️ *\${from.toUpperCase()} → \${to.toUpperCase()}*\n\nWhat date do you want to fly?\n_"tomorrow"_, _"25 april"_, _"next friday"_\`;
+        } else {
+          await searchFlightsAndReply(session, from, to, targetDate, msg);
+          reply = session.lastReply;
+        }
+      } else {
+        // Not travel related or unclear
+        const offTopicKw = /weather|cricket|ipl|news|sports|movie|song|recipe|cook|politics|exam|job|career|love|relationship/i;
+        if (offTopicKw.test(msg)) {
+          reply = \`🤖 I'm Alvryn AI — I specialise in travel!\n\nI can help you with:\n✈️ Flight searches\n🚌 Bus routes\n🏨 Hotels\n🗺️ Trip planning\n\nTry: _"flights bangalore to goa tomorrow"_ or _"where to go for 3000"_\`;
+        } else {
+          reply = \`✈️ *Alvryn AI*\n\nSorry, I didn't understand that. Here's what I can help with:\n\n✈️ _"flights bangalore to mumbai tomorrow"_\n🚌 _"bus bangalore to chennai kal"_\n🏨 _"hotels in goa"_\n🗺️ _"trip under 5000"_\n\nType *help* for the full menu.\`;
+        }
+      }
+    }
   } catch(e) {
     console.error("WhatsApp error:", e);
-    reply = `Sorry, something went wrong. Please type *restart* to try again.`;
-    userSessions[phone] = { step:"idle", type:"none" };
+    reply = \`Something went wrong. Type *restart* to start fresh.\`;
+    userSessions[phone] = { step:"idle" };
   }
 
   const twiml = new twilio.twiml.MessagingResponse();
@@ -805,50 +914,6 @@ app.post("/whatsapp", async (req, res) => {
   res.type("text/xml").send(twiml.toString());
 });
 
-async function searchFlightsAndReply(session, from, to, targetDate, rawMsg) {
-  const budget    = extractBudget(rawMsg);
-  const isCheap   = /cheap|sasta|budget|lowest|kam/i.test(rawMsg);
-  const fmt2      = d => d.toISOString().split("T")[0];
-  const dateStr   = targetDate ? (targetDate.getDate().toString().padStart(2,"0") + (targetDate.getMonth()+1).toString().padStart(2,"0")) : "";
-
-  let q = `SELECT * FROM flights WHERE LOWER(from_city)=$1 AND LOWER(to_city)=$2`, v = [from, to];
-  if (targetDate) { q += ` AND DATE(departure_time)=$3`; v.push(fmt2(targetDate)); }
-  if (budget)     { q += ` AND price<=$${v.length+1}`; v.push(budget); }
-  q += (isCheap ? " ORDER BY price ASC" : " ORDER BY departure_time ASC") + " LIMIT 5";
-
-  let rows = (await pool.query(q, v)).rows;
-  if (!rows.length && targetDate) {
-    rows = (await pool.query(`SELECT * FROM flights WHERE LOWER(from_city)=$1 AND LOWER(to_city)=$2 AND departure_time>NOW() ORDER BY price ASC LIMIT 5`, [from, to])).rows;
-  }
-
-  await logEvent("flight_search", `WhatsApp: ${from} → ${to}`, "whatsapp");
-
-  if (!rows.length) {
-    // No DB flights — give affiliate link directly
-    const fromCode = CITY_TO_IATA[from] || from.slice(0,3).toUpperCase();
-    const toCode   = CITY_TO_IATA[to]   || to.slice(0,3).toUpperCase();
-    const link = `https://www.aviasales.com/search/${fromCode}${dateStr}${toCode}1?marker=714667&trs=512951&sub_id=alvryn_whatsapp`;
-    session.lastReply = `✈️ *${from.toUpperCase()} → ${to.toUpperCase()}*\n\nNo flights in our database yet for this route.\n\n👉 Check live fares here:\n${link}\n\n_Opens our partner site with best prices_`;
-    userSessions[session.phone] = { step:"idle", type:"none" };
-    return;
-  }
-
-  session.flights = rows;
-  session.from    = from;
-  session.to      = to;
-  session.dateStr = dateStr;
-  session.step    = "flight_selecting";
-
-  let msg2 = `✈️ *Flights: ${from.toUpperCase()} → ${to.toUpperCase()}*\n`;
-  if (targetDate) msg2 += `📅 ${targetDate.toLocaleDateString("en-IN",{day:"numeric",month:"short"})}\n`;
-  msg2 += "\n";
-  rows.forEach((f,i) => {
-    const dep = new Date(f.departure_time).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false});
-    const arr = new Date(f.arrival_time).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false});
-    msg2 += `*${i+1}. ${f.airline}*\n⏰ ${dep} → ${arr}\n💰 ₹${f.price.toLocaleString()}\n\n`;
-  });
-  msg2 += `Reply *1* to *${rows.length}* to get the booking link.\nOr type *cancel* to start over.`;
-  session.lastReply = msg2;
 }
 
 // ══════════════════════════════════════════════════════════════

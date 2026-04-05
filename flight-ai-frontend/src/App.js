@@ -36,20 +36,31 @@ const GRAD = "linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)";
 // ─── AFFILIATE CONFIG ─────────────────────────────────────────────────────────
 const TP_MARKER  = "714667";
 // Short tracking link — survives .com → .in geo-redirect, keeps marker intact
-const TP_BASE    = "https://aviasales.tpk.mx/tdcu4sm4";
-
-/** Build a TravelPayouts flight link via short tracker (marker-safe) */
+/** Build a marker-safe Aviasales affiliate link
+ *  India routes  → aviasales.in  (INR, no geo-redirect, marker stays)
+ *  Intl  routes  → aviasales.com (stays .com, marker stays)
+ *  Format: IATA + DDMM + IATA + passengers
+ */
 function flightLink(fromCode, toCode, dateStr, passengers = 1, subId = "alvryn_web") {
-  // Aviasales format: BLR0304BOM1 = IATA + DDMM + IATA + passengers
+  // Build DDMM date string
   let d = "";
   if (dateStr) {
-    const parts = dateStr.split("-"); // ["2025","04","03"]
-    if (parts.length === 3) d = parts[2] + parts[1]; // "0304"
+    const parts = dateStr.split("-"); // ["2025","04","18"]
+    if (parts.length === 3) d = parts[2] + parts[1]; // "1804"
   }
   const pax = Math.max(1, passengers);
-  const rawUrl = `https://www.aviasales.com/search/${fromCode}${d}${toCode}${pax}`;
-  // Route through tpk.mx tracker — this preserves marker even after .com→.in redirect
-  return `${TP_BASE}?url=${encodeURIComponent(rawUrl)}&sub_id=${subId}`;
+  const path = `${fromCode}${d}${toCode}${pax}`;
+
+  // India IATA codes — use .in to get INR and avoid geo-redirect
+  const INDIA_CODES = new Set([
+    "BLR","BOM","DEL","MAA","HYD","CCU","GOI","PNQ","COK","AMD","JAI",
+    "LKO","VNS","PAT","IXC","GAU","BBI","CBE","IXM","IXE","MYQ","TRV",
+    "VTZ","VGA","IXR","BHO","SXR","IXJ","HBX","IXG","TIR","IXL","IXZ",
+    "NAG","IDR","RPR","DED","SLV","ATQ","UDR","JDH","AGR","STV","IXJ",
+  ]);
+  const isIndia = INDIA_CODES.has(fromCode) && INDIA_CODES.has(toCode);
+  const base = isIndia ? "https://www.aviasales.in" : "https://www.aviasales.com";
+  return `${base}/search/${path}?marker=714667&sub_id=${subId}`;
 }
 
 /** Build a RedBus bus search URL */

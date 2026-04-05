@@ -690,7 +690,7 @@ app.post("/whatsapp", async (req, res) => {
         const f = sorted[0];
         const fromCode = CITY_TO_IATA[session.from] || session.from.slice(0,3).toUpperCase();
         const toCode   = CITY_TO_IATA[session.to]   || session.to.slice(0,3).toUpperCase();
-        const link = `https://aviasales.tpk.mx/tdcu4sm4?url=${encodeURIComponent("https://www.aviasales.com/search/"+fromCode+(session.dateStr||"")+toCode+"1")}&sub_id=alvryn_whatsapp`;
+        const link = (()=>{ const indCodes = new Set(["BLR","BOM","DEL","MAA","HYD","CCU","GOI","PNQ","COK","AMD","JAI","LKO","VNS","PAT","IXC","GAU","BBI","CBE","IXM","IXE","MYQ","TRV","VTZ","VGA","IXR","BHO","SXR","IXJ","HBX","IXG","TIR","IXL","IXZ","NAG","IDR","RPR","DED","SLV","ATQ","UDR","JDH","AGR","STV"]); const base = (indCodes.has(fromCode) && indCodes.has(toCode)) ? "https://www.aviasales.in" : "https://www.aviasales.com"; return base+"/search/"+fromCode+(session.dateStr||"")+toCode+"1?marker=714667&sub_id=alvryn_whatsapp"; })();
         reply = `💰 *Cheapest option for ${session.from.toUpperCase()} → ${session.to.toUpperCase()}*\n\n✈️ ${f.airline}\n⏰ ${new Date(f.departure_time).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false})}\n💰 Approx ₹${f.price.toLocaleString()}–₹${Math.round(f.price*1.2).toLocaleString()}\n\n💡 Morning flights are usually 15–20% cheaper on this route.\n\n👉 Check live prices:\n${link}\n\n_Prices may vary. Live availability on partner site._`;
         const twiml = new twilio.twiml.MessagingResponse();
         twiml.message(reply);
@@ -866,7 +866,7 @@ Or I can search now — just say *search bus* or *search flight*.`;
         const f = session.flights[num-1];
         const fromCode = CITY_TO_IATA[session.from] || session.from.slice(0,3).toUpperCase();
         const toCode   = CITY_TO_IATA[session.to]   || session.to.slice(0,3).toUpperCase();
-        const link = `https://aviasales.tpk.mx/tdcu4sm4?url=${encodeURIComponent("https://www.aviasales.com/search/"+fromCode+(session.dateStr||"")+toCode+"1")}&sub_id=alvryn_whatsapp`;
+        const link = (()=>{ const indCodes = new Set(["BLR","BOM","DEL","MAA","HYD","CCU","GOI","PNQ","COK","AMD","JAI","LKO","VNS","PAT","IXC","GAU","BBI","CBE","IXM","IXE","MYQ","TRV","VTZ","VGA","IXR","BHO","SXR","IXJ","HBX","IXG","TIR","IXL","IXZ","NAG","IDR","RPR","DED","SLV","ATQ","UDR","JDH","AGR","STV"]); const base = (indCodes.has(fromCode) && indCodes.has(toCode)) ? "https://www.aviasales.in" : "https://www.aviasales.com"; return base+"/search/"+fromCode+(session.dateStr||"")+toCode+"1?marker=714667&sub_id=alvryn_whatsapp"; })();
         const dep = new Date(f.departure_time).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false});
         reply = `✈️ *${f.airline}*\n${(session.from||"").toUpperCase()} → ${(session.to||"").toUpperCase()}\n⏰ Departs ${dep}\n💰 Approx ₹${f.price.toLocaleString()}–₹${Math.round(f.price*1.2).toLocaleString()}\n\n💡 Prices may vary. Click to check live availability:\n👉 ${link}\n\n_Opens our partner site · Secure booking_`;
         await logEvent("view_deal", `WhatsApp flight: ${session.from} → ${session.to}`, "whatsapp");

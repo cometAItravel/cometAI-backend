@@ -35,9 +35,11 @@ const GRAD = "linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)";
 
 // ─── AFFILIATE CONFIG ─────────────────────────────────────────────────────────
 const TP_MARKER  = "714667";
+// Short tracking link — survives .com → .in geo-redirect, keeps marker intact
+const TP_BASE    = "https://aviasales.tpk.mx/tdcu4sm4";
 
-/** Build a TravelPayouts flight search URL */
-function flightLink(fromCode, toCode, dateStr, passengers = 1) {
+/** Build a TravelPayouts flight link via short tracker (marker-safe) */
+function flightLink(fromCode, toCode, dateStr, passengers = 1, subId = "alvryn_web") {
   // Aviasales format: BLR0304BOM1 = IATA + DDMM + IATA + passengers
   let d = "";
   if (dateStr) {
@@ -45,7 +47,9 @@ function flightLink(fromCode, toCode, dateStr, passengers = 1) {
     if (parts.length === 3) d = parts[2] + parts[1]; // "0304"
   }
   const pax = Math.max(1, passengers);
-  return `https://www.aviasales.com/search/${fromCode}${d}${toCode}${pax}?marker=${TP_MARKER}&sub_id=alvryn_web`;
+  const rawUrl = `https://www.aviasales.com/search/${fromCode}${d}${toCode}${pax}`;
+  // Route through tpk.mx tracker — this preserves marker even after .com→.in redirect
+  return `${TP_BASE}?url=${encodeURIComponent(rawUrl)}&sub_id=${subId}`;
 }
 
 /** Build a RedBus bus search URL */

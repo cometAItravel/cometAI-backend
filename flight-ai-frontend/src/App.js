@@ -36,31 +36,37 @@ const GRAD = "linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)";
 // ─── AFFILIATE CONFIG ─────────────────────────────────────────────────────────
 const TP_MARKER  = "714667";
 // Short tracking link — survives .com → .in geo-redirect, keeps marker intact
-/** Build a marker-safe Aviasales affiliate link
- *  India routes  → aviasales.in  (INR, no geo-redirect, marker stays)
- *  Intl  routes  → aviasales.com (stays .com, marker stays)
- *  Format: IATA + DDMM + IATA + passengers
+/** Build a TravelPayouts click-tracked affiliate link
+ *  Goes through tp.media click server — tracking is server-side,
+ *  survives any URL stripping, works even with cookies blocked.
+ *  India routes → aviasales.in (INR)
+ *  Intl routes  → aviasales.com (USD / local currency)
  */
 function flightLink(fromCode, toCode, dateStr, passengers = 1, subId = "alvryn_web") {
-  // Build DDMM date string
+  // Build DDMM date string from YYYY-MM-DD
   let d = "";
   if (dateStr) {
-    const parts = dateStr.split("-"); // ["2025","04","18"]
+    const parts = dateStr.split("-"); // ["2026","04","18"]
     if (parts.length === 3) d = parts[2] + parts[1]; // "1804"
   }
   const pax = Math.max(1, passengers);
-  const path = `${fromCode}${d}${toCode}${pax}`;
 
-  // India IATA codes — use .in to get INR and avoid geo-redirect
   const INDIA_CODES = new Set([
     "BLR","BOM","DEL","MAA","HYD","CCU","GOI","PNQ","COK","AMD","JAI",
     "LKO","VNS","PAT","IXC","GAU","BBI","CBE","IXM","IXE","MYQ","TRV",
     "VTZ","VGA","IXR","BHO","SXR","IXJ","HBX","IXG","TIR","IXL","IXZ",
-    "NAG","IDR","RPR","DED","SLV","ATQ","UDR","JDH","AGR","STV","IXJ",
+    "NAG","IDR","RPR","DED","SLV","ATQ","UDR","JDH","AGR","STV",
   ]);
   const isIndia = INDIA_CODES.has(fromCode) && INDIA_CODES.has(toCode);
-  const base = isIndia ? "https://www.aviasales.in" : "https://www.aviasales.com";
-  return `${base}/search/${path}?marker=714667&sub_id=${subId}`;
+
+  // Build the raw search URL (no marker — tracker handles that)
+  const domain = isIndia ? "www.aviasales.in" : "www.aviasales.com";
+  const searchUrl = `${domain}/search/${fromCode}${d}${toCode}${pax}`;
+
+  // Route through Travelpayouts click server (server-side tracking)
+  // This is the ONLY reliable way — marker is never dropped
+  const encoded = encodeURIComponent(searchUrl);
+  return `https://tp.media/click?shmarker=714667&promo_id=4132&source_type=link&type=click&user_ip=d&locale=en&searchUrl=${encoded}&sub_id=${subId}`;
 }
 
 /** Build a RedBus bus search URL */

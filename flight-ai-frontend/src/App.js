@@ -36,11 +36,11 @@ const GRAD = "linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)";
 // ─── AFFILIATE CONFIG ─────────────────────────────────────────────────────────
 const TP_MARKER  = "714667";
 // Short tracking link — survives .com → .in geo-redirect, keeps marker intact
-/** Build a TravelPayouts click-tracked affiliate link
- *  Goes through tp.media click server — tracking is server-side,
- *  survives any URL stripping, works even with cookies blocked.
- *  India routes → aviasales.in (INR)
- *  Intl routes  → aviasales.com (USD / local currency)
+/** Build Aviasales affiliate link with marker=714667
+ *  India routes  → aviasales.in  (INR currency, no geo-redirect)
+ *  Intl routes   → aviasales.com (stays .com, marker preserved)
+ *  marker= sets tracking cookie on load — commission tracked for 30 days
+ *  URL bar may not show marker after Aviasales renders — this is normal/expected
  */
 function flightLink(fromCode, toCode, dateStr, passengers = 1, subId = "alvryn_web") {
   // Build DDMM date string from YYYY-MM-DD
@@ -58,15 +58,8 @@ function flightLink(fromCode, toCode, dateStr, passengers = 1, subId = "alvryn_w
     "NAG","IDR","RPR","DED","SLV","ATQ","UDR","JDH","AGR","STV",
   ]);
   const isIndia = INDIA_CODES.has(fromCode) && INDIA_CODES.has(toCode);
-
-  // Build the raw search URL (no marker — tracker handles that)
-  const domain = isIndia ? "www.aviasales.in" : "www.aviasales.com";
-  const searchUrl = `${domain}/search/${fromCode}${d}${toCode}${pax}`;
-
-  // Route through Travelpayouts click server (server-side tracking)
-  // This is the ONLY reliable way — marker is never dropped
-  const encoded = encodeURIComponent(searchUrl);
-  return `https://tp.media/click?shmarker=714667&promo_id=4132&source_type=link&type=click&user_ip=d&locale=en&searchUrl=${encoded}&sub_id=${subId}`;
+  const base = isIndia ? "https://www.aviasales.in" : "https://www.aviasales.com";
+  return `${base}/search/${fromCode}${d}${toCode}${pax}?marker=714667&sub_id=${subId}`;
 }
 
 /** Build a RedBus bus search URL */

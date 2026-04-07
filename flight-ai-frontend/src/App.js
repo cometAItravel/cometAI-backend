@@ -63,16 +63,42 @@ function flightLink(fromCode, toCode, dateStr, passengers = 1, subId = "alvryn_w
 }
 
 /** Build a RedBus bus search URL */
-function busLink(from, to) {
+function busLink(from, to, dateStr) {
   const f = from.toLowerCase().replace(/\s+/g, "-");
   const t = to.toLowerCase().replace(/\s+/g, "-");
+  // Plain URL — Cuelinks script auto-converts to affiliate link
+  if (dateStr) {
+    // RedBus deep link with date: format is DD-Mon-YYYY
+    try {
+      const d = new Date(dateStr);
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const formatted = d.getDate().toString().padStart(2,"0") + "-" + months[d.getMonth()] + "-" + d.getFullYear();
+      return `https://www.redbus.in/bus-tickets/${f}-to-${t}?doj=${formatted}`;
+    } catch { /* fall through */ }
+  }
   return `https://www.redbus.in/bus-tickets/${f}-to-${t}`;
 }
 
-/** Build a Booking.com hotel search URL */
-function hotelLink(city) {
-  return `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}&lang=en-gb&src=index&utm_campaign=alvryn&utm_source=alvryn`;
+// Hotel link — plain Booking.com URL, Cuelinks auto-converts
+function hotelLink(city, checkIn, checkOut) {
+  let url = `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}&lang=en-gb`;
+  if (checkIn)  url += `&checkin=${checkIn}`;
+  if (checkOut) url += `&checkout=${checkOut}`;
+  return url;
 }
+
+// Train link — IRCTC (Cuelinks converts if campaign active)
+function trainLink(from, to, dateStr) {
+  // IRCTC format
+  const f = (from||"").toUpperCase().slice(0,5);
+  const t = (to||"").toUpperCase().slice(0,5);
+  if (dateStr) {
+    const d = dateStr.replace(/-/g,"");
+    return `https://www.irctc.co.in/nget/train-search?fromStation=${f}&toStation=${t}&jdate=${d}`;
+  }
+  return `https://www.irctc.co.in/nget/train-search`;
+}
+
 
 // ─── STYLES ───────────────────────────────────────────────────────────────────
 const SHARED_CSS = `
@@ -777,6 +803,77 @@ function getBusLabel(bus, allBuses) {
   return null;
 }
 
+
+// ─── TRAIN PANEL ─────────────────────────────────────────────────────────────
+function TrainPanel() {
+  const FROM_STATIONS = ["BANGALORE (SBC)","MUMBAI (CSTM)","DELHI (NDLS)","CHENNAI (MAS)","HYDERABAD (HYB)","KOLKATA (HWH)","PUNE (PUNE)","KOCHI (ERS)","JAIPUR (JP)","AHMEDABAD (ADI)","LUCKNOW (LKO)","VARANASI (BSB)","PATNA (PNBE)","BHOPAL (BPL)","NAGPUR (NGP)","CHANDIGARH (CDG)","GUWAHATI (GHY)","COIMBATORE (CBE)","MADURAI (MDU)","TRIVANDRUM (TVC)","VISAKHAPATNAM (VSKP)","RANCHI (RNC)","AMRITSAR (ASR)","INDORE (INDB)","SURAT (ST)"];
+  const [from, setFrom] = useState("BANGALORE (SBC)");
+  const [to, setTo]     = useState("CHENNAI (MAS)");
+  const [date, setDate] = useState("");
+  const today = new Date().toISOString().split("T")[0];
+
+  const search = () => {
+    // Extract station code from "BANGALORE (SBC)" → "SBC"
+    const getCode = s => (s.match(/\(([^)]+)\)/) || [,""])[1];
+    const fc = getCode(from);
+    const tc = getCode(to);
+    // IRCTC deep link — Cuelinks auto-converts to affiliate
+    const url = date
+      ? `https://www.irctc.co.in/nget/train-search?fromStation=${fc}&toStation=${tc}&jdate=${date.replace(/-/g,"")}&class=SL`
+      : `https://www.irctc.co.in/nget/train-search?fromStation=${fc}&toStation=${tc}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const POPULAR = [
+    {from:"DELHI (NDLS)",   to:"MUMBAI (CSTM)"},
+    {from:"BANGALORE (SBC)",to:"CHENNAI (MAS)"},
+    {from:"DELHI (NDLS)",   to:"KOLKATA (HWH)"},
+    {from:"MUMBAI (CSTM)",  to:"HYDERABAD (HYB)"},
+  ];
+
+  const inp2 = {padding:"12px 14px",borderRadius:12,fontSize:14,fontFamily:"'DM Sans',sans-serif",border:"1.5px solid rgba(201,168,76,0.25)",outline:"none",color:"#1a1410",background:"#fafaf8",width:"100%",cursor:"pointer"};
+
+  return (
+    <div style={{background:"rgba(255,255,255,0.88)",backdropFilter:"blur(10px)",borderRadius:"0 0 20px 20px",padding:"28px 26px",boxShadow:"0 4px 20px rgba(0,0,0,0.05)",border:"1px solid rgba(201,168,76,0.15)",borderTop:"none",marginBottom:22,animation:"fadeUp 0.4s both"}}>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:22,color:"#1a1410",marginBottom:6}}>Find Trains</div>
+      <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:14,color:"#666",marginBottom:20}}>Search trains on IRCTC — fastest route to your destination.</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:10,alignItems:"center",marginBottom:14}}>
+        <div>
+          <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,fontWeight:700,color:"#5a4a3a",marginBottom:6,letterSpacing:"0.08em"}}>FROM</div>
+          <select value={from} onChange={e=>setFrom(e.target.value)} style={inp2}>
+            {FROM_STATIONS.map(s=><option key={s}>{s}</option>)}
+          </select>
+        </div>
+        <button onClick={()=>{const t=from;setFrom(to);setTo(t);}} style={{width:40,height:40,borderRadius:"50%",background:"rgba(201,168,76,0.12)",border:"1.5px solid rgba(201,168,76,0.3)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:18,color:"#8B6914",marginTop:18}}>⇄</button>
+        <div>
+          <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,fontWeight:700,color:"#5a4a3a",marginBottom:6,letterSpacing:"0.08em"}}>TO</div>
+          <select value={to} onChange={e=>setTo(e.target.value)} style={inp2}>
+            {FROM_STATIONS.map(s=><option key={s}>{s}</option>)}
+          </select>
+        </div>
+      </div>
+      <div style={{marginBottom:16}}>
+        <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,fontWeight:700,color:"#5a4a3a",marginBottom:6,letterSpacing:"0.08em"}}>JOURNEY DATE</div>
+        <input type="date" value={date} min={today} onChange={e=>setDate(e.target.value)} style={inp2}/>
+      </div>
+      <button onClick={search} style={{width:"100%",padding:"14px",borderRadius:13,fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.08em",color:"#1a1410",border:"none",cursor:"pointer",background:"linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)",backgroundSize:"200% 200%",animation:"gradShift 3s ease infinite",boxShadow:"0 6px 22px rgba(201,168,76,0.4)",marginBottom:16}}>
+        Search Trains 🚂
+      </button>
+      <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:12,color:"#888",marginBottom:14}}>POPULAR ROUTES</div>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+        {POPULAR.map((r,i)=>(
+          <button key={i} onClick={()=>{setFrom(r.from);setTo(r.to);}} style={{padding:"7px 14px",borderRadius:100,fontSize:12,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.25)",color:"#8B6914",fontWeight:500}}>
+            {r.from.split(" ")[0]} → {r.to.split(" ")[0]}
+          </button>
+        ))}
+      </div>
+      <div style={{marginTop:14,fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#bbb"}}>
+        Opens IRCTC — you may earn via Cuelinks affiliate when users book.
+      </div>
+    </div>
+  );
+}
+
 function SearchPage(){
   const navigate = useNavigate();
   const [travelType,    setTravelType]    = useState("flight");
@@ -849,15 +946,15 @@ function SearchPage(){
     window.open(url, "_blank", "noopener,noreferrer");
   }, []);
 
-  const openBusLink = useCallback((from, to) => {
+  const openBusLink = useCallback((from, to, dt) => {
     track("bus_search", `${from} → ${to}`, "web");
-    window.open(busLink(from, to), "_blank", "noopener,noreferrer");
-  }, []);
+    window.open(busLink(from, to, dt || date), "_blank", "noopener,noreferrer");
+  }, [date]);
 
-  const openHotelLink = useCallback((city) => {
+  const openHotelLink = useCallback((city, checkIn, checkOut) => {
     track("hotel_search", city, "web");
-    window.open(hotelLink(city), "_blank", "noopener,noreferrer");
-  }, []);
+    window.open(hotelLink(city, checkIn || date, checkOut || checkOut), "_blank", "noopener,noreferrer");
+  }, [date]);
 
   const handleFlightDeal = (fromName, toName) => {
     track("view_deal", `${fromName} → ${toName}`, "web");
@@ -976,12 +1073,11 @@ function SearchPage(){
     {id:"flight", icon:"✈️", label:"Flights"},
     {id:"bus",    icon:"🚌", label:"Buses"},
     {id:"hotel",  icon:"🏨", label:"Hotels"},
-    {id:"train",  icon:"🚂", label:"Trains", cs:true},
+    {id:"train",  icon:"🚂", label:"Trains"},
     {id:"cab",    icon:"🚗", label:"Cabs",   cs:true},
   ];
   const CS_DATA = {
-    train:{icon:"🚂",title:"Train Booking",desc:"IRCTC integration coming soon."},
-    cab:  {icon:"🚗",title:"Cab Booking",  desc:"Airport transfers and intercity cabs — coming soon."},
+    cab:{icon:"🚗",title:"Cab Booking",desc:"Airport transfers and intercity cabs — coming soon."},
   };
   const SPECIAL_FARES = [{id:"regular",label:"Regular"},{id:"student",label:"Student"},{id:"senior",label:"Senior Citizen"},{id:"armed",label:"Armed Forces"},{id:"doctor",label:"Doctor / Nurse"}];
 
@@ -1045,8 +1141,11 @@ function SearchPage(){
           </div>
         )}
 
+        {/* Train panel */}
+        {travelType==="train" && <TrainPanel/>}
+
         {/* Search panel — flight / bus / hotel */}
-        {!CS_DATA[travelType] && (
+        {!CS_DATA[travelType] && travelType !== "train" && (
           <div style={{background:"rgba(255,255,255,0.88)",backdropFilter:"blur(10px)",borderRadius:"0 0 20px 20px",padding:"22px 26px",boxShadow:"0 4px 20px rgba(0,0,0,0.05)",border:"1px solid rgba(201,168,76,0.15)",borderTop:"none",marginBottom:22}}>
 
             {/* Mode toggle */}
@@ -1438,7 +1537,7 @@ function SearchPage(){
         {/* Empty state */}
         {!loading && !searched && (
           <div style={{textAlign:"center",padding:"80px 20px",animation:"fadeUp 0.5s both"}}>
-            <div style={{fontSize:64,marginBottom:20,animation:"floatUD 3s ease-in-out infinite"}}>{travelType==="bus"?"🚌":travelType==="hotel"?"🏨":"✈️"}</div>
+            <div style={{fontSize:64,marginBottom:20,animation:"floatUD 3s ease-in-out infinite"}}>{travelType==="bus"?"🚌":travelType==="hotel"?"🏨":travelType==="train"?"🚂":"✈️"}</div>
             <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:600,fontSize:22,color:"#7a6a5a"}}>Your journey starts here</div>
             <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:14,color:"#7a6a5a",marginTop:8,fontWeight:500}}>Search above or try AI search in any language</div>
           </div>
@@ -1471,6 +1570,7 @@ function App() {
         <Route path="/bookings" element={<MyBookings/>}/>
         <Route path="/profile"  element={<UserProfile/>}/>
         <Route path="/admin"    element={<AdminDashboard/>}/>
+        <Route path="/ai"       element={<AIChatPage/>}/>
       </Routes>
     </Router>
   );

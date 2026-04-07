@@ -425,6 +425,10 @@ export default function LandingPage() {
               style={{ padding:"9px 22px", borderRadius:12, fontSize:14, fontWeight:500, fontFamily:"'DM Sans',sans-serif", background:"transparent", color:T.text, border:"1.5px solid rgba(0,0,0,0.12)", cursor:"pointer", transition:"all 0.2s" }}>
               Sign In
             </button>
+            <button onClick={()=>navigate(localStorage.getItem("token")?"/ai":"/login")}
+              style={{ padding:"10px 20px", borderRadius:12, fontSize:14, fontWeight:600, fontFamily:"'DM Sans',sans-serif", cursor:"pointer", background:"rgba(201,168,76,0.1)", border:"1.5px solid rgba(201,168,76,0.35)", color:"#8B6914" }}>
+              🤖 AI Chat
+            </button>
             <button onClick={() => navigate("/register")} className="shine-btn"
               style={{ padding:"9px 24px", borderRadius:12, fontSize:14, fontWeight:700, fontFamily:"'DM Sans',sans-serif", color:"#fff", border:"none", background:T.grad, boxShadow:`0 4px 20px ${T.accent}44` }}>
               Get Started

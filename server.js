@@ -915,6 +915,276 @@ Or I can search now — just say *search bus* or *search flight*.`;
 });
 
 
+
+// ══════════════════════════════════════════════════════════════
+//  AI CHAT ENDPOINT — Claude-powered travel assistant
+// ══════════════════════════════════════════════════════════════
+
+// ── Travel data for AI to use ─────────────────────────────────────────────
+const BUS_DATA = [
+  {from:"bangalore",to:"chennai",    dep:"06:00",arr:"11:30",price:650, type:"AC Sleeper",   op:"VRL Travels"},
+  {from:"bangalore",to:"chennai",    dep:"21:00",arr:"02:30",price:550, type:"Semi-Sleeper", op:"KSRTC"},
+  {from:"bangalore",to:"hyderabad",  dep:"20:00",arr:"04:00",price:800, type:"AC Sleeper",   op:"SRS Travels"},
+  {from:"bangalore",to:"goa",        dep:"21:30",arr:"06:30",price:900, type:"AC Sleeper",   op:"Neeta Tours"},
+  {from:"bangalore",to:"mumbai",     dep:"17:00",arr:"09:00",price:1400,type:"AC Sleeper",   op:"VRL Travels"},
+  {from:"bangalore",to:"coimbatore", dep:"07:00",arr:"11:00",price:400, type:"AC Seater",    op:"KSRTC"},
+  {from:"bangalore",to:"mysore",     dep:"07:00",arr:"10:00",price:250, type:"AC Seater",    op:"KSRTC"},
+  {from:"bangalore",to:"kochi",      dep:"21:00",arr:"07:00",price:950, type:"AC Sleeper",   op:"KSRTC"},
+  {from:"bangalore",to:"madurai",    dep:"21:00",arr:"05:00",price:750, type:"AC Sleeper",   op:"Parveen Travels"},
+  {from:"chennai",  to:"bangalore",  dep:"07:00",arr:"12:30",price:630, type:"AC Sleeper",   op:"VRL Travels"},
+  {from:"chennai",  to:"hyderabad",  dep:"21:00",arr:"04:00",price:750, type:"AC Sleeper",   op:"TSRTC"},
+  {from:"chennai",  to:"coimbatore", dep:"08:00",arr:"12:30",price:350, type:"AC Seater",    op:"TNSTC"},
+  {from:"hyderabad",to:"bangalore",  dep:"21:00",arr:"05:00",price:800, type:"AC Sleeper",   op:"Orange Travels"},
+  {from:"hyderabad",to:"mumbai",     dep:"18:00",arr:"06:00",price:1100,type:"AC Sleeper",   op:"VRL Travels"},
+  {from:"mumbai",   to:"pune",       dep:"07:00",arr:"10:00",price:300, type:"AC Seater",    op:"MSRTC"},
+  {from:"mumbai",   to:"goa",        dep:"22:00",arr:"08:00",price:950, type:"AC Sleeper",   op:"Paulo Travels"},
+  {from:"delhi",    to:"jaipur",     dep:"06:00",arr:"11:00",price:500, type:"AC Seater",    op:"RSRTC"},
+  {from:"delhi",    to:"agra",       dep:"07:00",arr:"11:00",price:400, type:"AC Seater",    op:"UP Roadways"},
+  {from:"delhi",    to:"lucknow",    dep:"22:00",arr:"05:00",price:700, type:"AC Sleeper",   op:"UP SRTC"},
+  {from:"delhi",    to:"amritsar",   dep:"21:30",arr:"04:30",price:750, type:"AC Sleeper",   op:"PRTC"},
+];
+
+const HOTEL_RANGES = {
+  "goa":"800–3,500","mumbai":"1,200–5,000","delhi":"900–4,000","bangalore":"800–3,500",
+  "jaipur":"700–3,000","kochi":"600–2,500","udaipur":"900–4,000","manali":"500–2,000",
+  "shimla":"600–2,500","ooty":"500–2,000","coorg":"700–3,000","pondicherry":"600–2,500",
+  "mysore":"500–2,000","hyderabad":"800–3,500","chennai":"800–3,200","kolkata":"700–3,000",
+  "dubai":"3,000–12,000","singapore":"4,000–15,000","bangkok":"2,500–10,000",
+};
+
+const INDIA_IATA = new Set(["BLR","BOM","DEL","MAA","HYD","CCU","GOI","PNQ","COK","AMD","JAI",
+  "LKO","VNS","PAT","IXC","GAU","BBI","CBE","IXM","IXE","MYQ","TRV","VTZ","VGA","IXR",
+  "BHO","SXR","IXJ","HBX","IXG","TIR","IXL","IXZ","NAG","IDR","RPR","DED","SLV","ATQ","UDR"]);
+
+function buildFlightLinkSrv(from, to, ddmm, pax) {
+  const IATA = {"bangalore":"BLR","mumbai":"BOM","delhi":"DEL","chennai":"MAA","hyderabad":"HYD",
+    "kolkata":"CCU","goa":"GOI","pune":"PNQ","kochi":"COK","ahmedabad":"AMD","jaipur":"JAI",
+    "lucknow":"LKO","varanasi":"VNS","trivandrum":"TRV","coimbatore":"CBE","madurai":"IXM",
+    "dubai":"DXB","singapore":"SIN","bangkok":"BKK","london":"LHR","new york":"JFK",
+    "kuala lumpur":"KUL","colombo":"CMB","paris":"CDG","tokyo":"NRT","sydney":"SYD"};
+  const fc = IATA[from?.toLowerCase()] || (from||"").slice(0,3).toUpperCase();
+  const tc = IATA[to?.toLowerCase()]   || (to||"").slice(0,3).toUpperCase();
+  const base = (INDIA_IATA.has(fc) && INDIA_IATA.has(tc))
+    ? "https://www.aviasales.in" : "https://www.aviasales.com";
+  return `${base}/search/${fc}${ddmm||""}${tc}${pax||1}?marker=714667&sub_id=alvryn_ai`;
+}
+
+// ── Intent extraction and data fetching ──────────────────────────────────────
+function extractIntent(message) {
+  const m = message.toLowerCase();
+  const types = [];
+  if (/flight|fly|plane|airways|airlines|air india|indigo|spicejet/.test(m)) types.push("flight");
+  if (/bus|buses|coach|volvo|sleeper|redbus|ksrtc|msrtc/.test(m))           types.push("bus");
+  if (/hotel|stay|room|accommodation|resort|lodge/.test(m))                  types.push("hotel");
+  if (/train|railway|irctc|express/.test(m))                                 types.push("train");
+  if (/trip|travel|visit|tour|vacation/.test(m) && types.length===0)         types.push("flight","bus");
+  if (types.length===0) types.push("flight");
+
+  const cities = extractCities(message);
+  const budget = extractBudget(message);
+  const { date } = extractDate(message);
+
+  return { types, from: cities.from, to: cities.to, budget, date };
+}
+
+async function fetchTravelData(intent) {
+  const { types, from, to, date } = intent;
+  const cards = [];
+
+  // ── Flights ──────────────────────────────────────────────────────────────
+  if (types.includes("flight") && from && to) {
+    try {
+      let q = "SELECT * FROM flights WHERE LOWER(from_city)=$1 AND LOWER(to_city)=$2";
+      const v = [from, to];
+      if (date) { q += " AND DATE(departure_time)=$3"; v.push(date.toISOString().split("T")[0]); }
+      q += " ORDER BY price ASC LIMIT 5";
+      const rows = (await pool.query(q, v)).rows;
+      const prices = rows.map(f=>f.price);
+      const minP = Math.min(...prices);
+
+      rows.forEach((f,i) => {
+        const dep = new Date(f.departure_time).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false});
+        const arr = new Date(f.arrival_time).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false});
+        const dur = Math.round((new Date(f.arrival_time)-new Date(f.departure_time))/60000);
+        const hour = new Date(f.departure_time).getHours();
+
+        let label = null, insight = null;
+        if (f.price === minP) { label="Best Price"; insight="Cheapest option on this route today"; }
+        else if (i===1)       { label="Fastest";    insight="Quick departure, direct flight"; }
+        else if (i===2)       { label="Best Overall"; insight="Good balance of price and timing"; }
+        if (hour>=5&&hour<9&&!insight) insight="Morning flights are typically 15-20% cheaper";
+        if (hour>=22||hour<5&&!insight) insight="Late night — lower fares, ideal if flexible";
+
+        const ddmm = date ? (date.getDate().toString().padStart(2,"0")+(date.getMonth()+1).toString().padStart(2,"0")) : "";
+
+        cards.push({
+          type:"flight", airline:f.airline, from:(f.from_city||from).slice(0,3).toUpperCase(),
+          to:(f.to_city||to).slice(0,3).toUpperCase(), departure:dep, arrival:arr,
+          duration:`${Math.floor(dur/60)}h ${dur%60}m`, price:f.price,
+          priceRange:Math.round(f.price*1.2),
+          label, insight, link:buildFlightLinkSrv(from,to,ddmm,1),
+        });
+      });
+    } catch(e) {
+      // If no DB data, create affiliate-only card
+      const ddmm = date ? (date.getDate().toString().padStart(2,"0")+(date.getMonth()+1).toString().padStart(2,"0")) : "";
+      cards.push({
+        type:"flight", airline:"Multiple airlines", from:(from||"").slice(0,3).toUpperCase(),
+        to:(to||"").slice(0,3).toUpperCase(), departure:"—", arrival:"—", duration:"Direct",
+        price:null, priceRange:null, label:"Check Live", insight:"Live fares available on partner site",
+        link:buildFlightLinkSrv(from,to,ddmm,1),
+      });
+    }
+  }
+
+  // ── Buses ────────────────────────────────────────────────────────────────
+  if (types.includes("bus") && from && to) {
+    const buses = BUS_DATA.filter(b=>b.from===from.toLowerCase()&&b.to===to.toLowerCase());
+    const prices = buses.map(b=>b.price);
+    const minP = Math.min(...prices);
+    buses.slice(0,3).forEach((b,i)=>{
+      const hour = parseInt(b.dep.split(":")[0]);
+      let label=null, insight=null;
+      if (b.price===minP) { label="Best Price"; insight="Cheapest bus on this route"; }
+      if (hour>=20||hour<5) insight="Overnight — save on accommodation, arrive fresh";
+      cards.push({
+        type:"bus", operator:b.op, from:b.from.charAt(0).toUpperCase()+b.from.slice(1),
+        to:b.to.charAt(0).toUpperCase()+b.to.slice(1), departure:b.dep, arrival:b.arr,
+        duration:"Direct", price:b.price, type2:b.type, label, insight,
+        link:`https://www.redbus.in/bus-tickets/${b.from.replace(/\s+/g,"-")}-to-${b.to.replace(/\s+/g,"-")}`,
+      });
+    });
+    if (buses.length===0) {
+      cards.push({
+        type:"bus", operator:"Multiple operators", from:from, to:to, departure:"Various",
+        arrival:"Various", duration:"Check RedBus", price:null, label:"Available",
+        insight:"Check RedBus for live availability and seat selection",
+        link:`https://www.redbus.in/bus-tickets/${(from||"").toLowerCase().replace(/\s+/g,"-")}-to-${(to||"").toLowerCase().replace(/\s+/g,"-")}`,
+      });
+    }
+  }
+
+  // ── Hotels ───────────────────────────────────────────────────────────────
+  if (types.includes("hotel") && (to||from)) {
+    const city = to || from;
+    const range = HOTEL_RANGES[city?.toLowerCase()] || "800–3,500";
+    cards.push({
+      type:"hotel", city:city.charAt(0).toUpperCase()+city.slice(1),
+      priceRange:range, rating:4.2, label:"Best Rates",
+      insight:`Prices in ${city} vary by season. Book early for better rates.`,
+      link:`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}`,
+    });
+  }
+
+  // ── Trains ───────────────────────────────────────────────────────────────
+  if (types.includes("train") && from && to) {
+    const TRAIN_CODES = {"bangalore":"SBC","mumbai":"CSTM","delhi":"NDLS","chennai":"MAS",
+      "hyderabad":"SC","kolkata":"HWH","pune":"PUNE","kochi":"ERS","jaipur":"JP",
+      "varanasi":"BSB","patna":"PNBE","lucknow":"LKO","ahmedabad":"ADI"};
+    const fc = TRAIN_CODES[from?.toLowerCase()] || from?.slice(0,4).toUpperCase();
+    const tc = TRAIN_CODES[to?.toLowerCase()]   || to?.slice(0,4).toUpperCase();
+    cards.push({
+      type:"train", from:from.charAt(0).toUpperCase()+from.slice(1),
+      to:to.charAt(0).toUpperCase()+to.slice(1),
+      label:"IRCTC", insight:"Multiple trains available. Sleeper from ₹200, AC from ₹500.",
+      link:`https://www.irctc.co.in/nget/train-search?fromStation=${fc}&toStation=${tc}`,
+    });
+  }
+
+  return cards;
+}
+
+// ── AI Chat endpoint ─────────────────────────────────────────────────────────
+app.post("/ai-chat", authenticateToken, async (req, res) => {
+  try {
+    const { message, history = [] } = req.body;
+    if (!message) return res.status(400).json({ message:"No message" });
+
+    // 1. Extract intent and fetch real data
+    const intent = extractIntent(message);
+    const cards  = await fetchTravelData(intent);
+
+    // 2. Build context from cards for AI
+    let dataContext = "";
+    if (cards.length > 0) {
+      dataContext = "\n\nReal travel data found:\n";
+      cards.forEach(c => {
+        if (c.type==="flight") dataContext += `Flight: ${c.airline} ${c.from}→${c.to} at ${c.departure}, ₹${c.price||"Live rates"}. ${c.insight||""}\n`;
+        if (c.type==="bus")    dataContext += `Bus: ${c.operator} ${c.from}→${c.to} at ${c.departure}, ₹${c.price||"Check RedBus"}. ${c.insight||""}\n`;
+        if (c.type==="hotel")  dataContext += `Hotels in ${c.city}: ₹${c.priceRange}/night. ${c.insight||""}\n`;
+        if (c.type==="train")  dataContext += `Train: ${c.from}→${c.to} via IRCTC. ${c.insight||""}\n`;
+      });
+    }
+
+    // 3. Build messages for Claude
+    const systemPrompt = `You are Alvryn AI, a premium travel assistant for India.
+Your personality: Smart, friendly, concise — like a knowledgeable friend who travels a lot.
+Your goal: Help users find and book the best travel options. Every response should move them closer to booking.
+
+Rules:
+- Keep responses SHORT and conversational (2-5 sentences max before showing options)
+- Start naturally: "Got it! 👍", "Great choice!", "Let me check that for you…"
+- Always highlight the BEST option clearly
+- Create gentle urgency: "Prices tend to rise as the date approaches" (only when true)
+- End with a soft CTA: "Want me to compare more options?" or "Should I check hotels too?"
+- If budget is mentioned, strictly respect it
+- If user is unclear, ask ONE follow-up question
+- You cover: flights, buses, hotels, trains
+- Never make up prices — use only the data provided to you
+- Prices shown are approximate — always mention "may vary" somewhere
+- You are NOT a general AI — only answer travel-related questions
+- If asked non-travel questions, say: "I'm specialized in travel! Ask me about flights, buses, hotels or trip planning."`;
+
+    const messages = [
+      ...history.slice(-6).map(m => ({
+        role: m.role === "user" ? "user" : "assistant",
+        content: m.role === "user" ? m.content : (m.text || ""),
+      })).filter(m => m.content),
+      { role:"user", content: message + dataContext },
+    ];
+
+    // 4. Call Claude API
+    const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({
+        model:"claude-sonnet-4-20250514",
+        max_tokens:400,
+        system: systemPrompt,
+        messages,
+      }),
+    });
+    const aiData = await aiRes.json();
+    const aiText = aiData.content?.[0]?.text || "I found some options for you!";
+
+    // 5. Log event
+    await logEvent("ai_chat", `${intent.from||"?"} → ${intent.to||"?"}`, "ai_chat", req.user.id);
+
+    // 6. Build CTA
+    let cta = null;
+    if (cards.length > 0) {
+      if (cards.some(c=>c.type==="flight")) cta = "💡 Tap any card to check live prices on our partner site. Prices may vary slightly.";
+      else if (cards.some(c=>c.type==="bus")) cta = "💡 Tap any card to view live seat availability on RedBus.";
+    }
+
+    res.json({ text: aiText, cards, cta });
+  } catch(e) {
+    console.error("AI Chat error:", e.message);
+    // Fallback: return without AI text
+    try {
+      const intent2 = extractIntent(req.body.message||"");
+      const cards2  = await fetchTravelData(intent2);
+      res.json({
+        text: "Here are the best options I found for you! 🗺️",
+        cards: cards2,
+        cta: "Tap any card to check live availability.",
+      });
+    } catch {
+      res.json({ text:"I had trouble searching right now. Please try again!", cards:[], cta:null });
+    }
+  }
+});
+
 // ══════════════════════════════════════════════════════════════
 //  ADMIN ROUTES
 // ══════════════════════════════════════════════════════════════

@@ -16,6 +16,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import LandingPage from "./pages/LandingPage";
 import AdminDashboard from "./pages/AdminDashboard";
+import AIChatPage from "./pages/AIChatPage";
 import UserProfile from "./pages/UserProfile";
 
 const API = "https://cometai-backend.onrender.com";
@@ -98,7 +99,6 @@ function trainLink(from, to, dateStr) {
   }
   return `https://www.irctc.co.in/nget/train-search`;
 }
-
 
 // ─── STYLES ───────────────────────────────────────────────────────────────────
 const SHARED_CSS = `
@@ -916,7 +916,18 @@ function SearchPage(){
   let user = {}; try { user = JSON.parse(localStorage.getItem("user")||"{}"); } catch {}
   const token = localStorage.getItem("token");
 
-  useEffect(() => { if (!token) navigate("/login"); }, [token, navigate]);
+  useEffect(() => {
+    if (!token) { navigate("/login"); return; }
+    // Verify token not expired
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      if (payload.exp && payload.exp * 1000 < Date.now()) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        navigate("/login");
+      }
+    } catch {} // token exists, can't verify expiry on client — let server handle
+  }, [token, navigate]);
   useEffect(() => { fetch(`${API}/test`).catch(()=>{}); const t=setInterval(()=>fetch(`${API}/test`).catch(()=>{}),14*60*1000); return()=>clearInterval(t); }, []);
   useEffect(() => { const fn=()=>setNavScrolled(window.scrollY>30); window.addEventListener("scroll",fn,{passive:true}); return()=>window.removeEventListener("scroll",fn); }, []);
 
@@ -1107,6 +1118,7 @@ function SearchPage(){
           </div>
         </div>
         <div className="nav-right-btns" style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <button onClick={()=>navigate("/ai")} style={{padding:"8px 18px",borderRadius:10,fontSize:13,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.04em",cursor:"pointer",background:"linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)",backgroundSize:"200% 200%",animation:"gradShift 3s ease infinite",color:"#1a1410",border:"none",boxShadow:"0 4px 12px rgba(201,168,76,0.28)"}}>🤖 AI Chat</button>
           <button onClick={()=>navigate("/bookings")} style={{padding:"8px 16px",borderRadius:10,fontSize:13,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",background:"transparent",color:"#3a2a1a",border:"1.5px solid rgba(0,0,0,0.15)"}}><span className="btn-label">My Bookings</span><span style={{display:"none"}} className="btn-icon">📋</span></button>
           <button onClick={()=>navigate("/profile")} style={{padding:"8px 16px",borderRadius:10,fontSize:13,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",background:`rgba(201,168,76,0.12)`,color:GOLD_DARK,border:`1.5px solid rgba(201,168,76,0.3)`}}>Profile</button>
           <button onClick={()=>{localStorage.removeItem("token");localStorage.removeItem("user");navigate("/login");}} style={{padding:"8px 16px",borderRadius:10,fontSize:13,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",background:"#fff0f0",color:"#cc2222",border:"1.5px solid rgba(200,34,34,0.25)"}}>Sign Out</button>

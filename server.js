@@ -79,7 +79,7 @@ const CITY_MAP = {
   "amritsar":"amritsar","atq":"amritsar","agra":"agra","taj mahal city":"agra",
   "indore":"indore","raipur":"raipur","nashik":"nashik","nagpur":"nagpur",
   "shimla":"shimla","dehradun":"dehradun","siliguri":"siliguri",
-  "trivandrum":"trivandrum","thiruvananthapuram":"trivandrum","trv":"trivandrum",
+  "trivandrum":"trivandrum","trivandram":"trivandrum","trivandaram":"trivandrum","trivendrum":"trivandrum","thiruvananthapuram":"trivandrum","tiruvananthapuram":"trivandrum","trv":"trivandrum","trvm":"trivandrum",
   "visakhapatnam":"visakhapatnam","vizag":"visakhapatnam","vtz":"visakhapatnam",
   "vijayawada":"vijayawada","vga":"vijayawada",
   "ranchi":"ranchi","bhopal":"bhopal","srinagar":"srinagar","jammu":"jammu",
@@ -133,8 +133,15 @@ const CITY_TO_IATA = {
 };
 
 function extractCities(text) {
-  const t = text.toLowerCase()
-    .replace(/\b(flights?|buses?|bus|flight|book|hotels?|hotel|stay|rooms?|mujhe|muje|chahiye|please|kya|hai|se|ko|ka|ek|ticket|find|search|show|bata|dikha|looking|want|need|enakku|vendum|naaku|kavali)\b/gi, " ")
+  // Normalize misspellings + aliases before city extraction
+  let normalized = text.toLowerCase();
+  if (typeof CITY_NORM !== "undefined") {
+    Object.entries(CITY_NORM).forEach(([k,v]) => {
+      try { normalized = normalized.replace(new RegExp("\\b"+k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","g"), v); } catch {}
+    });
+  }
+  const t = normalized
+    .replace(/\b(flights?|buses?|bus|flight|flit|fligth|flght|book|hotels?|hotel|stay|rooms?|mujhe|muje|chahiye|please|kya|hai|se|ko|ka|ek|ticket|find|search|show|bata|dikha|looking|want|need|enakku|vendum|naaku|kavali)\b/gi, " ")
     .replace(/\s+/g, " ").trim();
 
   let found = [];
@@ -334,7 +341,7 @@ app.post("/login", async (req, res) => {
     if (!user) return res.status(400).json({ message: "User not found" });
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(401).json({ message: "Invalid password" });
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || "secretkey");
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || "secretkey", { expiresIn: "30d" });
     await logEvent("login", `User ${email}`, "web", user.id);
     res.json({ token, user: { id:user.id, name:user.name, email:user.email, phone:user.phone, refCode:user.ref_code, walletBalance:user.wallet_balance||0 } });
   } catch (e) { res.status(500).json({ message: "Login failed" }); }
@@ -915,275 +922,784 @@ Or I can search now — just say *search bus* or *search flight*.`;
 });
 
 
-
 // ══════════════════════════════════════════════════════════════
-//  AI CHAT ENDPOINT — Claude-powered travel assistant
+//  SMART AI CHAT — 3-TIER: CACHE → MEDIUM LOGIC → GPT-4o-mini
 // ══════════════════════════════════════════════════════════════
 
-// ── Travel data for AI to use ─────────────────────────────────────────────
-const BUS_DATA = [
+// ── City alias fixes (trivandram→TRV etc.) ───────────────────────────────────
+const CITY_NORM = {
+  "trivandram":"trivandrum","trivandaram":"trivandrum","trivendrum":"trivandrum",
+  "tiruvananthapuram":"trivandrum","trivendram":"trivandrum","trvm":"trivandrum",
+  "bangalor":"bangalore","bangaluru":"bangalore","bengalore":"bangalore","bengaluru":"bangalore",
+  "banglaore":"bangalore","blore":"bangalore","blr":"bangalore",
+  "bombay":"mumbai","bom":"mumbai","mum":"mumbai","mumbi":"mumbai",
+  "dilli":"delhi","new delhi":"delhi","del":"delhi","nai dilli":"delhi",
+  "madras":"chennai","chenai":"chennai","chinnai":"chennai","maa":"chennai",
+  "hydrabad":"hyderabad","hyd":"hyderabad","secunderabad":"hyderabad",
+  "calcutta":"kolkata","ccu":"kolkata","kolkatta":"kolkata",
+  "cochin":"kochi","ernakulam":"kochi","cok":"kochi",
+  "poona":"pune","pnq":"pune","puna":"pune",
+  "koimbatore":"coimbatore","kovai":"coimbatore","cbe":"coimbatore",
+  "banaras":"varanasi","kashi":"varanasi","benares":"varanasi","vns":"varanasi",
+  "mangaluru":"mangalore","mangalor":"mangalore","ixe":"mangalore",
+  "mysuru":"mysore","city of palaces":"mysore",
+  "vizag":"visakhapatnam","waltair":"visakhapatnam","vtz":"visakhapatnam",
+  "singapur":"singapore","singapoor":"singapore","sin":"singapore",
+  "dxb":"dubai","dubi":"dubai","dubay":"dubai",
+  "pink city":"jaipur","jaipor":"jaipur","jai":"jaipur",
+  "temple city":"madurai","maduri":"madurai","mdu":"madurai",
+  "ladakh":"leh","leh ladakh":"leh",
+  "taj city":"agra","taj mahal city":"agra",
+  "city of pearls":"hyderabad",
+};
+
+function normCity(s) {
+  if (!s) return s;
+  const low = s.toLowerCase().trim();
+  return CITY_NORM[low] || low;
+}
+
+// ── Bus data ──────────────────────────────────────────────────────────────────
+const BUS_DB = [
   {from:"bangalore",to:"chennai",    dep:"06:00",arr:"11:30",price:650, type:"AC Sleeper",   op:"VRL Travels"},
+  {from:"bangalore",to:"chennai",    dep:"14:00",arr:"19:30",price:720, type:"AC Sleeper",   op:"SRS Travels"},
   {from:"bangalore",to:"chennai",    dep:"21:00",arr:"02:30",price:550, type:"Semi-Sleeper", op:"KSRTC"},
   {from:"bangalore",to:"hyderabad",  dep:"20:00",arr:"04:00",price:800, type:"AC Sleeper",   op:"SRS Travels"},
+  {from:"bangalore",to:"hyderabad",  dep:"10:00",arr:"18:00",price:750, type:"Semi-Sleeper", op:"Orange Travels"},
   {from:"bangalore",to:"goa",        dep:"21:30",arr:"06:30",price:900, type:"AC Sleeper",   op:"Neeta Tours"},
+  {from:"bangalore",to:"goa",        dep:"08:00",arr:"17:00",price:850, type:"AC Sleeper",   op:"Paulo Travels"},
   {from:"bangalore",to:"mumbai",     dep:"17:00",arr:"09:00",price:1400,type:"AC Sleeper",   op:"VRL Travels"},
+  {from:"bangalore",to:"pune",       dep:"18:00",arr:"08:00",price:1200,type:"AC Sleeper",   op:"Paulo Travels"},
   {from:"bangalore",to:"coimbatore", dep:"07:00",arr:"11:00",price:400, type:"AC Seater",    op:"KSRTC"},
+  {from:"bangalore",to:"mangalore",  dep:"22:00",arr:"05:00",price:700, type:"AC Sleeper",   op:"VRL Travels"},
   {from:"bangalore",to:"mysore",     dep:"07:00",arr:"10:00",price:250, type:"AC Seater",    op:"KSRTC"},
   {from:"bangalore",to:"kochi",      dep:"21:00",arr:"07:00",price:950, type:"AC Sleeper",   op:"KSRTC"},
   {from:"bangalore",to:"madurai",    dep:"21:00",arr:"05:00",price:750, type:"AC Sleeper",   op:"Parveen Travels"},
+  {from:"bangalore",to:"trivandrum", dep:"20:30",arr:"07:30",price:1100,type:"AC Sleeper",   op:"KSRTC"},
+  {from:"bangalore",to:"tirupati",   dep:"05:30",arr:"10:30",price:450, type:"AC Seater",    op:"APSRTC"},
+  {from:"bangalore",to:"ooty",       dep:"07:30",arr:"12:30",price:380, type:"AC Seater",    op:"KSRTC"},
+  {from:"bangalore",to:"pondicherry",dep:"07:00",arr:"12:00",price:450, type:"AC Seater",    op:"TNSTC"},
+  {from:"bangalore",to:"salem",      dep:"07:30",arr:"11:00",price:320, type:"AC Seater",    op:"KSRTC"},
+  {from:"bangalore",to:"vellore",    dep:"06:30",arr:"09:30",price:280, type:"AC Seater",    op:"TNSTC"},
   {from:"chennai",  to:"bangalore",  dep:"07:00",arr:"12:30",price:630, type:"AC Sleeper",   op:"VRL Travels"},
   {from:"chennai",  to:"hyderabad",  dep:"21:00",arr:"04:00",price:750, type:"AC Sleeper",   op:"TSRTC"},
   {from:"chennai",  to:"coimbatore", dep:"08:00",arr:"12:30",price:350, type:"AC Seater",    op:"TNSTC"},
+  {from:"chennai",  to:"madurai",    dep:"22:00",arr:"03:00",price:450, type:"AC Sleeper",   op:"Parveen Travels"},
+  {from:"chennai",  to:"trivandrum", dep:"21:00",arr:"06:00",price:750, type:"AC Sleeper",   op:"TNSTC"},
   {from:"hyderabad",to:"bangalore",  dep:"21:00",arr:"05:00",price:800, type:"AC Sleeper",   op:"Orange Travels"},
   {from:"hyderabad",to:"mumbai",     dep:"18:00",arr:"06:00",price:1100,type:"AC Sleeper",   op:"VRL Travels"},
+  {from:"hyderabad",to:"chennai",    dep:"20:30",arr:"03:30",price:700, type:"AC Sleeper",   op:"APSRTC"},
   {from:"mumbai",   to:"pune",       dep:"07:00",arr:"10:00",price:300, type:"AC Seater",    op:"MSRTC"},
   {from:"mumbai",   to:"goa",        dep:"22:00",arr:"08:00",price:950, type:"AC Sleeper",   op:"Paulo Travels"},
   {from:"delhi",    to:"jaipur",     dep:"06:00",arr:"11:00",price:500, type:"AC Seater",    op:"RSRTC"},
   {from:"delhi",    to:"agra",       dep:"07:00",arr:"11:00",price:400, type:"AC Seater",    op:"UP Roadways"},
+  {from:"delhi",    to:"chandigarh", dep:"08:00",arr:"12:00",price:450, type:"AC Seater",    op:"HRTC"},
   {from:"delhi",    to:"lucknow",    dep:"22:00",arr:"05:00",price:700, type:"AC Sleeper",   op:"UP SRTC"},
   {from:"delhi",    to:"amritsar",   dep:"21:30",arr:"04:30",price:750, type:"AC Sleeper",   op:"PRTC"},
+  {from:"delhi",    to:"haridwar",   dep:"06:30",arr:"11:30",price:500, type:"AC Seater",    op:"Uttarakhand Roadways"},
+  {from:"delhi",    to:"shimla",     dep:"05:30",arr:"13:30",price:650, type:"AC Seater",    op:"HRTC"},
+  {from:"kolkata",  to:"bhubaneswar",dep:"21:00",arr:"03:00",price:600, type:"AC Sleeper",   op:"OSRTC"},
+  {from:"kolkata",  to:"patna",      dep:"20:00",arr:"05:00",price:750, type:"AC Sleeper",   op:"BSRTC"},
+  {from:"pune",     to:"goa",        dep:"22:30",arr:"06:30",price:850, type:"AC Sleeper",   op:"Neeta Tours"},
+  {from:"pune",     to:"hyderabad",  dep:"20:00",arr:"06:00",price:950, type:"AC Sleeper",   op:"SRS Travels"},
 ];
 
-const HOTEL_RANGES = {
-  "goa":"800–3,500","mumbai":"1,200–5,000","delhi":"900–4,000","bangalore":"800–3,500",
-  "jaipur":"700–3,000","kochi":"600–2,500","udaipur":"900–4,000","manali":"500–2,000",
+const HOTEL_PRICES = {
+  "goa":"800–3,500","mumbai":"1,200–5,000","delhi":"900–4,200","bangalore":"800–3,800",
+  "jaipur":"700–3,000","kochi":"600–2,500","udaipur":"900–4,000","manali":"500–2,200",
   "shimla":"600–2,500","ooty":"500–2,000","coorg":"700–3,000","pondicherry":"600–2,500",
   "mysore":"500–2,000","hyderabad":"800–3,500","chennai":"800–3,200","kolkata":"700–3,000",
+  "agra":"700–3,000","varanasi":"600–2,800","amritsar":"600–2,500","lucknow":"700–3,000",
   "dubai":"3,000–12,000","singapore":"4,000–15,000","bangkok":"2,500–10,000",
+  "trivandrum":"600–2,500","coimbatore":"500–2,000","madurai":"600–2,200",
+  "bhubaneswar":"600–2,200","patna":"600–2,000","ranchi":"500–2,000",
 };
 
-const INDIA_IATA = new Set(["BLR","BOM","DEL","MAA","HYD","CCU","GOI","PNQ","COK","AMD","JAI",
+const CITY_IATA_SRV = {
+  "bangalore":"BLR","mumbai":"BOM","delhi":"DEL","chennai":"MAA","hyderabad":"HYD",
+  "kolkata":"CCU","goa":"GOI","pune":"PNQ","kochi":"COK","ahmedabad":"AMD","jaipur":"JAI",
+  "lucknow":"LKO","varanasi":"VNS","trivandrum":"TRV","coimbatore":"CBE","madurai":"IXM",
+  "mangalore":"IXE","mysore":"MYQ","visakhapatnam":"VTZ","ranchi":"IXR","bhopal":"BHO",
+  "srinagar":"SXR","jammu":"IXJ","tirupati":"TIR","leh":"IXL","nagpur":"NAG",
+  "chandigarh":"IXC","guwahati":"GAU","bhubaneswar":"BBI","amritsar":"ATQ",
+  "udaipur":"UDR","jodhpur":"JDH","agra":"AGR","indore":"IDR","patna":"PAT",
+  "dehradun":"DED","shimla":"SLV","hubli":"HBX","belgaum":"IXG",
+  "dubai":"DXB","singapore":"SIN","bangkok":"BKK","london":"LHR","new york":"JFK",
+  "kuala lumpur":"KUL","colombo":"CMB","paris":"CDG","tokyo":"NRT","sydney":"SYD",
+  "doha":"DOH","abu dhabi":"AUH","istanbul":"IST","bali":"DPS","maldives":"MLE",
+  "kathmandu":"KTM","muscat":"MCT",
+};
+const INDIA_SET = new Set(["BLR","BOM","DEL","MAA","HYD","CCU","GOI","PNQ","COK","AMD","JAI",
   "LKO","VNS","PAT","IXC","GAU","BBI","CBE","IXM","IXE","MYQ","TRV","VTZ","VGA","IXR",
   "BHO","SXR","IXJ","HBX","IXG","TIR","IXL","IXZ","NAG","IDR","RPR","DED","SLV","ATQ","UDR"]);
 
-function buildFlightLinkSrv(from, to, ddmm, pax) {
-  const IATA = {"bangalore":"BLR","mumbai":"BOM","delhi":"DEL","chennai":"MAA","hyderabad":"HYD",
-    "kolkata":"CCU","goa":"GOI","pune":"PNQ","kochi":"COK","ahmedabad":"AMD","jaipur":"JAI",
-    "lucknow":"LKO","varanasi":"VNS","trivandrum":"TRV","coimbatore":"CBE","madurai":"IXM",
-    "dubai":"DXB","singapore":"SIN","bangkok":"BKK","london":"LHR","new york":"JFK",
-    "kuala lumpur":"KUL","colombo":"CMB","paris":"CDG","tokyo":"NRT","sydney":"SYD"};
-  const fc = IATA[from?.toLowerCase()] || (from||"").slice(0,3).toUpperCase();
-  const tc = IATA[to?.toLowerCase()]   || (to||"").slice(0,3).toUpperCase();
-  const base = (INDIA_IATA.has(fc) && INDIA_IATA.has(tc))
-    ? "https://www.aviasales.in" : "https://www.aviasales.com";
-  return `${base}/search/${fc}${ddmm||""}${tc}${pax||1}?marker=714667&sub_id=alvryn_ai`;
+function buildFlightURL(from, to, ddmm, pax=1) {
+  const fc = CITY_IATA_SRV[from?.toLowerCase()] || (from||"").slice(0,3).toUpperCase();
+  const tc = CITY_IATA_SRV[to?.toLowerCase()]   || (to||"").slice(0,3).toUpperCase();
+  const base = (INDIA_SET.has(fc) && INDIA_SET.has(tc)) ? "https://www.aviasales.in" : "https://www.aviasales.com";
+  return `${base}/search/${fc}${ddmm||""}${tc}${pax}?marker=714667&sub_id=alvryn_ai`;
 }
-
-// ── Intent extraction and data fetching ──────────────────────────────────────
-function extractIntent(message) {
-  const m = message.toLowerCase();
-  const types = [];
-  if (/flight|fly|plane|airways|airlines|air india|indigo|spicejet/.test(m)) types.push("flight");
-  if (/bus|buses|coach|volvo|sleeper|redbus|ksrtc|msrtc/.test(m))           types.push("bus");
-  if (/hotel|stay|room|accommodation|resort|lodge/.test(m))                  types.push("hotel");
-  if (/train|railway|irctc|express/.test(m))                                 types.push("train");
-  if (/trip|travel|visit|tour|vacation/.test(m) && types.length===0)         types.push("flight","bus");
-  if (types.length===0) types.push("flight");
-
-  const cities = extractCities(message);
-  const budget = extractBudget(message);
-  const { date } = extractDate(message);
-
-  return { types, from: cities.from, to: cities.to, budget, date };
-}
-
-async function fetchTravelData(intent) {
-  const { types, from, to, date } = intent;
-  const cards = [];
-
-  // ── Flights ──────────────────────────────────────────────────────────────
-  if (types.includes("flight") && from && to) {
+function buildBusURL(from, to) { return `https://www.redbus.in/bus-tickets/${(from||"").replace(/\s+/g,"-")}-to-${(to||"").replace(/\s+/g,"-")}`; }
+function buildTrainURL(from, to, dateStr) {
+  const TC={
+    "bangalore":"SBC","bengaluru":"SBC","mumbai":"CSTM","bombay":"CSTM",
+    "delhi":"NDLS","new delhi":"NDLS","chennai":"MAS","madras":"MAS",
+    "hyderabad":"SC","secunderabad":"SC","kolkata":"HWH","calcutta":"HWH",
+    "pune":"PUNE","poona":"PUNE","kochi":"ERS","cochin":"ERS",
+    "jaipur":"JP","varanasi":"BSB","banaras":"BSB","kashi":"BSB",
+    "patna":"PNBE","trivandrum":"TVC","thiruvananthapuram":"TVC","trivandram":"TVC",
+    "coimbatore":"CBE","kovai":"CBE","madurai":"MDU","nagpur":"NGP",
+    "bhopal":"BPL","amritsar":"ASR","chandigarh":"CDG","agra":"AGC",
+    "lucknow":"LKO","ahmedabad":"ADI","visakhapatnam":"VSKP","vizag":"VSKP",
+    "mangalore":"MAQ","mangaluru":"MAQ","mysore":"MYS","mysuru":"MYS",
+    "guwahati":"GHY","bhubaneswar":"BBS","ranchi":"RNC","indore":"INDB",
+    "surat":"ST","jodhpur":"JU","udaipur":"UDZ","dehradun":"DDN",
+  };
+  const fc = TC[from?.toLowerCase()]||(from||"").slice(0,4).toUpperCase();
+  const tc = TC[to?.toLowerCase()]  ||(to||"").slice(0,4).toUpperCase();
+  // Format date for IRCTC: YYYYMMDD
+  let dateParam = "";
+  if (dateStr) {
     try {
-      let q = "SELECT * FROM flights WHERE LOWER(from_city)=$1 AND LOWER(to_city)=$2";
-      const v = [from, to];
-      if (date) { q += " AND DATE(departure_time)=$3"; v.push(date.toISOString().split("T")[0]); }
-      q += " ORDER BY price ASC LIMIT 5";
-      const rows = (await pool.query(q, v)).rows;
-      const prices = rows.map(f=>f.price);
-      const minP = Math.min(...prices);
+      const d = new Date(dateStr);
+      if (!isNaN(d)) {
+        const dd = String(d.getDate()).padStart(2,"0");
+        const mm = String(d.getMonth()+1).padStart(2,"0");
+        const yyyy = d.getFullYear();
+        dateParam = `&journeyDate=${yyyy}${mm}${dd}`;
+      }
+    } catch {}
+  }
+  return `https://www.irctc.co.in/nget/train-search?fromStation=${fc}&toStation=${tc}${dateParam}`;
+}
 
-      rows.forEach((f,i) => {
-        const dep = new Date(f.departure_time).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false});
-        const arr = new Date(f.arrival_time).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false});
-        const dur = Math.round((new Date(f.arrival_time)-new Date(f.departure_time))/60000);
-        const hour = new Date(f.departure_time).getHours();
+// ── TIER 1: Classify query complexity ────────────────────────────────────────
+function classifyQuery(msg) {
+  const m = msg.toLowerCase();
+  // Easy: standard route search
+  const hasRoute = extractCities(msg).from && extractCities(msg).to;
+  const isLocalArea = /attibele|hosur|electronic city|silk board|whitefield|koramangala|hsr|indiranagar|btm|hebbal|yelahanka|peenya|kengeri|nice road|airport/i.test(m);
+  const isComplexTrip = /trip|plan|itinerary|suggest|recommend|where.*go|budget.*stay|combo|package|multi.?city|via|both.*and/i.test(m);
+  const isLocalTransport = /bmtc|auto|cab|ola|uber|metro|local.*bus|bus.*number|route.*number|which.*bus|how.*reach|direction|from.*to.*local/i.test(m);
+  const isGeneral = /which.*better|compare|vs|cheaper.*season|best.*time|tips|advice|cheapest.*month|avoid/i.test(m);
+  const isGreeting = /^(hi|hello|hey|hlo|heyy|heyyy|namaste|vanakkam|hai|what.*alvryn|who.*are.*you|help)/.test(m);
 
-        let label = null, insight = null;
-        if (f.price === minP) { label="Best Price"; insight="Cheapest option on this route today"; }
-        else if (i===1)       { label="Fastest";    insight="Quick departure, direct flight"; }
-        else if (i===2)       { label="Best Overall"; insight="Good balance of price and timing"; }
-        if (hour>=5&&hour<9&&!insight) insight="Morning flights are typically 15-20% cheaper";
-        if (hour>=22||hour<5&&!insight) insight="Late night — lower fares, ideal if flexible";
+  if (isGreeting)                          return "easy";
+  if (isLocalArea || isLocalTransport)     return "medium";
+  if (hasRoute && !isComplexTrip && !isGeneral) return "easy";
+  if (isGeneral || isComplexTrip)          return "hard";
+  // Conversational / unclear — use API for best response
+  const isConversational = !hasRoute && msg.length > 5 && !/hotel|bus|flight|train|trip/.test(m);
+  if (isConversational)                    return "hard";
+  return "medium";
+}
 
-        const ddmm = date ? (date.getDate().toString().padStart(2,"0")+(date.getMonth()+1).toString().padStart(2,"0")) : "";
+// ── TIER 1: Massive knowledge base — instant answers, no API ─────────────────
+function easyResponse(msg) {
+  const m = msg.toLowerCase().trim();
+  const { from, to } = extractCities(msg);
+  const f = from ? normCity(from) : null;
+  const t = to   ? normCity(to)   : null;
+  const budget = extractBudget(msg);
+  const { date } = extractDate(msg);
 
-        cards.push({
-          type:"flight", airline:f.airline, from:(f.from_city||from).slice(0,3).toUpperCase(),
-          to:(f.to_city||to).slice(0,3).toUpperCase(), departure:dep, arrival:arr,
-          duration:`${Math.floor(dur/60)}h ${dur%60}m`, price:f.price,
-          priceRange:Math.round(f.price*1.2),
-          label, insight, link:buildFlightLinkSrv(from,to,ddmm,1),
-        });
-      });
-    } catch(e) {
-      // If no DB data, create affiliate-only card
-      const ddmm = date ? (date.getDate().toString().padStart(2,"0")+(date.getMonth()+1).toString().padStart(2,"0")) : "";
-      cards.push({
-        type:"flight", airline:"Multiple airlines", from:(from||"").slice(0,3).toUpperCase(),
-        to:(to||"").slice(0,3).toUpperCase(), departure:"—", arrival:"—", duration:"Direct",
-        price:null, priceRange:null, label:"Check Live", insight:"Live fares available on partner site",
-        link:buildFlightLinkSrv(from,to,ddmm,1),
-      });
-    }
+  const fN = f ? f.charAt(0).toUpperCase()+f.slice(1) : "";
+  const tN = t ? t.charAt(0).toUpperCase()+t.slice(1) : "";
+
+  const isBusQ    = /\bbus\b|buses|coach|volvo|sleeper|seater|ksrtc|msrtc|tsrtc|redbus/i.test(m);
+  const isHotelQ  = /hotel|stay|room|accommodation|resort|lodge|hostel|airbnb/i.test(m);
+  const isTrainQ  = /\btrain\b|railway|irctc|express|rajdhani|shatabdi|intercity/i.test(m);
+  const isFlightQ = /flight|fly|plane|airways|airlines|air india|indigo|spicejet|vistara/i.test(m) || (!isBusQ && !isHotelQ && !isTrainQ);
+
+  // ── GREETINGS ─────────────────────────────────────────────────────────────
+  if (/^(hi+|hello+|hey+|hlo+|heyy*|heyyy*|namaste|vanakkam|hai|sup|yo|howdy|gm|gn|good (morning|afternoon|evening)|namaskar|sat sri akal|kem cho)/.test(m) || (m.length <= 5 && /^[a-z]+$/.test(m))) {
+    const hour = new Date().getHours();
+    const timeGreet = hour<12?"Good morning":hour<17?"Good afternoon":"Good evening";
+    return {
+      text: `${timeGreet}! 👋 I'm Alvryn AI — your personal travel assistant.\n\nHere's what I can do for you:\n\n✈️ **Flights** — India & international, find cheapest fares\n🚌 **Buses** — overnight AC sleepers, all major routes\n🏨 **Hotels** — budget to luxury, anywhere\n🚂 **Trains** — IRCTC booking, dates pre-filled\n🗺️ **Trip planning** — full itinerary within your budget\n\nJust tell me where you want to go, or try:\n• _"Cheapest flight Bangalore to Delhi tomorrow"_\n• _"Bus from Chennai to Hyderabad tonight"_\n• _"Plan a 2-day Goa trip under ₹8000"_\n\nWhat's your next adventure? 🌍`,
+      cards: [], cta: null
+    };
   }
 
-  // ── Buses ────────────────────────────────────────────────────────────────
-  if (types.includes("bus") && from && to) {
-    const buses = BUS_DATA.filter(b=>b.from===from.toLowerCase()&&b.to===to.toLowerCase());
+  // ── WHAT IS ALVRYN ────────────────────────────────────────────────────────
+  if (/what.*(is|are).*(alvryn|this|you|site|app|platform)|who.*are.*you|tell.*about.*yourself|how.*does.*this.*work|how.*does.*alvryn.*work/.test(m)) {
+    return {
+      text: "Alvryn is India's smartest travel search platform! 🚀\n\nHere's how it works:\n\n1️⃣ You tell me where you want to go\n2️⃣ I search across 700+ airlines, buses, hotels and trains\n3️⃣ I show you the best options sorted by price, speed and value\n4️⃣ You click to book on our partner site (Aviasales, RedBus, Booking.com, IRCTC)\n\n**Why Alvryn?**\n✅ Find cheapest fares instantly\n✅ Compare flights, buses AND trains side by side\n✅ AI understands natural language — type like you talk\n✅ Works in English, Hindi, Tamil, and even with typos!\n\nAlvryn earns a small commission from partners when you book — at no extra cost to you. 🙏",
+      cards: [], cta: null
+    };
+  }
+
+  // ── HOW TO BOOK ──────────────────────────────────────────────────────────
+  if (/how.*(to|do i|can i).*(book|buy|purchase|reserve|order)|booking.*process|steps.*book/.test(m)) {
+    return {
+      text: "Booking through Alvryn is super easy! Here's how:\n\n**Step 1:** Tell me your route (e.g. \"flight from Bangalore to Mumbai on April 20\")\n**Step 2:** I show you the best options with prices\n**Step 3:** Click **\"Check Live Prices\"** on the flight/bus card\n**Step 4:** You land on our partner site (Aviasales/RedBus/Booking.com/IRCTC) with your route pre-filled\n**Step 5:** Complete the booking and payment there\n\n💡 **Tip:** Booking is done on our partner site — they handle payment and send you the confirmation ticket. Alvryn doesn't charge anything extra!",
+      cards: [], cta: "Ready to search? Just tell me your route! ✈️"
+    };
+  }
+
+  // ── IS ALVRYN FREE ───────────────────────────────────────────────────────
+  if (/is.*free|free.*use|cost.*use|pay.*use|subscription|premium|charges.*alvryn/.test(m)) {
+    return {
+      text: "Yes, Alvryn is completely FREE to use! 🎉\n\nYou pay nothing to Alvryn — just search as much as you want.\n\nWhen you book, payment goes directly to the partner (airline/bus/hotel) at their normal price. Alvryn earns a small commission from the partner, not from you.\n\nSo you always get the real price — no hidden fees, no extra charges from Alvryn. 🙌",
+      cards: [], cta: null
+    };
+  }
+
+  // ── POPULAR DESTINATIONS ─────────────────────────────────────────────────
+  if (/popular.*destination|best.*place|top.*place|where.*go|suggest.*trip|where.*travel|best.*visit|places.*india|tourist.*place/.test(m)) {
+    return {
+      text: "Here are India's most popular travel destinations right now! 🇮🇳\n\n**Beach destinations:**\n🏖️ **Goa** — parties, beaches, nightlife. Best: Oct–Mar\n🌊 **Pondicherry** — French quarter, quiet beaches. Best: Nov–Feb\n🐚 **Varkala, Kerala** — cliffside beaches. Best: Oct–Mar\n\n**Hill stations:**\n🏔️ **Manali** — snow, adventure, Rohtang Pass. Best: Mar–Jun\n🌿 **Coorg, Karnataka** — coffee estates, mist. Best: Sep–Mar\n🍵 **Ooty** — toy train, tea gardens. Best: Mar–Jun\n\n**Cultural/Heritage:**\n🏯 **Jaipur** — forts, palaces, pink city. Best: Oct–Mar\n🛕 **Varanasi** — ghats, temples, spiritual. Best: Oct–Mar\n🏛️ **Hampi, Karnataka** — ruins, boulders. Best: Oct–Feb\n\n**International:**\n🌏 **Bangkok** — cheap, fun, street food. 4h flight from South India\n🏝️ **Bali** — beaches, temples, budget-friendly\n🇸🇬 **Singapore** — city, culture, food\n\nWant flights/buses to any of these? Just ask! 😊",
+      cards: [], cta: null
+    };
+  }
+
+  // ── TRAVEL TIPS INDIA ───────────────────────────────────────────────────
+  if (/travel.*tip|tip.*travel|advice.*travel|how.*save.*money.*travel|budget.*travel.*tip/.test(m)) {
+    return {
+      text: "Top travel tips to save money in India! 💰\n\n**Flights:**\n✈️ Book 3–6 weeks in advance for domestic flights\n✈️ Tuesday/Wednesday departures are cheapest\n✈️ Early morning or late-night flights = lower fares\n✈️ Use Alvryn to compare all airlines at once!\n\n**Buses:**\n🚌 Overnight buses = save hotel cost + travel together\n🚌 KSRTC/MSRTC state buses cheaper than private\n🚌 AC Sleeper for overnight > AC Seater\n\n**Trains:**\n🚂 Book 60–120 days in advance on IRCTC\n🚂 Tatkal quota available 1 day before — slightly expensive\n🚂 3A class = good balance of price + comfort\n\n**General:**\n💡 Travel in shoulder season (Sep–Oct, Feb–Mar) for best prices\n💡 Weekday travel is cheaper than weekends\n💡 Book flights + hotel together for combo deals",
+      cards: [], cta: null
+    };
+  }
+
+  // ── BEST TIME TO VISIT ──────────────────────────────────────────────────
+  if (/best time.*(visit|go|travel)|when.*visit|when.*travel|season.*visit|weather.*(.+)/.test(m)) {
+    const dest = tN || fN || "India";
+    const BTG = {
+      "goa":"October to March — avoid monsoon (June–September)",
+      "kerala":"September to March — backwaters, beaches, wildlife best in this period",
+      "manali":"March to June for adventure, December to February for snow",
+      "shimla":"March to June and September to November",
+      "ladakh":"June to September only — roads are closed in winter",
+      "rajasthan":"October to March — avoiding the scorching summer",
+      "ooty":"April to June and September to November",
+      "coorg":"September to March — coffee harvest season in Oct–Nov",
+      "bangalore":"Year-round! Comfortable climate all year. Avoid heavy rains in Oct",
+      "mumbai":"November to February — avoid June–September monsoon",
+      "delhi":"October to March — avoid scorching summer and monsoon",
+      "chennai":"November to February — avoid April–June heat",
+      "hyderabad":"October to February — pleasant weather",
+      "kolkata":"October to March",
+      "jaipur":"October to March — Rajasthan winters are perfect",
+      "varanasi":"October to March — avoid summer heat",
+      "thailand":"November to April — dry season",
+      "bali":"April to October — dry season",
+      "singapore":"Year-round! Slight preference for Feb–April (least rain)",
+      "dubai":"October to April — avoid summer (40°C+)",
+      "default":"October to March is generally the best travel season for most of India"
+    };
+    const answer = BTG[dest.toLowerCase()] || BTG["default"];
+    return {
+      text: `📅 **Best time to visit ${dest}:**\n\n${answer}\n\nWant me to search flights or buses to ${dest}? Just say when! 😊`,
+      cards: [], cta: null
+    };
+  }
+
+  // ── PASSPORT / VISA ─────────────────────────────────────────────────────
+  if (/visa|passport|document.*travel|travel.*document/.test(m)) {
+    return {
+      text: "📄 **Visa & Travel Documents — Quick Guide:**\n\n**For International Travel:**\n• Valid Indian passport (6 months validity required)\n• Visa for destination country\n• Return ticket + hotel booking (some countries require)\n\n**Visa-Free / Visa-on-Arrival for Indians:**\n🇹🇭 Thailand — 30 days visa-on-arrival\n🇮🇩 Bali/Indonesia — 30 days visa-on-arrival\n🇳🇵 Nepal — no visa needed!\n🇱🇰 Sri Lanka — e-visa, easy online\n🇲🇻 Maldives — visa-on-arrival free\n🇲🇾 Malaysia — 30 days visa-free\n🇮🇱 Mauritius — 60 days visa-free\n\n**Domestic India Travel:**\n• Valid ID (Aadhaar, PAN, Passport, Driving License)\n• No visa needed within India!\n\n💡 Always check official embassy website for latest requirements before booking.",
+      cards: [], cta: null
+    };
+  }
+
+  // ── REFUND / CANCELLATION ────────────────────────────────────────────────
+  if (/refund|cancel|cancell|reschedule|change.*date|change.*ticket/.test(m)) {
+    return {
+      text: "❌ **Cancellation & Refund Info:**\n\nAlvryn is a search platform — bookings are made on partner sites. Cancellation policies depend on the partner:\n\n**Flights (via Aviasales):**\n• Cancellation policy varies by airline\n• Indigo: usually ₹3,000–4,000 cancellation fee\n• Air India: depends on fare class\n• Non-refundable fares cannot be cancelled\n• Contact airline directly for cancellation\n\n**Buses (via RedBus):**\n• Cancel 4+ hours before departure: 75–90% refund\n• Cancel 1–4 hours: 50% refund\n• Under 1 hour: no refund\n• Login to RedBus app → My Bookings → Cancel\n\n**Trains (IRCTC):**\n• Cancel online on irctc.co.in\n• Refund depends on class and time before departure\n• Tatkal tickets: no refund\n\n💡 Always read the cancellation policy before booking!",
+      cards: [], cta: null
+    };
+  }
+
+  // ── CHEAP TRAVEL GENERAL ────────────────────────────────────────────────
+  if (/cheapest.*way|cheap.*travel|low.?cost|budget.*trip|save.*money.*trip|economical.*travel/.test(m)) {
+    if (f && t) return null; // let medium/flight search handle specific routes
+    return {
+      text: "Here's how to travel as cheaply as possible! 💸\n\n**Cheapest options by type (low to high):**\n🚂 Train (Sleeper) = ₹150–500 for most routes (BOOK 60 DAYS EARLY!)\n🚌 Overnight bus = ₹300–1200\n✈️ Flight (budget, early booking) = ₹1500–4000 domestic\n\n**Money-saving hacks:**\n✅ Book flights 4–6 weeks early = save 30–50%\n✅ Overnight travel = save on one hotel night\n✅ Tuesday/Wednesday flights = 10–20% cheaper\n✅ Use Alvryn to compare instantly\n✅ Carry snacks — airport food is expensive!\n\nWhat route are you planning? Tell me and I'll find the best deal! 😊",
+      cards: [], cta: null
+    };
+  }
+
+  // ── BAGGAGE QUESTIONS ───────────────────────────────────────────────────
+  if (/baggage|luggage|bag.*limit|kg.*allowed|cabin.*bag|check.?in.*bag/.test(m)) {
+    return {
+      text: "🧳 **Baggage allowance for Indian airlines:**\n\n**IndiGo:**\n• Cabin: 7 kg (1 bag)\n• Checked: 15 kg included on most tickets\n• Extra: ₹400–600 per extra kg\n\n**Air India:**\n• Cabin: 7 kg\n• Checked: 15–25 kg depending on route\n\n**SpiceJet:**\n• Cabin: 7 kg\n• Checked: 15 kg on most routes\n\n**Vistara:**\n• Economy: 15 kg checked\n• Premium Economy: 20 kg\n\n**Budget tip:** Book extra baggage online (while booking) — it's 50–70% cheaper than at airport!\n\n💡 Always verify on the airline's website when booking as policies change.",
+      cards: [], cta: null
+    };
+  }
+
+  // ── AIRPORT QUERIES ─────────────────────────────────────────────────────
+  if (/airport.*bangalore|kia|kempegowda|blr airport|bengaluru airport/.test(m)) {
+    return {
+      text: "✈️ **Bengaluru Kempegowda International Airport (BLR):**\n\n**Getting to the airport:**\n🚌 **Vayu Vajra BMTC buses** — from Majestic, Shivajinagar, Marathahalli, Electronic City (₹250–350, best option!)\n🚖 **Ola/Uber** — ₹600–1200 from central Bangalore (1.5–2.5 hrs in traffic)\n🚕 **Pre-paid taxi** — from airport ₹700–1100 depending on zone\n🚇 **Metro** — Namma Metro Purple Line extended toward airport area (check current status)\n\n**Tips:**\n💡 Allow 2–3 hours during peak traffic (8–10 AM, 5–8 PM)\n💡 Vayu Vajra Bus: Book at bmtcinfo.com or just board at the stop\n💡 Terminal 1 = domestic, Terminal 2 = international + some domestic\n💡 Lounge access available with credit cards (Axis, HDFC Magnus, etc.)",
+      cards: [], cta: null
+    };
+  }
+
+  if (/airport.*mumbai|csia|chhatrapati shivaji|bom airport|mumbai airport/.test(m)) {
+    return {
+      text: "✈️ **Mumbai Chhatrapati Shivaji Maharaj International Airport (BOM):**\n\n**Getting to the airport:**\n🚇 **Metro Line 1** — connect at Ghatkopar or Andheri (nearest to T1)\n🚌 **BEST buses** — routes from Dadar, Bandra, Kurla\n🚖 **Ola/Uber** — ₹300–700 from South Mumbai, 45–90 min\n\n**Tips:**\n💡 T1 = domestic (Indigo, SpiceJet), T2 = Air India, Vistara + international\n💡 T1 to T2 = 15-min drive, connect bus available free\n💡 Allow 2–3 hours during peak hours\n💡 Parking at airport is expensive — Uber/Ola cheaper",
+      cards: [], cta: null
+    };
+  }
+
+  if (/airport.*delhi|igi airport|indira gandhi airport|del airport/.test(m)) {
+    return {
+      text: "✈️ **Delhi Indira Gandhi International Airport (DEL):**\n\n**Getting there:**\n🚇 **Airport Express Metro** — from New Delhi station, 20 min, ₹60–100 (BEST option!)\n🚖 **Ola/Uber** — ₹300–700 depending on zone\n🚌 **DTC buses** — various routes\n\n**Tips:**\n💡 T1 = IndiGo/SpiceJet domestic, T2 = domestic others, T3 = international + Air India\n💡 Airport Express Metro runs 5 AM–11:30 PM\n💡 Allow 2.5 hours for international, 1.5 for domestic",
+      cards: [], cta: null
+    };
+  }
+
+  // ── LOCAL BANGALORE TRANSPORT ────────────────────────────────────────────
+  if (/electronic city|attibele|hosur|silk board/i.test(m)) {
+    return {
+      text: "🚌 **Electronic City / Attibele / Hosur Road transport:**\n\n**BMTC Buses from Silk Board:**\n• Route 365, 365A, 365C → Electronic City, Attibele\n• Route 356, 356A → Electronic City Phase 1 & 2\n• From Majestic: Routes via Silk Board, ~1.5 hours\n\n**From different areas:**\n• From Majestic (KBS) → Silk Board → E-City buses\n• From Jayanagar → Direct BMTC to E-City available\n• From Whitefield → Route 500C, change at Silk Board\n\n**Cab tips:**\n• Ola/Uber from central Bangalore: ₹350–600\n• Avoid peak hours: 8–10 AM and 5–8 PM on Hosur Road\n• Best time to travel: Before 8 AM or after 9 PM\n\n**Metro:** Green Line terminates near Silk Board area — take bus from there for the last stretch.",
+      cards: [], cta: null
+    };
+  }
+
+  if (/whitefield.*bangalore|bangalore.*whitefield|itpl|mahadevapura/.test(m)) {
+    return {
+      text: "🚌 **Getting to Whitefield, Bangalore:**\n\n🚇 **Metro (BEST)** — Purple Line now extended to Whitefield/ITPL (Kadugodi station)\n🚌 **BMTC Buses** — Routes from Majestic, Shivajinagar, KR Market\n🚖 **Cab** — ₹300–500 from central Bangalore (30–60 mins)\n\n**Tips:**\n💡 Metro is fastest — avoids Old Madras Road traffic\n💡 From airport: Take Vayu Vajra or cab to Whitefield (45–90 min, ₹600–900)",
+      cards: [], cta: null
+    };
+  }
+
+  if (/metro.*bangalore|namma metro|bmtc|local.*bus.*bangalore/.test(m)) {
+    return {
+      text: "🚇 **Namma Metro & BMTC — Bangalore:**\n\n**Metro Lines:**\n🟣 **Purple Line** — Whitefield (Kadugodi) ↔ Challaghatta (13 km extension opened!)\n🟢 **Green Line** — Nagasandra ↔ Silk Board\n⏳ **Yellow Line** — Coming soon: RV Road ↔ Bommasandra\n\n**Fare:** ₹10–60 depending on distance. Smart card gives 10% discount.\n\n**BMTC Tips:**\n• Vayu Vajra AC buses to airport: ₹250–350\n• Download BMTC app for routes\n• Routes starting with 5xx = Airport buses\n• Routes starting with V = Vajra AC buses\n\n**Ola/Uber vs Metro:**\n• Metro = faster during peak hours\n• Metro = ₹10–60 vs Ola ₹150–400 for same route",
+      cards: [], cta: null
+    };
+  }
+
+  // ── TRAIN SPECIFIC QUERIES ───────────────────────────────────────────────
+  if (/tatkal|urgent.*ticket|last.*minute.*train|same.*day.*train/.test(m)) {
+    return {
+      text: "🚂 **Tatkal Tickets — Quick Guide:**\n\n**What is Tatkal?**\nLast-minute train booking quota — opens 1 day before journey at 10 AM (AC classes) and 11 AM (Sleeper).\n\n**Tatkal Charges (extra over base fare):**\n• Sleeper (SL): ₹100–200 extra\n• 3A (AC 3-tier): ₹300–400 extra\n• 2A (AC 2-tier): ₹400–500 extra\n\n**Tips to get Tatkal tickets:**\n✅ Be ready on IRCTC at 9:55 AM (AC) or 10:55 AM (Sleeper)\n✅ Have payment method ready (UPI fastest)\n✅ IRCTC website or mobile app\n✅ Premium Tatkal is more expensive but better availability\n\n⚠️ Tatkal tickets are non-refundable on cancellation.\n\nShall I open IRCTC for you?",
+      cards: [], cta: null
+    };
+  }
+
+  if (/pnr|train.*status|where.*train|train.*running|pnr.*status/.test(m)) {
+    return {
+      text: "🚂 **Check PNR Status & Train Running Status:**\n\n**PNR Status:**\n• SMS: SMS PNR <10-digit number> to 139\n• Website: indianrail.gov.in or enquiry.indianrail.gov.in\n• IRCTC app: My Bookings section\n• Google: Just type your PNR number!\n\n**Live Train Status:**\n• Website: enquiry.indianrail.gov.in\n• National Train Enquiry System: ntes.indianrail.gov.in\n• Call: 139 (Railway enquiry helpline)\n• Google: Type train number or name\n\n💡 Google is honestly the fastest — just type your PNR or train number directly!",
+      cards: [], cta: null
+    };
+  }
+
+  if (/irctc.*register|create.*irctc|irctc.*account|how.*book.*train/.test(m)) {
+    return {
+      text: "🚂 **How to register on IRCTC and book trains:**\n\n**Step 1: Create IRCTC account**\n• Go to irctc.co.in → Register\n• Fill details (name, mobile, email)\n• Verify mobile OTP\n• Takes 5 minutes!\n\n**Step 2: Book a ticket**\n1. Login to irctc.co.in\n2. Enter From, To, Date, Class\n3. Check availability\n4. Select train and coach class\n5. Add passenger details\n6. Pay via UPI/Net Banking/Card\n7. Ticket sent to email + SMS!\n\n**Tips:**\n💡 Book 120 days in advance for best availability\n💡 Tatkal opens 1 day before at 10 AM\n💡 UPI is fastest for payment\n\nWant me to pre-fill your route on IRCTC? Just tell me where you're going!",
+      cards: [], cta: null
+    };
+  }
+
+  // ── FLIGHT SPECIFIC QUERIES ──────────────────────────────────────────────
+  if (/web.*check.*in|online.*check.*in|check.*in.*flight|boarding.*pass/.test(m)) {
+    return {
+      text: "✈️ **Flight Web Check-in Guide:**\n\n**IndiGo:**\n• Opens 48 hours before departure\n• goindigo.in → Manage Booking\n• Print/download boarding pass\n\n**Air India:**\n• Opens 48 hours before\n• airindia.in → Check-in\n\n**SpiceJet:**\n• Opens 48 hours before\n• spicejet.com → Check-in\n\n**At Airport:**\n• Arrive 2 hours before domestic, 3 hours before international\n• Security lane for web check-in passengers is usually faster\n• Carry valid photo ID (Aadhaar/PAN accepted)\n\n💡 DigiYatra app: Paperless boarding at major airports using face recognition!",
+      cards: [], cta: null
+    };
+  }
+
+  if (/cheapest.*flight.*day|best.*day.*book.*flight|when.*book.*cheap/.test(m)) {
+    return {
+      text: "✈️ **When to book cheap flights — the real data:**\n\n**Best days to FLY (cheapest):**\n• Tuesday and Wednesday = cheapest days to fly\n• Saturday night = surprisingly cheap\n• Friday and Sunday = most expensive\n\n**Best time to BOOK:**\n• Domestic India: 4–8 weeks before = sweet spot\n• International: 6–12 weeks before\n• Last-minute (1–2 days): Sometimes cheap on Aviasales!\n\n**Best departure times:**\n• Very early morning (5–7 AM) = cheapest\n• Late night (10 PM–12 AM) = cheap\n• Afternoon peak (12–3 PM) = most expensive\n\n**Seasonal tips:**\n• Diwali/Dussehra/New Year = book 3+ months early\n• Off-season travel = 30–50% cheaper\n\nWant me to search fares for your route?",
+      cards: [], cta: null
+    };
+  }
+
+  // ── GOA SPECIFIC ─────────────────────────────────────────────────────────
+  if (/goa.*trip|trip.*goa|travel.*goa|visit.*goa|going.*goa/.test(m) && !f && !t) {
+    return {
+      text: "🏖️ **Goa Trip Planning Guide:**\n\n**Getting to Goa:**\n✈️ Flights — Bangalore (1h), Mumbai (1h), Delhi (2h), Chennai (1.5h)\n🚌 Buses — Overnight from Bangalore/Pune/Mumbai (8–12h), ₹800–1500\n🚂 Trains — Madgaon (Margao) station on Konkan Railway\n\n**Best beaches:**\n🌊 North Goa: Calangute, Baga (party scene), Anjuna, Vagator\n🌿 South Goa: Palolem, Colva (peaceful, cleaner)\n\n**Budget breakdown (per person, 3 days):**\n• Budget: ₹5,000–8,000 (hostel + bus)\n• Mid-range: ₹12,000–18,000 (3-star hotel + flight)\n• Luxury: ₹25,000+ (5-star, resort)\n\n**Best time:** October to March\n**Avoid:** June–September (monsoon, most beaches closed)\n\nWant me to search flights or buses to Goa from your city?",
+      cards: [], cta: null
+    };
+  }
+
+  // ── KERALA SPECIFIC ──────────────────────────────────────────────────────
+  if (/kerala.*trip|trip.*kerala|backwater|alleppey|munnar|wayanad.*trip/.test(m)) {
+    return {
+      text: "🌴 **Kerala Trip Planning Guide:**\n\n**Top destinations:**\n🚤 **Alleppey (Alappuzha)** — Backwaters, houseboat stays (₹5,000–15,000/night)\n🍵 **Munnar** — Tea gardens, misty hills, trekking\n🌊 **Varkala** — Cliffside beach, laid-back vibe\n🐘 **Thekkady (Periyar)** — Wildlife, spice gardens\n🏖️ **Kovalam** — Beach near Trivandrum\n\n**Getting there:**\n✈️ Fly to Kochi (COK) — best for backwaters/Munnar\n✈️ Fly to Trivandrum (TRV) — best for Kovalam/Varkala\n🚂 Train to Ernakulam/Kochi — affordable\n\n**5-day itinerary suggestion:**\n• Day 1–2: Munnar (hills, tea gardens)\n• Day 3: Alleppey (houseboat)\n• Day 4: Kochi (Fort Kochi, spice market)\n• Day 5: Fly home\n\n**Best time:** September to March\nShall I search flights to Kochi or Trivandrum?",
+      cards: [], cta: null
+    };
+  }
+
+  // ── RAJASTHAN SPECIFIC ───────────────────────────────────────────────────
+  if (/rajasthan.*trip|trip.*rajasthan|jaipur.*trip|udaipur.*trip|jodhpur.*trip/.test(m)) {
+    return {
+      text: "🏰 **Rajasthan Trip Planning Guide:**\n\n**Top cities:**\n👑 **Jaipur** (Pink City) — Amber Fort, Hawa Mahal, City Palace\n💙 **Jodhpur** (Blue City) — Mehrangarh Fort, blue houses\n🌸 **Udaipur** (City of Lakes) — Lake Pichola, City Palace, romantic\n🏜️ **Jaisalmer** — Desert safari, golden fort, camel rides\n🐪 **Pushkar** — Holy lake, Brahma temple, camel fair (Nov)\n\n**Golden Triangle:** Delhi → Jaipur → Agra (3–4 days)\n**Full Rajasthan circuit:** 7–10 days minimum\n\n**Getting there:**\n✈️ Fly to Jaipur (JAI) from Bangalore/Mumbai/Delhi\n🚂 Train from Delhi to Jaipur: 4.5 hours, very convenient\n\n**Budget:** ₹5,000–8,000/day (mid-range, including hotel + transport + food)\n\n**Best time:** October to March (avoid April–June heat 45°C+)\n\nShall I search flights or buses to Jaipur?",
+      cards: [], cta: null
+    };
+  }
+
+  // ── HIMACHAL / MANALI / SHIMLA ───────────────────────────────────────────
+  if (/manali.*trip|shimla.*trip|himachal|spiti|rohtang|leh.*ladakh/.test(m)) {
+    return {
+      text: "🏔️ **Himachal Pradesh & Ladakh Trip Guide:**\n\n**Manali:**\n• Best time: March–June (snow, adventure) and Sep–Oct\n• Must-do: Solang Valley, Rohtang Pass (permit needed), Old Manali\n• Getting there: Fly to Bhuntar (KUL), then cab to Manali (1.5h)\n  OR overnight bus from Delhi (~14h, ₹700–1200)\n\n**Shimla:**\n• Getting there: Fly to Chandigarh, then cab/bus (3h)\n  OR toy train from Kalka (heritage, 5h, magical!)\n• Best time: March–June and Oct–Nov\n\n**Leh/Ladakh:**\n• Best time: June–September ONLY (road closed in winter)\n• Getting there: Direct flights from Delhi (1h), Bangalore (via Delhi)\n• Very high altitude (3500m) — acclimatize for 2 days on arrival!\n• Must-do: Pangong Lake, Nubra Valley, Monasteries\n\n**Spiti Valley:**\n• Route from Manali or Shimla, 4WD recommended\n• Best: June–October\n\nShall I search flights or buses for you?",
+      cards: [], cta: null
+    };
+  }
+
+  // ── BUDGET TRIP GENERAL ──────────────────────────────────────────────────
+  if (/(budget|cheap|low.*cost|₹[0-9]+|under [0-9]+).*(trip|travel|vacation|weekend|tour)/.test(m) && !f && !t) {
+    const budget_val = budget || 5000;
+    return {
+      text: `Here are the best budget trips under ₹${budget_val.toLocaleString()} from Bangalore! 💰\n\n**Under ₹3,000 (weekend):**\n🌿 **Coorg** — Bus ₹400 + homestay ₹800–1200/night = total ₹2,500\n🏔️ **Ooty** — Bus ₹350 + hotel ₹600/night = total ₹2,000\n⛩️ **Tirupati** — Bus ₹450 + temple visit = total ₹2,500\n\n**Under ₹6,000 (2 days):**\n🏖️ **Pondicherry** — Bus ₹450 + hotel ₹1,200 = ₹4,000 all-in\n🌊 **Hampi** — Bus ₹600 + hostel ₹500 = ₹3,500\n🌴 **Mysore** — Bus ₹250 + hotel ₹800 = ₹2,500\n\n**Under ₹10,000 (Goa):**\n• Overnight bus: ₹900 | Hotel: ₹1,200/night | Food: ₹500/day\n• Total 3-day Goa trip: ₹6,000–8,000!\n\nTell me which city you're traveling FROM and I'll give exact prices!`,
+      cards: [], cta: null
+    };
+  }
+
+  // ── FOOD ON JOURNEY ─────────────────────────────────────────────────────
+  if (/food.*train|food.*flight|eat.*journey|snack.*travel|meal.*flight/.test(m)) {
+    return {
+      text: "🍱 **Food & Meals during travel:**\n\n**On Trains:**\n• Pantry car available on most long-distance trains\n• IRCTC e-catering: Order from restaurants at upcoming stations (irctctourism.co.in)\n• Price: ₹50–200 for meals (decent quality)\n• Tip: Carry dry snacks (biscuits, fruits, nuts) — they're cheaper and fill time!\n\n**On Flights:**\n• IndiGo/SpiceJet: No free meals (domestic)\n• Pre-order meals online: ₹150–350 (better than airport)\n• At airport: Budget ₹200–400 for a meal\n• Carry snacks through security — allowed!\n• Carry empty water bottle — fill after security\n\n**On Overnight Buses:**\n• AC sleeper buses usually stop at dhabas (1–2 stops)\n• Budget ₹100–200 for roadside meals\n• Bring snacks for comfort\n\n💡 Best hack: Eat a good meal before the journey and carry homemade snacks!",
+      cards: [], cta: null
+    };
+  }
+
+  // ── GENERAL THANKS / NICE ────────────────────────────────────────────────
+  if (/^(thank|thanks|thx|ty|thank you|great|nice|awesome|perfect|good|ok|okay|cool|wow|amazing|super|excellent|👍|🙏|😊)/.test(m)) {
+    return {
+      text: "You're welcome! 😊 Happy to help!\n\nIs there anything else you'd like to know? I can help with:\n• Flight/bus/hotel/train searches\n• Trip planning and budgeting\n• Travel tips and destination guides\n• Local transport info\n\nJust ask! 🌍✈️",
+      cards: [], cta: null
+    };
+  }
+
+  // ── SPECIFIC ROUTE: No cities found ─────────────────────────────────────
+  if (!f && !t) {
+    // Hotel query without city
+    if (isHotelQ) {
+      return {
+        text: "🏨 I'd love to help you find a hotel! Which city are you looking for?\n\nFor example: _'Hotels in Goa'_, _'Hotels in Mumbai under ₹2000'_, or _'Resorts in Coorg'_",
+        cards: [], cta: null
+      };
+    }
+    return null; // escalate to API
+  }
+
+  // ── ROUTE-SPECIFIC: BUS ──────────────────────────────────────────────────
+  if (isBusQ && f && t) {
+    let buses = BUS_DB.filter(b => b.from===f && b.to===t);
+    if (!buses.length) buses = BUS_DB.filter(b => b.to===f && b.from===t);
+    if (!buses.length) {
+      return {
+        text: `🚌 I'll search for buses from ${fN} to ${tN}!\n\nI don't have offline data for this route but RedBus has the latest availability. Let me pull that up for you!`,
+        cards: [{type:"bus",operator:"Multiple operators",from:fN,to:tN,departure:"Various timings",arrival:"Various",duration:"Direct",price:null,label:"Check Live",insight:"Several operators run this route. Check RedBus for live availability and seat selection.",link:`https://www.redbus.in/bus-tickets/${f.replace(/\s+/g,"-")}-to-${t.replace(/\s+/g,"-")}`}],
+        cta: "💡 Tap to see live bus availability, seats and real-time pricing on RedBus."
+      };
+    }
     const prices = buses.map(b=>b.price);
     const minP = Math.min(...prices);
-    buses.slice(0,3).forEach((b,i)=>{
-      const hour = parseInt(b.dep.split(":")[0]);
-      let label=null, insight=null;
-      if (b.price===minP) { label="Best Price"; insight="Cheapest bus on this route"; }
-      if (hour>=20||hour<5) insight="Overnight — save on accommodation, arrive fresh";
-      cards.push({
-        type:"bus", operator:b.op, from:b.from.charAt(0).toUpperCase()+b.from.slice(1),
-        to:b.to.charAt(0).toUpperCase()+b.to.slice(1), departure:b.dep, arrival:b.arr,
-        duration:"Direct", price:b.price, type2:b.type, label, insight,
-        link:`https://www.redbus.in/bus-tickets/${b.from.replace(/\s+/g,"-")}-to-${b.to.replace(/\s+/g,"-")}`,
-      });
+    const isCheap = /cheap|sasta|lowest|budget|kam/i.test(m);
+    if (isCheap) buses = [...buses].sort((a,b)=>a.price-b.price);
+    const cards = buses.slice(0,3).map((b)=>{
+      const h = parseInt((b.dep||"0").split(":")[0]);
+      const insight = b.price===minP ? "Cheapest option on this route" : (h>=20||h<5) ? "Overnight — save on hotel cost!" : "Popular daytime option";
+      return {type:"bus",operator:b.op,from:fN,to:tN,departure:b.dep,arrival:b.arr,duration:"Direct",price:b.price,type2:b.type,label:b.price===minP?"Best Price":null,insight,link:`https://www.redbus.in/bus-tickets/${f.replace(/\s+/g,"-")}-to-${t.replace(/\s+/g,"-")}`};
     });
-    if (buses.length===0) {
-      cards.push({
-        type:"bus", operator:"Multiple operators", from:from, to:to, departure:"Various",
-        arrival:"Various", duration:"Check RedBus", price:null, label:"Available",
-        insight:"Check RedBus for live availability and seat selection",
-        link:`https://www.redbus.in/bus-tickets/${(from||"").toLowerCase().replace(/\s+/g,"-")}-to-${(to||"").toLowerCase().replace(/\s+/g,"-")}`,
-      });
-    }
+    const overBudget = budget && minP > budget;
+    let text = `🚌 Found **${buses.length} buses** from ${fN} to ${tN}!\n\n💰 Cheapest: **₹${minP}** (${cards[0]?.departure} departure, ${cards[0]?.operator})`;
+    if (overBudget) text += `\n\n⚠️ Note: Cheapest bus is ₹${minP} — slightly above your ₹${budget} budget.`;
+    return { text, cards, cta: "💡 Tap any card to check live seat availability on RedBus. Book early for best seats!" };
   }
 
-  // ── Hotels ───────────────────────────────────────────────────────────────
-  if (types.includes("hotel") && (to||from)) {
-    const city = to || from;
-    const range = HOTEL_RANGES[city?.toLowerCase()] || "800–3,500";
-    cards.push({
-      type:"hotel", city:city.charAt(0).toUpperCase()+city.slice(1),
-      priceRange:range, rating:4.2, label:"Best Rates",
-      insight:`Prices in ${city} vary by season. Book early for better rates.`,
-      link:`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}`,
-    });
+  // ── ROUTE-SPECIFIC: TRAIN ────────────────────────────────────────────────
+  if (isTrainQ && f && t) {
+    const trainDateStr = date ? date.toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"}) : null;
+    const trainDateISO = date ? date.toISOString().split("T")[0] : null;
+    return {
+      text: `🚂 Searching trains from ${fN} to ${tN}!${date?" Date: "+trainDateStr:""}\n\nMultiple trains run this route daily. I've pre-filled your details on IRCTC.\n\n**Fare guide:**\n• Sleeper (SL): ₹150–400\n• AC 3-tier (3A): ₹400–800\n• AC 2-tier (2A): ₹700–1,500\n• 1st Class (1A): ₹1,500–3,000`,
+      cards:[{type:"train",from:fN,to:tN,label:"IRCTC",date:trainDateStr,insight:"Book 60 days early for best availability. Tatkal opens 1 day before at 10 AM.",link:buildTrainURL(f,t,trainDateISO)}],
+      cta: "💡 Tap to open IRCTC with your route pre-filled. Just select class and pay!"
+    };
   }
 
-  // ── Trains ───────────────────────────────────────────────────────────────
-  if (types.includes("train") && from && to) {
-    const TRAIN_CODES = {"bangalore":"SBC","mumbai":"CSTM","delhi":"NDLS","chennai":"MAS",
-      "hyderabad":"SC","kolkata":"HWH","pune":"PUNE","kochi":"ERS","jaipur":"JP",
-      "varanasi":"BSB","patna":"PNBE","lucknow":"LKO","ahmedabad":"ADI"};
-    const fc = TRAIN_CODES[from?.toLowerCase()] || from?.slice(0,4).toUpperCase();
-    const tc = TRAIN_CODES[to?.toLowerCase()]   || to?.slice(0,4).toUpperCase();
-    cards.push({
-      type:"train", from:from.charAt(0).toUpperCase()+from.slice(1),
-      to:to.charAt(0).toUpperCase()+to.slice(1),
-      label:"IRCTC", insight:"Multiple trains available. Sleeper from ₹200, AC from ₹500.",
-      link:`https://www.irctc.co.in/nget/train-search?fromStation=${fc}&toStation=${tc}`,
-    });
+  // ── ROUTE-SPECIFIC: HOTEL ────────────────────────────────────────────────
+  if (isHotelQ && (f || t)) {
+    const city = t || f;
+    const cityN = city.charAt(0).toUpperCase()+city.slice(1);
+    const pr = HOTEL_PRICES[city] || "700–4,000";
+    const budgetNote = budget ? ` Looking for options around ₹${budget}/night.` : "";
+    return {
+      text: `🏨 Hotels in ${cityN} — let me find the best options for you!${budgetNote}\n\n💡 **Pro tips for ${cityN}:**\n• Book 2–4 weeks in advance for best rates\n• Read recent reviews (last 3 months)\n• Check cancellation policy before booking`,
+      cards:[{type:"hotel",city:cityN,priceRange:pr,label:"Best Rates",insight:`Popular destination — book early for best prices in ${cityN}.`,link:`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}`}],
+      cta: "💡 Tap to browse all available hotels on Booking.com with live prices and reviews."
+    };
   }
 
-  return cards;
+  return null; // let medium handle flight DB lookup
 }
 
-// ── AI Chat endpoint ─────────────────────────────────────────────────────────
-app.post("/ai-chat", authenticateToken, async (req, res) => {
+
+// ── TIER 2: Medium — DB lookup + formatted response ───────────────────────────
+async function mediumResponse(msg) {
+  const m = msg.toLowerCase();
+  const { from, to } = extractCities(msg);
+  const f = from ? normCity(from) : null;
+  const t = to ? normCity(to) : null;
+  const { date } = extractDate(msg);
+  const budget = extractBudget(msg);
+  const isCheap = /cheap|sasta|lowest|budget|kam|affordable/i.test(m);
+  const isFastest = /fastest|quick|earliest|direct|express/i.test(m);
+
+  // Local area transport query (attibele, etc.)
+  const isLocal = /attibele|hosur|electronic city|silk board|whitefield|koramangala|hsr|indiranagar|btm|hebbal|yelahanka|peenya|kengeri|nice road|airport|bus.*number|route.*number/i.test(m);
+  if (isLocal) {
+    // Return structured local transport info
+    return {
+      text: buildLocalTransportAnswer(m),
+      cards: [], cta: null
+    };
+  }
+
+  if (!f || !t) return null;
+  const fN = f.charAt(0).toUpperCase()+f.slice(1);
+  const tN = t.charAt(0).toUpperCase()+t.slice(1);
+  const ddmm = date ? (date.getDate().toString().padStart(2,"0")+(date.getMonth()+1).toString().padStart(2,"0")) : "";
+
+  // Flight DB lookup
   try {
-    const { message, history = [] } = req.body;
-    if (!message) return res.status(400).json({ message:"No message" });
+    let q = "SELECT * FROM flights WHERE LOWER(from_city)=$1 AND LOWER(to_city)=$2";
+    const v = [f, t];
+    if (date) { q += " AND DATE(departure_time)=$3"; v.push(date.toISOString().split("T")[0]); }
+    if (budget) { q += ` AND price <= $${v.length+1}`; v.push(budget); }
+    q += isCheap ? " ORDER BY price ASC LIMIT 4" : " ORDER BY departure_time ASC LIMIT 4";
+    const rows = (await pool.query(q, v)).rows;
 
-    // 1. Extract intent and fetch real data
-    const intent = extractIntent(message);
-    const cards  = await fetchTravelData(intent);
-
-    // 2. Build context from cards for AI
-    let dataContext = "";
-    if (cards.length > 0) {
-      dataContext = "\n\nReal travel data found:\n";
-      cards.forEach(c => {
-        if (c.type==="flight") dataContext += `Flight: ${c.airline} ${c.from}→${c.to} at ${c.departure}, ₹${c.price||"Live rates"}. ${c.insight||""}\n`;
-        if (c.type==="bus")    dataContext += `Bus: ${c.operator} ${c.from}→${c.to} at ${c.departure}, ₹${c.price||"Check RedBus"}. ${c.insight||""}\n`;
-        if (c.type==="hotel")  dataContext += `Hotels in ${c.city}: ₹${c.priceRange}/night. ${c.insight||""}\n`;
-        if (c.type==="train")  dataContext += `Train: ${c.from}→${c.to} via IRCTC. ${c.insight||""}\n`;
-      });
+    if (!rows.length) {
+      // No DB data — return affiliate-only
+      const affLink = buildFlightURL(f, t, ddmm, 1);
+      const budgetWarn = budget ? `\n\n💡 I couldn't find flights within ₹${budget} in my database. Check live fares — prices change frequently.` : "";
+      return {
+        text: `✈️ Searching flights from **${fN}** to **${tN}**! Let me connect you to live fares.${budgetWarn}`,
+        cards:[{type:"flight",airline:"Multiple Airlines",from:fN,to:tN,fromCode:CITY_IATA_SRV[f]||(f.slice(0,3).toUpperCase()),toCode:CITY_IATA_SRV[t]||(t.slice(0,3).toUpperCase()),departure:"—",arrival:"—",duration:"Check live",price:null,label:"Live Fares",insight:"Click to see live fares from 700+ airlines on Aviasales.",link:affLink}],
+        cta:"💡 Prices may increase as the date approaches — check now for the best deals."
+      };
     }
 
-    // 3. Build messages for Claude
-    const systemPrompt = `You are Alvryn AI, a premium travel assistant for India.
-Your personality: Smart, friendly, concise — like a knowledgeable friend who travels a lot.
-Your goal: Help users find and book the best travel options. Every response should move them closer to booking.
+    const prices = rows.map(r=>r.price);
+    const minP = Math.min(...prices);
+    const maxP = Math.max(...prices);
+    const cards = rows.map((row,i)=>{
+      const dep = new Date(row.departure_time).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false});
+      const arr = new Date(row.arrival_time).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false});
+      const dur = Math.round((new Date(row.arrival_time)-new Date(row.departure_time))/60000);
+      const h = new Date(row.departure_time).getHours();
+      let label=null,insight=null;
+      if (row.price===minP)      { label="Best Price"; insight=`Cheapest on this route. Save ₹${maxP-minP} vs priciest option.`; }
+      else if (i===1&&isFastest) { label="Fastest";    insight="Quick departure, arrives earliest."; }
+      else if (i===2)            { label="Best Overall"; insight="Good balance of price and timing."; }
+      if (!insight && h>=5&&h<9) insight="Morning flights are typically 15–20% cheaper on this route.";
+      return {type:"flight",airline:row.airline,from:fN,to:tN,fromCode:(row.from_city||f).slice(0,3).toUpperCase(),toCode:(row.to_city||t).slice(0,3).toUpperCase(),departure:dep,arrival:arr,duration:`${Math.floor(dur/60)}h ${dur%60}m`,price:row.price,label,insight,link:buildFlightURL(f,t,ddmm,1)};
+    });
+
+    const cheapest = rows.reduce((a,b)=>a.price<b.price?a:b);
+    const cheapDep = new Date(cheapest.departure_time).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false});
+    const overBudget = budget && minP>budget;
+    let textMsg = `✈️ Found **${rows.length} flights** from ${fN} to ${tN}!`;
+    if (date) textMsg += ` on ${date.toLocaleDateString("en-IN",{day:"numeric",month:"short"})}`;
+    textMsg += `\n\n💰 Cheapest: **₹${minP.toLocaleString()}** (${cheapDep} departure, ${cheapest.airline})`;
+    if (overBudget) textMsg += `\n\n⚠️ Note: All flights are above your ₹${budget} budget. Consider a bus — I can show those too!`;
+    else if (budget) textMsg += `\n\n✅ All options are within your ₹${budget} budget!`;
+
+    await logEvent("ai_chat", `${f} → ${t}`, "ai_chat", null);
+    return {
+      text: textMsg,
+      cards,
+      cta: isCheap ? "💡 Book soon — prices tend to rise closer to the date. 🔥" : "💡 Tap any card to check live prices on Aviasales."
+    };
+  } catch(e) {
+    return null;
+  }
+}
+
+// ── Local transport knowledge base ───────────────────────────────────────────
+function buildLocalTransportAnswer(m) {
+  if (/attibele|hosur road|electronic city|silk board/i.test(m)) {
+    return "🚌 **Getting to/from Attibele / Electronic City area (Bangalore):**\n\n• **BMTC Buses:** Routes 365, 365A, 365C from Silk Board / Jayadeva Hospital\n• **From Majestic (KBS):** Bus routes via Silk Board — takes 1–1.5 hrs\n• **Metro:** Green Line to Silk Board (Carmelaram area), then local bus\n• **Cab (Ola/Uber):** ₹400–600 from central Bangalore, 45–90 min depending on traffic\n• **Hosur Road traffic tip:** Avoid 8–10 AM and 5–8 PM — severe congestion\n\nFor intercity from Hosur: TNSTC and KSRTC buses from Silk Board run to Chennai and Coimbatore.";
+  }
+  if (/whitefield/i.test(m)) {
+    return "🚌 **Getting to Whitefield (Bangalore):**\n\n• **Purple Line Metro:** Now extended to Whitefield (ITPL / Kadugodi station)\n• **BMTC Buses:** Routes from Majestic, Shivajinagar, KR Market\n• **Cab:** ₹300–500 from central Bangalore\n• **Tip:** Metro is the fastest option — avoids traffic on Old Madras Road.";
+  }
+  if (/airport|kempegowda|bengaluru airport|blr airport/i.test(m)) {
+    return "✈️ **Getting to/from Bengaluru Airport (BLR):**\n\n• **Namma Metro:** Purple Line → Kempapura, then KIAL Metro (upcoming — check latest status)\n• **BMTC Vayu Vajra:** AC express buses from Majestic, Shivajinagar, Marathahalli — ₹250–400\n• **Cab (Ola/Uber):** Pre-paid from airport ₹600–1000, varies by zone\n• **KSRTC:** Buses to Mysore, Hassan, Mangalore directly from airport\n\n💡 Allow 1.5–2 hrs from central Bangalore during peak hours.";
+  }
+  return "🚌 For local transport queries in Bangalore, I'd recommend checking the BMTC app or Google Maps for the most accurate live routes. For intercity travel, just tell me your route and I'll find the best options!";
+}
+
+// ── TIER 3: GPT-4o-mini for complex queries ───────────────────────────────────
+const AI_CALL_LIMIT = 10; // per phone/user per day
+const aiCallCounts = new Map(); // userId → {count, date}
+
+function canCallAI(userId) {
+  if (!userId) return true; // web users have no limit
+  const today = new Date().toDateString();
+  const rec = aiCallCounts.get(String(userId));
+  if (!rec || rec.date !== today) return true;
+  return rec.count < AI_CALL_LIMIT;
+}
+function incrementAI(userId) {
+  if (!userId) return;
+  const today = new Date().toDateString();
+  const rec = aiCallCounts.get(String(userId));
+  if (!rec || rec.date !== today) aiCallCounts.set(String(userId), {count:1,date:today});
+  else aiCallCounts.set(String(userId), {count:rec.count+1,date:today});
+}
+
+async function callGPT(message, history, travelData) {
+  const OPENAI_KEY = process.env.OPENAI_API_KEY;
+  if (!OPENAI_KEY) {
+    // Fallback to Claude if no OpenAI key
+    return callClaude(message, history, travelData);
+  }
+  const systemPrompt = `You are Alvryn AI, a premium travel assistant for India.
+Personality: Smart, friendly, concise — like a knowledgeable friend.
+Goal: Help users find and BOOK the best travel options. Every response moves them toward booking.
 
 Rules:
-- Keep responses SHORT and conversational (2-5 sentences max before showing options)
-- Start naturally: "Got it! 👍", "Great choice!", "Let me check that for you…"
-- Always highlight the BEST option clearly
-- Create gentle urgency: "Prices tend to rise as the date approaches" (only when true)
-- End with a soft CTA: "Want me to compare more options?" or "Should I check hotels too?"
-- If budget is mentioned, strictly respect it
-- If user is unclear, ask ONE follow-up question
-- You cover: flights, buses, hotels, trains
-- Never make up prices — use only the data provided to you
-- Prices shown are approximate — always mention "may vary" somewhere
-- You are NOT a general AI — only answer travel-related questions
-- If asked non-travel questions, say: "I'm specialized in travel! Ask me about flights, buses, hotels or trip planning."`;
+- Keep responses SHORT (2-4 sentences + data) — never write essays
+- Start naturally: "Got it! 👍", "Great choice!", "Found some options!"
+- Highlight BEST option clearly with a reason
+- Create gentle urgency only when true: "Prices tend to rise closer to the date"
+- End with soft CTA: "Want me to check buses too?" or "Should I look for hotels there?"
+- If budget mentioned, strictly respect it
+- If query unclear, ask ONE follow-up question
+- Cover: flights, buses, hotels, trains — including local transport
+- NEVER make up prices — use only provided data
+- You are travel-focused — for non-travel questions say: "I specialise in travel! Ask me about flights, buses, hotels or trip planning."
+- Always mention prices "may vary" somewhere`;
 
-    const messages = [
-      ...history.slice(-6).map(m => ({
-        role: m.role === "user" ? "user" : "assistant",
-        content: m.role === "user" ? m.content : (m.text || ""),
-      })).filter(m => m.content),
-      { role:"user", content: message + dataContext },
-    ];
-
-    // 4. Call Claude API
-    const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({
-        model:"claude-sonnet-4-20250514",
-        max_tokens:400,
-        system: systemPrompt,
-        messages,
-      }),
+  let dataCtx = "";
+  if (travelData?.length) {
+    dataCtx = "\n\nTravel data found:\n";
+    travelData.forEach(c => {
+      if (c.type==="flight") dataCtx += `Flight: ${c.airline} ${c.fromCode}→${c.toCode} at ${c.departure}, approx ₹${c.price||"live"}. ${c.insight||""}\n`;
+      if (c.type==="bus")    dataCtx += `Bus: ${c.operator} ${c.from}→${c.to} at ${c.departure}, approx ₹${c.price}. ${c.insight||""}
+`;
+      if (c.type==="hotel")  dataCtx += `Hotels in ${c.city}: approx ₹${c.priceRange}/night.\n`;
+      if (c.type==="train")  dataCtx += `Train: ${c.from}→${c.to} on IRCTC. ${c.insight||""}\n`;
     });
-    const aiData = await aiRes.json();
-    const aiText = aiData.content?.[0]?.text || "I found some options for you!";
+  }
 
-    // 5. Log event
-    await logEvent("ai_chat", `${intent.from||"?"} → ${intent.to||"?"}`, "ai_chat", req.user.id);
+  const msgs = [
+    ...history.slice(-5).map(m=>({role:m.role==="user"?"user":"assistant",content:m.role==="user"?m.content:(m.text||"")})).filter(m=>m.content),
+    {role:"user",content:message+dataCtx}
+  ];
 
-    // 6. Build CTA
-    let cta = null;
-    if (cards.length > 0) {
-      if (cards.some(c=>c.type==="flight")) cta = "💡 Tap any card to check live prices on our partner site. Prices may vary slightly.";
-      else if (cards.some(c=>c.type==="bus")) cta = "💡 Tap any card to view live seat availability on RedBus.";
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":`Bearer ${OPENAI_KEY}`},
+    body:JSON.stringify({model:"gpt-4o-mini",messages:[{role:"system",content:systemPrompt},...msgs],max_tokens:350,temperature:0.7})
+  });
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content || "Let me find the best options for you!";
+}
+
+async function callClaude(message, history, travelData) {
+  let dataCtx = "";
+  if (travelData?.length) {
+    dataCtx = "\n\nTravel data found:\n";
+    travelData.forEach(c => {
+      if (c.type==="flight") dataCtx += `Flight: ${c.airline} at ${c.departure}, approx ₹${c.price||"live"}. ${c.insight||""}\n`;
+      if (c.type==="bus")    dataCtx += `Bus: ${c.operator} at ${c.departure}, approx ₹${c.price}. ${c.insight||""}\n`;
+    });
+  }
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      model:"claude-haiku-4-5-20251001", // cheapest Claude model
+      max_tokens:300,
+      system:"You are Alvryn AI, a concise travel assistant for India. Keep responses SHORT and friendly. Focus on helping users book flights, buses, hotels and trains.",
+      messages:[...history.slice(-4).map(m=>({role:m.role==="user"?"user":"assistant",content:m.role==="user"?m.content:(m.text||"")})).filter(m=>m.content),{role:"user",content:message+dataCtx}]
+    })
+  });
+  const data = await res.json();
+  return data.content?.[0]?.text || "Here are the best options I found!";
+}
+
+// ── Per-user daily AI call counter (in-memory, resets daily) ─────────────────
+const dailyAiCalls = new Map(); // userId → {count, date}
+const DAILY_LIMIT = 10;
+
+function getUserAiCount(userId) {
+  const today = new Date().toDateString();
+  const rec = dailyAiCalls.get(String(userId));
+  if (!rec || rec.date !== today) return 0;
+  return rec.count;
+}
+function incrementUserAi(userId) {
+  const today = new Date().toDateString();
+  const rec = dailyAiCalls.get(String(userId));
+  if (!rec || rec.date !== today) dailyAiCalls.set(String(userId), {count:1,date:today});
+  else dailyAiCalls.set(String(userId), {count:rec.count+1,date:today});
+}
+
+// ── Main AI chat endpoint ─────────────────────────────────────────────────────
+app.post("/ai-chat", authenticateToken, async (req, res) => {
+  try {
+    const { message, history=[] } = req.body;
+    if (!message) return res.status(400).json({message:"No message"});
+
+    const userId = req.user?.id;
+    const tier = classifyQuery(message);
+
+    // TIER 1: Easy
+    if (tier === "easy") {
+      const easy = easyResponse(message);
+      if (easy) {
+        await logEvent("ai_chat_easy", message.slice(0,100), "ai_chat", userId);
+        return res.json(easy);
+      }
     }
 
-    res.json({ text: aiText, cards, cta });
+    // TIER 2: Medium — DB lookup
+    if (tier === "easy" || tier === "medium") {
+      const med = await mediumResponse(message);
+      if (med) {
+        await logEvent("ai_chat_medium", message.slice(0,100), "ai_chat", userId);
+        return res.json(med);
+      }
+    }
+
+    // TIER 3: Hard — call GPT-4o-mini (with daily limit)
+    const userCallCount = getUserAiCount(userId);
+    if (userCallCount >= DAILY_LIMIT) {
+      return res.json({
+        text: `⚠️ You've used your ${DAILY_LIMIT} free AI responses for today.\n\nTo continue getting AI-powered answers, book a flight, bus or hotel through Alvryn and your limit resets instantly! 🎯\n\nYou can still search manually on the Search page — or come back tomorrow for ${DAILY_LIMIT} more free responses.`,
+        cards: [], cta: "💡 Book via Alvryn to unlock unlimited AI responses."
+      });
+    }
+    incrementUserAi(userId);
+    const remaining = DAILY_LIMIT - getUserAiCount(userId);
+    await logEvent("ai_chat_api", message.slice(0,100), "ai_chat", userId);
+    // Fetch travel data to pass to AI
+    const intent = extractIntent(message);
+    const cards = await fetchTravelData(intent);
+    const aiText = await callGPT(message, history, cards);
+    const limitNote = remaining <= 3 ? `\n\n_💡 ${remaining} free AI response${remaining===1?"":"s"} left today._` : "";
+    const cta = cards.length ? "💡 Tap any card to check live prices on our partner site." : null;
+    return res.json({ text: aiText + limitNote, cards, cta });
+
   } catch(e) {
     console.error("AI Chat error:", e.message);
-    // Fallback: return without AI text
     try {
       const intent2 = extractIntent(req.body.message||"");
-      const cards2  = await fetchTravelData(intent2);
-      res.json({
-        text: "Here are the best options I found for you! 🗺️",
-        cards: cards2,
-        cta: "Tap any card to check live availability.",
-      });
+      const cards2 = await fetchTravelData(intent2);
+      return res.json({text:"Here are the options I found for you! 🗺️",cards:cards2,cta:cards2.length?"Tap any card to check live availability.":null});
     } catch {
-      res.json({ text:"I had trouble searching right now. Please try again!", cards:[], cta:null });
+      return res.json({text:"I had trouble searching right now. Please try again! 🙏",cards:[],cta:null});
     }
   }
 });
+
+// ── WhatsApp AI limit check ───────────────────────────────────────────────────
+function waCanCallAI(phone) {
+  return canCallAI(phone);
+}
+function waIncrementAI(phone) {
+  incrementAI(phone);
+}
 
 // ══════════════════════════════════════════════════════════════
 //  ADMIN ROUTES

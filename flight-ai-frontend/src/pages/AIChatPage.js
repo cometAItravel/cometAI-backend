@@ -5,25 +5,26 @@ import { useNavigate } from "react-router-dom";
 const API = "https://cometai-backend.onrender.com";
 
 // ── palette ────────────────────────────────────────────────────────────────────
+// ── Alvryn Gold Theme — warm dark amber, gold as dominant ────────────────────
 const C = {
-  bg:        "#111008",      // deep forest dark
-  sbBg:      "#130f07",      // sidebar dark green
-  sbBorder:  "rgba(201,168,76,0.22)",
-  gold:      "#c9a84c",
-  goldD:     "#8B6914",
-  goldL:     "#f0d080",
-  green:     "#4ade80",
+  bg:        "#1a1508",      // deep warm amber-dark (matches Alvryn gold brand)
+  sbBg:      "#160f04",      // sidebar — slightly darker warm
+  sbBorder:  "rgba(201,168,76,0.25)",
+  gold:      "#c9a84c",      // Alvryn primary gold
+  goldD:     "#8B6914",      // dark gold
+  goldL:     "#f0d080",      // light gold
+  green:     "#86efac",      // soft mint — accent only
   greenD:    "#16a34a",
-  greenMid:  "#22c55e",
-  cardBg:    "rgba(22,17,5,0.88)",
-  cardBorder:"rgba(201,168,76,0.2)",
-  inputBg:   "rgba(18,14,5,0.92)",
-  textPri:   "rgba(255,255,255,0.92)",
-  textSec:   "rgba(255,255,255,0.5)",
-  textMuted: "rgba(255,255,255,0.28)",
+  greenMid:  "#4ade80",
+  cardBg:    "rgba(32,24,8,0.92)",       // warm dark card
+  cardBorder:"rgba(201,168,76,0.22)",    // gold border
+  inputBg:   "rgba(24,18,5,0.96)",       // warm dark input
+  textPri:   "rgba(255,248,225,0.95)",   // warm white
+  textSec:   "rgba(240,210,140,0.6)",    // gold-tinted secondary
+  textMuted: "rgba(210,185,110,0.38)",   // dim gold
   grad:      "linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)",
-  gradGG:    "linear-gradient(135deg,#c9a84c 0%,#8dc26a 50%,#4ade80 100%)",
-  topBar:    "rgba(18,14,5,0.97)",
+  gradGG:    "linear-gradient(135deg,#c9a84c 0%,#d4aa50 60%,#f0d080 100%)",
+  topBar:    "rgba(22,16,4,0.98)",       // very dark warm top
 };
 
 // ── IATA map (frontend for link building) ─────────────────────────────────────
@@ -60,7 +61,7 @@ function flink(from,to,ddmm,pax=1){
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600;700&family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;overflow:hidden;background:${C.bg};}
+html,body{height:100%;overflow:hidden;background:#1a1508;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
 @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
 @keyframes spin{to{transform:rotate(360deg);}}
@@ -71,11 +72,11 @@ html,body{height:100%;overflow:hidden;background:${C.bg};}
 @keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(201,168,76,0);}50%{box-shadow:0 0 18px 2px rgba(201,168,76,0.13);}}
 ::-webkit-scrollbar{width:3px;}
 ::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.35);border-radius:3px;}
-.sb-btn:hover{background:rgba(201,168,76,0.1)!important;color:${C.gold}!important;}
+.sb-btn:hover{background:rgba(201,168,76,0.14)!important;color:#c9a84c!important;}
 .sb-item:hover{background:rgba(201,168,76,0.07)!important;}
-.chip:hover{background:rgba(201,168,76,0.14)!important;border-color:rgba(201,168,76,0.45)!important;color:#fff!important;transform:translateY(-1px);}
+.chip:hover{background:rgba(201,168,76,0.18)!important;border-color:rgba(201,168,76,0.55)!important;color:#fff0d0!important;transform:translateY(-1px);}
 .travel-card{transition:all 0.18s ease;}
-.travel-card:hover{transform:translateY(-3px);box-shadow:0 16px 40px rgba(201,168,76,0.18),0 0 0 1px rgba(201,168,76,0.25)!important;border-color:rgba(201,168,76,0.4)!important;background:rgba(35,28,8,0.95)!important;}
+.travel-card:hover{transform:translateY(-3px);box-shadow:0 16px 40px rgba(201,168,76,0.22),0 0 0 1px rgba(201,168,76,0.3)!important;border-color:rgba(201,168,76,0.45)!important;background:rgba(40,30,8,0.96)!important;}
 .send-btn:hover:not(:disabled){transform:scale(1.08);}
 .send-btn:disabled{opacity:0.3;cursor:default;}
 textarea:focus{outline:none;}
@@ -686,7 +687,7 @@ export default function AIChatPage(){
         </div>
 
         {/* ── Messages ── */}
-        <div style={{flex:1,overflowY:"auto",padding:"24px 16px"}}>
+        <div style={{flex:1,overflowY:"auto",padding:"24px 16px",background:"rgba(26,21,8,0.3)"}}>
           <div style={{maxWidth:740,margin:"0 auto"}}>
             {empty&&<EmptyState onChip={send}/>}
             {messages.map(m=>(

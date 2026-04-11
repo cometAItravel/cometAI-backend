@@ -814,7 +814,7 @@ function TrainPanel() {
 
   const search = () => {
     // Extract station code from "BANGALORE (SBC)" → "SBC"
-    const getCode = s => (s.match(/\(([^)]+)\)/) || [,""])[1];
+    const getCode = s => (s.match(/\(([^)]+)\)/) || ["",""])[1];
     const fc = getCode(from);
     const tc = getCode(to);
     // IRCTC deep link — Cuelinks auto-converts to affiliate

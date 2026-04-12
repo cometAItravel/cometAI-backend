@@ -1546,82 +1546,202 @@ function incrementAI(userId) {
   else aiCallCounts.set(String(userId), {count:rec.count+1,date:today});
 }
 
-async function callGPT(message, history, travelData) {
-  const OPENAI_KEY = process.env.OPENAI_API_KEY;
-  if (!OPENAI_KEY) {
-    // Fallback to Claude if no OpenAI key
-    return callClaude(message, history, travelData);
-  }
-  const systemPrompt = `You are Alvryn AI, a premium travel assistant for India.
-Personality: Smart, friendly, concise — like a knowledgeable friend.
-Goal: Help users find and BOOK the best travel options. Every response moves them toward booking.
+// ═══════════════════════════════════════════════════════════════════════════════
+//  AI ENGINE — buildCards + callGPT + callClaude + /ai-chat endpoint
+// ═══════════════════════════════════════════════════════════════════════════════
 
+// ── Build travel cards from intent (NO DB, pure affiliate links) ──────────────
+function buildCardsFromIntent(message) {
+  const m   = message.toLowerCase();
+  const { from, to } = extractCities(message);
+  const f   = from ? normCity(from) : null;
+  const t   = to   ? normCity(to)   : null;
+  const { date } = extractDate(message);
+  const fN  = f ? f.charAt(0).toUpperCase()+f.slice(1) : "";
+  const tN  = t ? t.charAt(0).toUpperCase()+t.slice(1) : "";
+  const ddmm = date ? (String(date.getDate()).padStart(2,"0")+String(date.getMonth()+1).padStart(2,"0")) : "";
+
+  const isBus   = /\bbus\b|buses|coach|redbus|sleeper/i.test(m);
+  const isHotel = /hotel|stay|accommodation|resort/i.test(m);
+  const isTrain = /\btrain\b|railway|irctc/i.test(m);
+
+  const cards = [];
+
+  if (f && t) {
+    if (isBus) {
+      // Try local data first
+      const buses = BUS_DB.filter(b=>b.from===f&&b.to===t).slice(0,2);
+      if (buses.length) {
+        buses.forEach((b,i)=>cards.push({type:"bus",operator:b.op,from:fN,to:tN,departure:b.dep,arrival:b.arr,duration:"Direct",price:b.price,label:i===0?"Best Price":null,insight:b.price===Math.min(...buses.map(x=>x.price))?"Cheapest on this route":null,link:buildBusURL(f,t)}));
+      } else {
+        cards.push({type:"bus",operator:"Multiple operators",from:fN,to:tN,departure:"Various",arrival:"Various",duration:"Check live",price:null,label:"Available",insight:"Tap to see live seats and prices on RedBus.",link:buildBusURL(f,t)});
+      }
+    } else if (isTrain) {
+      const trainDateStr = date ? date.toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"}) : null;
+      const trainDateISO = date ? date.toISOString().split("T")[0] : null;
+      cards.push({type:"train",from:fN,to:tN,label:"IRCTC",date:trainDateStr,insight:"Sleeper ₹150–400 · 3AC ₹400–800 · 2AC ₹700–1500. Book early!",link:buildTrainURL(f,t,trainDateISO)});
+    } else if (isHotel) {
+      const city = t||f;
+      const pr = HOTEL_PRICES[city.toLowerCase()]||"700–4,000";
+      cards.push({type:"hotel",city:tN||fN,priceRange:pr,label:"Best Rates",insight:"Live hotel prices on Booking.com.",link:`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}`});
+    } else {
+      // Default: flight
+      cards.push({type:"flight",airline:"Multiple Airlines",from:fN,to:tN,fromCode:(CITY_IATA_SRV[f]||(f.slice(0,3).toUpperCase())),toCode:(CITY_IATA_SRV[t]||(t.slice(0,3).toUpperCase())),departure:"—",arrival:"—",duration:"Direct",price:null,label:"Live Fares",insight:"Tap to see live fares from all major airlines.",link:buildFlightURL(f,t,ddmm,1)});
+    }
+  } else if (isHotel && (f||t)) {
+    const city = t||f||"India";
+    const pr = HOTEL_PRICES[city.toLowerCase()]||"700–4,000";
+    cards.push({type:"hotel",city:city.charAt(0).toUpperCase()+city.slice(1),priceRange:pr,label:"Best Rates",insight:"Check Booking.com for live prices and availability.",link:`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}`});
+  }
+
+  return cards;
+}
+
+// ── Try DB flight lookup (wrapped safely) ─────────────────────────────────────
+async function tryDBFlights(message) {
+  try {
+    const { from, to } = extractCities(message);
+    const f = from ? normCity(from) : null;
+    const t = to   ? normCity(to)   : null;
+    if (!f || !t) return null;
+    const { date } = extractDate(message);
+    const budget = extractBudget(message);
+    const isCheap = /cheap|lowest|budget|sasta/i.test(message);
+    const fN = f.charAt(0).toUpperCase()+f.slice(1);
+    const tN = t.charAt(0).toUpperCase()+t.slice(1);
+    const ddmm = date ? (String(date.getDate()).padStart(2,"0")+String(date.getMonth()+1).padStart(2,"0")) : "";
+
+    let q = "SELECT * FROM flights WHERE LOWER(from_city)=$1 AND LOWER(to_city)=$2";
+    const v = [f, t];
+    if (date) { q += " AND DATE(departure_time)=$3"; v.push(date.toISOString().split("T")[0]); }
+    if (budget) { q += ` AND price <= $${v.length+1}`; v.push(budget); }
+    q += isCheap ? " ORDER BY price ASC LIMIT 4" : " ORDER BY departure_time ASC LIMIT 4";
+
+    const rows = (await pool.query(q, v)).rows;
+    if (!rows.length) return null;
+
+    const prices = rows.map(r=>r.price);
+    const minP = Math.min(...prices), maxP = Math.max(...prices);
+    const cards = rows.map((row,i)=>{
+      const dep = new Date(row.departure_time).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false});
+      const arr = new Date(row.arrival_time).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false});
+      const dur = Math.round((new Date(row.arrival_time)-new Date(row.departure_time))/60000);
+      let label=null, insight=null;
+      if (row.price===minP)       { label="Best Price"; insight=`Cheapest! Save ₹${maxP-minP} vs most expensive option.`; }
+      else if (i===1)             { label="Fastest";    insight="Quick departure time."; }
+      else if (i===2)             { label="Best Overall"; insight="Good balance of price and timing."; }
+      const h = new Date(row.departure_time).getHours();
+      if (!insight && h>=5&&h<9)  insight = "Morning flights are typically 15–20% cheaper.";
+      return {type:"flight",airline:row.airline,from:fN,to:tN,
+        fromCode:(CITY_IATA_SRV[f]||f.slice(0,3).toUpperCase()),
+        toCode:(CITY_IATA_SRV[t]||t.slice(0,3).toUpperCase()),
+        departure:dep,arrival:arr,duration:`${Math.floor(dur/60)}h ${dur%60}m`,
+        price:row.price,label,insight,link:buildFlightURL(f,t,ddmm,1)};
+    });
+    const cheapest = rows.reduce((a,b)=>a.price<b.price?a:b);
+    const dep = new Date(cheapest.departure_time).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false});
+    const overBudget = budget && minP>budget;
+    let text = `✈️ Found **${rows.length} flights** from ${fN} to ${tN}!${date?" on "+date.toLocaleDateString("en-IN",{day:"numeric",month:"short"}):""}\n\n💰 Cheapest: **₹${minP.toLocaleString()}** — ${cheapest.airline} at ${dep}`;
+    if (overBudget) text += `\n\n⚠️ All flights are above your ₹${budget} budget. Want me to suggest buses instead?`;
+    else if (budget) text += `\n\n✅ These options are within your ₹${budget} budget!`;
+    return { text, cards, cta: "💡 Book soon — prices rise closer to the date. Tap any card for live fares!" };
+  } catch { return null; }
+}
+
+// ── Smart fallback text (never show error to user) ────────────────────────────
+function smartFallback(message) {
+  const m = message.toLowerCase();
+  const { from, to } = extractCities(message);
+  const f = from ? normCity(from) : null;
+  const t = to   ? normCity(to)   : null;
+  const fN = f ? f.charAt(0).toUpperCase()+f.slice(1) : "";
+  const tN = t ? t.charAt(0).toUpperCase()+t.slice(1) : "";
+  const cards = buildCardsFromIntent(message);
+
+  // Context-aware messages
+  if (/suggest.*cheap|cheapest.*one|which.*cheap|best.*deal|best.*option/i.test(m)) {
+    const prev_from = fN||"your origin";
+    const prev_to   = tN||"your destination";
+    return {
+      text: `🎯 Best deal for ${prev_from} → ${prev_to}!\n\n✈️ **Flights:** Book 4–6 weeks early (Tue/Wed cheapest)\n🚌 **Buses:** Overnight AC sleeper — save on hotel too\n🚂 **Trains:** Book 60 days ahead on IRCTC\n\nTap below for live prices 👇`,
+      cards,
+      cta: "💡 Prices change daily — check live for the latest deals."
+    };
+  }
+
+  if (f && t) {
+    const isBus   = /\bbus\b/i.test(m);
+    const isTrain = /\btrain\b/i.test(m);
+    const type    = isBus?"bus":isTrain?"train":"flight";
+    const emoji   = isBus?"🚌":isTrain?"🚂":"✈️";
+    return {
+      text: `${emoji} Finding best ${type} options from **${fN}** to **${tN}**! Tap below for live prices and availability. 👇`,
+      cards,
+      cta: "💡 Click to see live prices, seats and book instantly on our partner site."
+    };
+  }
+
+  if (/hotel|stay/i.test(m) && (f||t)) {
+    return {
+      text: `🏨 Best hotels in **${tN||fN}**! Browse live options on Booking.com — filter by price, rating and location. 👇`,
+      cards, cta: "💡 Tap to browse live hotel prices."
+    };
+  }
+
+  // Generic helpful fallback
+  return {
+    text: "Hey! I'm here to help. 😊\n\nTry asking me:\n• \"Cheapest flight Bangalore to Delhi\"\n• \"Bus Chennai to Hyderabad tonight\"\n• \"Hotels in Goa under \u20b92000\"\n• \"Plan 2-day Goa trip under \u20b98000\"\n\nWhat would you like? 🌍",
+    cards: [], cta: null
+  };
+}
+
+// ── GPT-4o-mini call (only for complex queries) ───────────────────────────────
+async function callGPT(message, history, cards) {
+  const OPENAI_KEY = process.env.OPENAI_API_KEY;
+  if (!OPENAI_KEY) return null; // No key → use fallback
+
+  const systemPrompt = `You are Alvryn AI, a friendly and smart travel assistant for India.
+Keep responses SHORT (3–5 sentences max). Never write essays.
+Start with a warm opener: "Got it! 👍", "Great choice!", "On it! 🔍"
+Always end with ONE soft action: "Want me to check hotels too?" or "Should I compare buses as well?"
+Personality: helpful friend, not a robot. Use emojis naturally.
 Rules:
-- Keep responses SHORT (2-4 sentences + data) — never write essays
-- Start naturally: "Got it! 👍", "Great choice!", "Found some options!"
-- Highlight BEST option clearly with a reason
-- Create gentle urgency only when true: "Prices tend to rise closer to the date"
-- End with soft CTA: "Want me to check buses too?" or "Should I look for hotels there?"
-- If budget mentioned, strictly respect it
-- If query unclear, ask ONE follow-up question
-- Cover: flights, buses, hotels, trains — including local transport
-- NEVER make up prices — use only provided data
-- You are travel-focused — for non-travel questions say: "I specialise in travel! Ask me about flights, buses, hotels or trip planning."
-- Always mention prices "may vary" somewhere`;
+- Prices may vary → always mention this
+- If budget mentioned, respect it strictly
+- Never say "I had trouble" or show errors — always give useful info
+- Only answer travel questions. For non-travel: "I'm a travel specialist! Ask me about flights, buses, hotels or trip planning."
+- Data provided is real — reference it naturally`;
 
   let dataCtx = "";
-  if (travelData?.length) {
-    dataCtx = "\n\nTravel data found:\n";
-    travelData.forEach(c => {
-      if (c.type==="flight") dataCtx += `Flight: ${c.airline} ${c.fromCode}→${c.toCode} at ${c.departure}, approx ₹${c.price||"live"}. ${c.insight||""}\n`;
-      if (c.type==="bus")    dataCtx += `Bus: ${c.operator} ${c.from}→${c.to} at ${c.departure}, approx ₹${c.price}. ${c.insight||""}
-`;
-      if (c.type==="hotel")  dataCtx += `Hotels in ${c.city}: approx ₹${c.priceRange}/night.\n`;
-      if (c.type==="train")  dataCtx += `Train: ${c.from}→${c.to} on IRCTC. ${c.insight||""}\n`;
+  if (cards?.length) {
+    dataCtx = "\n\nReal data:";
+    cards.forEach(c => {
+      if (c.type==="flight") dataCtx += ` Flight: ${c.airline} ${c.fromCode}→${c.toCode} ${c.departure||""} ₹${c.price||"live"}.`;
+      if (c.type==="bus")    dataCtx += ` Bus: ${c.operator} ${c.from}→${c.to} ${c.departure} ₹${c.price}.`;
+      if (c.type==="hotel")  dataCtx += ` Hotels in ${c.city}: ₹${c.priceRange}/night.`;
+      if (c.type==="train")  dataCtx += ` Train: ${c.from}→${c.to} IRCTC.`;
     });
   }
 
   const msgs = [
-    ...history.slice(-5).map(m=>({role:m.role==="user"?"user":"assistant",content:m.role==="user"?m.content:(m.text||"")})).filter(m=>m.content),
+    ...history.slice(-4).map(h=>({role:h.role==="user"?"user":"assistant",content:h.role==="user"?h.content:(h.text||"")})).filter(h=>h.content),
     {role:"user",content:message+dataCtx}
   ];
 
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method:"POST",
-    headers:{"Content-Type":"application/json","Authorization":`Bearer ${OPENAI_KEY}`},
-    body:JSON.stringify({model:"gpt-4o-mini",messages:[{role:"system",content:systemPrompt},...msgs],max_tokens:350,temperature:0.7})
-  });
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content || "Let me find the best options for you!";
-}
-
-async function callClaude(message, history, travelData) {
-  let dataCtx = "";
-  if (travelData?.length) {
-    dataCtx = "\n\nTravel data found:\n";
-    travelData.forEach(c => {
-      if (c.type==="flight") dataCtx += `Flight: ${c.airline} at ${c.departure}, approx ₹${c.price||"live"}. ${c.insight||""}\n`;
-      if (c.type==="bus")    dataCtx += `Bus: ${c.operator} at ${c.departure}, approx ₹${c.price}. ${c.insight||""}\n`;
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":`Bearer ${OPENAI_KEY}`},
+      body:JSON.stringify({model:"gpt-4o-mini",messages:[{role:"system",content:systemPrompt},...msgs],max_tokens:280,temperature:0.75})
     });
-  }
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      model:"claude-haiku-4-5-20251001", // cheapest Claude model
-      max_tokens:300,
-      system:"You are Alvryn AI, a concise travel assistant for India. Keep responses SHORT and friendly. Focus on helping users book flights, buses, hotels and trains.",
-      messages:[...history.slice(-4).map(m=>({role:m.role==="user"?"user":"assistant",content:m.role==="user"?m.content:(m.text||"")})).filter(m=>m.content),{role:"user",content:message+dataCtx}]
-    })
-  });
-  const data = await res.json();
-  return data.content?.[0]?.text || "Here are the best options I found!";
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || null;
+  } catch { return null; }
 }
 
-// ── Per-user daily AI call counter (in-memory, resets daily) ─────────────────
-const dailyAiCalls = new Map(); // userId → {count, date}
-const DAILY_LIMIT = 10;
-
+// ── Per-user daily AI call counter ───────────────────────────────────────────
+const dailyAiCalls = new Map();
+const DAILY_LIMIT  = 10;
 function getUserAiCount(userId) {
   const today = new Date().toDateString();
   const rec = dailyAiCalls.get(String(userId));
@@ -1635,134 +1755,67 @@ function incrementUserAi(userId) {
   else dailyAiCalls.set(String(userId), {count:rec.count+1,date:today});
 }
 
-// ── Main AI chat endpoint ─────────────────────────────────────────────────────
+// ── /ai-chat — BULLETPROOF, never crashes, never shows error ─────────────────
 app.post("/ai-chat", authenticateToken, async (req, res) => {
+  const { message, history=[] } = req.body || {};
+  if (!message) return res.status(400).json({message:"No message"});
+
+  const userId = req.user?.id;
+
   try {
-    const { message, history=[] } = req.body;
-    if (!message) return res.status(400).json({message:"No message"});
-
-    const userId = req.user?.id;
-    const tier = classifyQuery(message);
-
-    // TIER 1: Easy
-    if (tier === "easy") {
-      const easy = easyResponse(message);
-      if (easy) {
-        await logEvent("ai_chat_easy", message.slice(0,100), "ai_chat", userId);
-        return res.json(easy);
-      }
+    // ── TIER 1: Instant knowledge base (no API, no DB) ────────────────────────
+    const easy = easyResponse(message);
+    if (easy) {
+      logEvent("ai_easy", message.slice(0,80), "ai_chat", userId).catch(()=>{});
+      return res.json(easy);
     }
 
-    // TIER 2: Medium — DB lookup
-    if (tier === "easy" || tier === "medium") {
-      const med = await mediumResponse(message);
-      if (med) {
-        await logEvent("ai_chat_medium", message.slice(0,100), "ai_chat", userId);
-        return res.json(med);
-      }
+    // ── TIER 2: DB flight lookup (safe, wrapped) ──────────────────────────────
+    const dbResult = await tryDBFlights(message);
+    if (dbResult) {
+      logEvent("ai_medium", message.slice(0,80), "ai_chat", userId).catch(()=>{});
+      return res.json(dbResult);
     }
 
-    // TIER 3: Hard — call GPT-4o-mini (with daily limit)
+    // ── TIER 3: GPT-4o-mini for complex queries ───────────────────────────────
     const userCallCount = getUserAiCount(userId);
     if (userCallCount >= DAILY_LIMIT) {
+      const cards = buildCardsFromIntent(message);
       return res.json({
-        text: `⚠️ You've used your ${DAILY_LIMIT} free AI responses for today.\n\nTo continue getting AI-powered answers, book a flight, bus or hotel through Alvryn and your limit resets instantly! 🎯\n\nYou can still search manually on the Search page — or come back tomorrow for ${DAILY_LIMIT} more free responses.`,
-        cards: [], cta: "💡 Book via Alvryn to unlock unlimited AI responses."
+        text: `You've used your ${DAILY_LIMIT} free AI responses for today. 🎯\n\nBook a flight, bus or hotel through Alvryn to unlock more AI responses instantly!\n\nMeanwhile, here are the best options I found for you 👇`,
+        cards, cta: "💡 Book via Alvryn to get unlimited AI responses."
       });
     }
+
+    // Build cards from intent (no DB, pure affiliate links — safe)
+    const cards = buildCardsFromIntent(message);
+
+    // Try GPT
     incrementUserAi(userId);
     const remaining = DAILY_LIMIT - getUserAiCount(userId);
-    await logEvent("ai_chat_api", message.slice(0,100), "ai_chat", userId);
-    // Fetch travel data to pass to AI
-    const intent = extractIntent(message);
-    const cards = await fetchTravelData(intent);
-    const aiText = await callGPT(message, history, cards);
-    const limitNote = remaining <= 3 ? `\n\n_💡 ${remaining} free AI response${remaining===1?"":"s"} left today._` : "";
-    const cta = cards.length ? "💡 Tap any card to check live prices on our partner site." : null;
-    return res.json({ text: aiText + limitNote, cards, cta });
+    const gptText = await callGPT(message, history, cards);
+
+    if (gptText) {
+      const limitNote = remaining <= 3 ? `\n\n_💡 ${remaining} AI response${remaining===1?"":"s"} left today — book via Alvryn to unlock more._` : "";
+      logEvent("ai_api", message.slice(0,80), "ai_chat", userId).catch(()=>{});
+      return res.json({ text: gptText + limitNote, cards, cta: cards.length?"💡 Tap any card to check live prices on our partner site.":null });
+    }
+
+    // ── FINAL FALLBACK: Always something useful, never an error ──────────────
+    const fallback = smartFallback(message);
+    return res.json(fallback);
 
   } catch(e) {
-    console.error("AI Chat error:", e.message);
+    // ABSOLUTE last resort — still useful, never an error message
+    console.error("AI Chat:", e.message);
     try {
-      const intent2 = extractIntent(req.body.message||"");
-      const cards2 = await fetchTravelData(intent2);
-      return res.json({text:"Here are the options I found for you! 🗺️",cards:cards2,cta:cards2.length?"Tap any card to check live availability.":null});
+      const fallback = smartFallback(message);
+      return res.json(fallback);
     } catch {
-      return res.json({text:"I had trouble searching right now. Please try again! 🙏",cards:[],cta:null});
+      return res.json({
+        text: "Let me find the best travel options for you! 😊\n\nTry: _\"flights from Bangalore to Delhi tomorrow\"_ or _\"bus to Goa tonight\"_",
+        cards: [], cta: null
+      });
     }
   }
 });
-
-// ── WhatsApp AI limit check ───────────────────────────────────────────────────
-function waCanCallAI(phone) {
-  return canCallAI(phone);
-}
-function waIncrementAI(phone) {
-  incrementAI(phone);
-}
-
-// ══════════════════════════════════════════════════════════════
-//  ADMIN ROUTES
-// ══════════════════════════════════════════════════════════════
-app.get("/admin/bookings", async (req, res) => {
-  try {
-    const r = await pool.query(
-      `SELECT bookings.id, bookings.passenger_name, bookings.booked_at, bookings.seats,
-              bookings.promo_code, bookings.discount_applied, bookings.final_price, bookings.cabin_class,
-              flights.from_city, flights.to_city, flights.departure_time, flights.price,
-              flights.airline, flights.flight_no,
-              users.email as user_email, users.name as user_name
-       FROM bookings JOIN flights ON bookings.flight_id=flights.id JOIN users ON bookings.user_id=users.id
-       ORDER BY bookings.id DESC`
-    );
-    res.json(r.rows);
-  } catch { res.status(500).send("Server Error"); }
-});
-
-app.get("/admin/users", async (req, res) => {
-  try {
-    const r = await pool.query("SELECT id,name,email,phone,ref_code,wallet_balance,referred_by,created_at FROM users ORDER BY id DESC");
-    res.json(r.rows);
-  } catch { res.status(500).send("Server Error"); }
-});
-
-app.get("/admin/promo-codes", async (req, res) => {
-  try {
-    const r = await pool.query("SELECT * FROM promo_codes ORDER BY id DESC");
-    res.json(r.rows);
-  } catch { res.json([]); }
-});
-
-// ══════════════════════════════════════════════════════════════
-//  WAITLIST
-// ══════════════════════════════════════════════════════════════
-function generateRefCode(email) {
-  const base = email.split("@")[0].replace(/[^a-zA-Z0-9]/g,"").slice(0,8);
-  return `${base}${Math.random().toString(36).slice(2,6).toUpperCase()}`;
-}
-async function ensureWaitlistTable() {
-  await pool.query(`CREATE TABLE IF NOT EXISTS waitlist (id SERIAL PRIMARY KEY, email VARCHAR(255) UNIQUE NOT NULL, ref_code VARCHAR(20) UNIQUE NOT NULL, referred_by VARCHAR(20), joined_at TIMESTAMP DEFAULT NOW())`);
-}
-app.post("/waitlist", async (req, res) => {
-  try {
-    await ensureWaitlistTable();
-    const { email, ref } = req.body;
-    if (!email) return res.status(400).json({ message: "Email required" });
-    const refCode = generateRefCode(email);
-    let referredBy = null;
-    if (ref) { const rc = await pool.query("SELECT email FROM waitlist WHERE ref_code=$1",[ref]); if(rc.rows.length) referredBy = ref; }
-    await pool.query("INSERT INTO waitlist (email,ref_code,referred_by) VALUES ($1,$2,$3)",[email,refCode,referredBy]);
-    res.json({ message: "Added!", refCode });
-  } catch(e) {
-    if (e.code==="23505") { const ex = await pool.query("SELECT ref_code FROM waitlist WHERE email=$1",[req.body.email]); return res.status(409).json({ message:"Already on waitlist", refCode: ex.rows[0]?.ref_code }); }
-    res.status(500).json({ message:"Server error" });
-  }
-});
-app.get("/waitlist/count", async (req, res) => { try { await ensureWaitlistTable(); const r=await pool.query("SELECT COUNT(*) FROM waitlist"); res.json({count:parseInt(r.rows[0].count)}); } catch { res.json({count:0}); } });
-app.get("/admin/waitlist", async (req, res) => { try { await ensureWaitlistTable(); const r=await pool.query(`SELECT w.*,COUNT(r2.id) as ref_count FROM waitlist w LEFT JOIN waitlist r2 ON r2.referred_by=w.ref_code GROUP BY w.id ORDER BY ref_count DESC`); res.json(r.rows); } catch { res.json([]); } });
-
-// ══════════════════════════════════════════════════════════════
-//  START
-// ══════════════════════════════════════════════════════════════
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Alvryn server running on port ${PORT}`));

@@ -5,26 +5,27 @@ import { useNavigate } from "react-router-dom";
 const API = "https://cometai-backend.onrender.com";
 
 // ── palette ────────────────────────────────────────────────────────────────────
-// ── Alvryn Gold Theme — warm dark amber, gold as dominant ────────────────────
+// ── Alvryn Brand Colors — matches landing page and search page ───────────────
 const C = {
-  bg:        "#1a1508",      // deep warm amber-dark (matches Alvryn gold brand)
-  sbBg:      "#160f04",      // sidebar — slightly darker warm
+  bg:        "#f8f4ec",      // warm cream — matches landing page
+  sbBg:      "#f0e8d4",      // sidebar slightly darker cream
   sbBorder:  "rgba(201,168,76,0.25)",
   gold:      "#c9a84c",      // Alvryn primary gold
-  goldD:     "#8B6914",      // dark gold
-  goldL:     "#f0d080",      // light gold
-  green:     "#86efac",      // soft mint — accent only
-  greenD:    "#16a34a",
-  greenMid:  "#4ade80",
-  cardBg:    "rgba(32,24,8,0.92)",       // warm dark card
-  cardBorder:"rgba(201,168,76,0.22)",    // gold border
-  inputBg:   "rgba(24,18,5,0.96)",       // warm dark input
-  textPri:   "rgba(255,248,225,0.95)",   // warm white
-  textSec:   "rgba(240,210,140,0.6)",    // gold-tinted secondary
-  textMuted: "rgba(210,185,110,0.38)",   // dim gold
+  goldD:     "#8B6914",      // dark gold for text
+  goldL:     "#f0d080",      // light gold highlight
+  green:     "#16a34a",      // success green (kept for badges)
+  greenD:    "#15803d",
+  greenMid:  "#22c55e",
+  cardBg:    "rgba(255,255,255,0.95)",   // white cards
+  cardBorder:"rgba(201,168,76,0.22)",    // gold border on cards
+  inputBg:   "rgba(255,255,255,0.9)",    // white input
+  textPri:   "#1a1410",                  // dark text — matches landing page
+  textSec:   "#5a4a3a",                  // medium dark
+  textMuted: "#a0896a",                  // muted gold-brown
   grad:      "linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)",
   gradGG:    "linear-gradient(135deg,#c9a84c 0%,#d4aa50 60%,#f0d080 100%)",
-  topBar:    "rgba(22,16,4,0.98)",       // very dark warm top
+  topBar:    "rgba(248,244,236,0.97)",   // cream top bar
+  msgBg:     "#f0e8d4",                  // message area bg
 };
 
 // ── IATA map (frontend for link building) ─────────────────────────────────────
@@ -61,7 +62,7 @@ function flink(from,to,ddmm,pax=1){
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600;700&family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;overflow:hidden;background:#1a1508;}
+html,body{height:100%;overflow:hidden;background:#f8f4ec;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
 @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
 @keyframes spin{to{transform:rotate(360deg);}}
@@ -71,12 +72,12 @@ html,body{height:100%;overflow:hidden;background:#1a1508;}
 @keyframes gradShift{0%,100%{background-position:0% 50%;}50%{background-position:100% 50%;}}
 @keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(201,168,76,0);}50%{box-shadow:0 0 18px 2px rgba(201,168,76,0.13);}}
 ::-webkit-scrollbar{width:3px;}
-::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.35);border-radius:3px;}
-.sb-btn:hover{background:rgba(201,168,76,0.14)!important;color:#c9a84c!important;}
+::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.4);border-radius:3px;}
+.sb-btn:hover{background:rgba(201,168,76,0.15)!important;color:#8B6914!important;}
 .sb-item:hover{background:rgba(201,168,76,0.07)!important;}
-.chip:hover{background:rgba(201,168,76,0.18)!important;border-color:rgba(201,168,76,0.55)!important;color:#fff0d0!important;transform:translateY(-1px);}
+.chip:hover{background:rgba(201,168,76,0.2)!important;border-color:rgba(201,168,76,0.55)!important;color:#1a1410!important;transform:translateY(-1px);}
 .travel-card{transition:all 0.18s ease;}
-.travel-card:hover{transform:translateY(-3px);box-shadow:0 16px 40px rgba(201,168,76,0.22),0 0 0 1px rgba(201,168,76,0.3)!important;border-color:rgba(201,168,76,0.45)!important;background:rgba(40,30,8,0.96)!important;}
+.travel-card:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(201,168,76,0.25),0 0 0 1px rgba(201,168,76,0.3)!important;border-color:rgba(201,168,76,0.45)!important;background:#fff!important;}
 .send-btn:hover:not(:disabled){transform:scale(1.08);}
 .send-btn:disabled{opacity:0.3;cursor:default;}
 textarea:focus{outline:none;}
@@ -107,8 +108,8 @@ function Logo({size=34}){
 function Typing(){
   return(
     <div style={{display:"flex",alignItems:"center",gap:5,padding:"12px 16px",
-      background:`linear-gradient(135deg,rgba(15,30,18,0.9),rgba(20,35,22,0.9))`,
-      borderRadius:"18px 18px 18px 4px",border:`1px solid ${C.cardBorder}`,
+      background:"rgba(255,255,255,0.95)",
+      borderRadius:"18px 18px 18px 4px",border:"1px solid rgba(201,168,76,0.2)",
       width:"fit-content",backdropFilter:"blur(8px)"}}>
       {[0,1,2].map(i=>(
         <div key={i} style={{width:8,height:8,borderRadius:"50%",
@@ -126,7 +127,7 @@ function FlightCard({f,i}){
   return(
     <div className="travel-card" onClick={()=>window.open(f.link,"_blank","noopener")}
       style={{background:C.cardBg,borderRadius:16,padding:"16px 18px",
-        border:`1px solid ${C.cardBorder}`,cursor:"pointer",
+        border:"1px solid rgba(201,168,76,0.2)",cursor:"pointer",
         boxShadow:"0 4px 20px rgba(0,0,0,0.2)",marginBottom:10,
         animation:`fadeUp 0.3s ${i*75}ms both`}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
@@ -146,7 +147,7 @@ function FlightCard({f,i}){
       </div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
         <div style={{textAlign:"center",minWidth:60}}>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:26,color:"#fff",lineHeight:1}}>{f.departure||"—"}</div>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:26,color:C.textPri,lineHeight:1}}>{f.departure||"—"}</div>
           <div style={{fontFamily:"'Space Mono',monospace",fontSize:10,color:C.textMuted,marginTop:3}}>{f.fromCode}</div>
         </div>
         <div style={{flex:1,textAlign:"center",padding:"0 14px"}}>
@@ -157,7 +158,7 @@ function FlightCard({f,i}){
           <div style={{fontSize:10,color:C.greenD,marginTop:4,fontWeight:600}}>DIRECT</div>
         </div>
         <div style={{textAlign:"center",minWidth:60}}>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:26,color:"#fff",lineHeight:1}}>{f.arrival||"—"}</div>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:26,color:C.textPri,lineHeight:1}}>{f.arrival||"—"}</div>
           <div style={{fontFamily:"'Space Mono',monospace",fontSize:10,color:C.textMuted,marginTop:3}}>{f.toCode}</div>
         </div>
       </div>
@@ -337,7 +338,7 @@ function AiMsg({m}){
     <div style={{display:"flex",gap:12,marginBottom:24,animation:"fadeUp 0.25s both"}}>
       {/* Avatar */}
       <div style={{flexShrink:0,width:34,height:34,borderRadius:"50%",
-        background:"linear-gradient(135deg,rgba(201,168,76,0.4),rgba(201,168,76,0.2))",
+        background:C.grad,
         border:`1.5px solid rgba(201,168,76,0.35)`,
         display:"flex",alignItems:"center",justifyContent:"center",marginTop:2}}>
         <Logo size={22}/>
@@ -587,7 +588,7 @@ export default function AIChatPage(){
               {chats.length>0&&(
                 <>
                   <div style={{fontFamily:"'Space Mono',monospace",fontSize:9,
-                    color:C.textMuted,letterSpacing:"0.15em",marginBottom:8,paddingLeft:8}}>
+                    color:"#a0896a",letterSpacing:"0.15em",marginBottom:8,paddingLeft:8}}>
                     RECENT
                   </div>
                   {chats.slice(0,25).map(chat=>(
@@ -596,7 +597,7 @@ export default function AIChatPage(){
                         background:activeId===chat.id?"rgba(201,168,76,0.15)":"transparent",
                         border:activeId===chat.id?"1px solid rgba(201,168,76,0.38)":"1px solid transparent",
                         marginBottom:2,transition:"all 0.14s"}}>
-                      <div style={{fontSize:13,color:C.textPri,overflow:"hidden",
+                      <div style={{fontSize:13,color:"#1a1410",overflow:"hidden",
                         textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{chat.title}</div>
                       <div style={{fontSize:10,color:C.textMuted,marginTop:2}}>
                         {new Date(chat.time).toLocaleDateString("en-IN",{day:"numeric",month:"short"})}
@@ -617,7 +618,7 @@ export default function AIChatPage(){
                   {user.name?.charAt(0)?.toUpperCase()||"U"}
                 </div>
                 <div style={{overflow:"hidden",flex:1}}>
-                  <div style={{fontSize:13,color:C.textPri,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:500}}>{user.name||"Traveller"}</div>
+                  <div style={{fontSize:13,color:"#1a1410",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:500}}>{user.name||"Traveller"}</div>
                   <div style={{fontSize:10,color:C.textMuted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user.email||""}</div>
                 </div>
               </div>
@@ -663,7 +664,7 @@ export default function AIChatPage(){
                 <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
               </svg>
             </button>
-            <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:600,fontSize:16,color:"rgba(255,255,255,0.7)"}}>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:600,fontSize:16,color:C.goldD}}>
               {empty?"Alvryn AI — Travel Assistant":chatTitle}
             </div>
           </div>
@@ -687,7 +688,7 @@ export default function AIChatPage(){
         </div>
 
         {/* ── Messages ── */}
-        <div style={{flex:1,overflowY:"auto",padding:"24px 16px",background:"rgba(26,21,8,0.3)"}}>
+        <div style={{flex:1,overflowY:"auto",padding:"24px 16px",background:"#f0e8d4"}}>
           <div style={{maxWidth:740,margin:"0 auto"}}>
             {empty&&<EmptyState onChip={send}/>}
             {messages.map(m=>(
@@ -736,7 +737,7 @@ export default function AIChatPage(){
                 value={input}
                 onChange={handleInput}
                 onKeyDown={handleKey}
-                placeholder="Ask anything… flights, buses, hotels, trains, trip plans…"
+                placeholder="Ask anything — flights, buses, hotels, trains…"
                 rows={1}
                 style={{flex:1,background:"transparent",border:"none",outline:"none",
                   fontFamily:"'DM Sans',sans-serif",fontSize:15,color:C.textPri,

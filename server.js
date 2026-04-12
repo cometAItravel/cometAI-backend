@@ -1819,3 +1819,64 @@ app.post("/ai-chat", authenticateToken, async (req, res) => {
     }
   }
 });
+
+// ── WAITLIST ─────────────────────────────────────────────────────────────────
+async function ensureWaitlistTable() {
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS waitlist (
+      id SERIAL PRIMARY KEY,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      name VARCHAR(255),
+      source VARCHAR(60) DEFAULT 'web',
+      created_at TIMESTAMP DEFAULT NOW()
+    )`);
+  } catch(e) { console.error("Waitlist table:", e.message); }
+}
+ensureWaitlistTable().catch(console.error);
+
+app.post("/waitlist", async (req, res) => {
+  try {
+    const { email, name, source } = req.body;
+    if (!email) return res.status(400).json({ message: "Email required" });
+    await pool.query(
+      "INSERT INTO waitlist (email, name, source) VALUES ($1,$2,$3) ON CONFLICT (email) DO NOTHING",
+      [email.trim().toLowerCase(), name||"", source||"web"]
+    );
+    res.json({ message: "Added to waitlist!" });
+  } catch(e) { res.status(500).json({ message: "Server error" }); }
+});
+
+app.get("/admin/waitlist", async (req, res) => {
+  try {
+    const r = await pool.query("SELECT * FROM waitlist ORDER BY created_at DESC LIMIT 200");
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: "Server error" }); }
+});
+
+// ── ADMIN ROUTES ─────────────────────────────────────────────────────────────
+app.get("/admin/bookings", async (req, res) => {
+  try {
+    const r = await pool.query("SELECT * FROM bookings ORDER BY created_at DESC LIMIT 200");
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: "Server error" }); }
+});
+
+app.get("/admin/users", async (req, res) => {
+  try {
+    const r = await pool.query("SELECT id,name,email,phone,created_at FROM users ORDER BY id DESC LIMIT 200");
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: "Server error" }); }
+});
+
+app.get("/admin/promo-codes", async (req, res) => {
+  try {
+    const r = await pool.query("SELECT * FROM promo_codes ORDER BY created_at DESC");
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: "Server error" }); }
+});
+
+// ── START SERVER ─────────────────────────────────────────────────────────────
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () => {
+  console.log(`ALVRYN BACKEND running on port ${PORT}`);
+});

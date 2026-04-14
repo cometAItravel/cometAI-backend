@@ -1875,6 +1875,748 @@ app.get("/admin/promo-codes", async (req, res) => {
   } catch(e) { res.status(500).json({ message: "Server error" }); }
 });
 
+// ════════════════════════════════════════════════════════════════════════════
+//  GROQ + GPT HYBRID AI — askAI() wrapper
+// ════════════════════════════════════════════════════════════════════════════
+
+async function callGroq(prompt, systemMsg) {
+  const key = process.env.GROQ_API_KEY;
+  if (!key) return null;
+  try {
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":`Bearer ${key}`},
+      body:JSON.stringify({
+        model:"llama-3.3-70b-versatile",
+        messages:[{role:"system",content:systemMsg||"You are Alvryn AI, a smart travel assistant for India."},{role:"user",content:prompt}],
+        max_tokens:300, temperature:0.7
+      })
+    });
+    const d = await res.json();
+    return d.choices?.[0]?.message?.content || null;
+  } catch { return null; }
+}
+
+async function callOpenAI(prompt, systemMsg, maxTokens=400) {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) return null;
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":`Bearer ${key}`},
+      body:JSON.stringify({
+        model:"gpt-4o-mini",
+        messages:[{role:"system",content:systemMsg||"You are Alvryn AI, a smart travel assistant for India."},{role:"user",content:prompt}],
+        max_tokens:maxTokens, temperature:0.75
+      })
+    });
+    const d = await res.json();
+    return d.choices?.[0]?.message?.content || null;
+  } catch { return null; }
+}
+
+// Main AI wrapper — Groq for simple, GPT for complex
+async function askAI(prompt, type="simple", systemMsg) {
+  const TRAVEL_SYSTEM = systemMsg || `You are Alvryn AI — India's smartest travel assistant.
+Personality: warm, knowledgeable friend who travels everywhere.
+Rules: Keep responses SHORT (3-4 sentences). Use emojis naturally. Never say "I cannot" — always give something useful. Prices may vary — always mention this.`;
+
+  if (type === "simple") {
+    const groqResult = await callGroq(prompt, TRAVEL_SYSTEM);
+    if (groqResult) return groqResult;
+  }
+  // Complex OR groq failed — use GPT
+  const gptResult = await callOpenAI(prompt, TRAVEL_SYSTEM, type==="complex"?500:300);
+  if (gptResult) return gptResult;
+  return null; // Both failed — use stored fallback
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  USER MEMORY SYSTEM
+// ════════════════════════════════════════════════════════════════════════════
+
+async function ensureUserPrefsTable() {
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS user_preferences (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      pref_key VARCHAR(80) NOT NULL,
+      pref_value TEXT,
+      updated_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(user_id, pref_key)
+    )`);
+  } catch(e) { console.error("user_prefs table:", e.message); }
+}
+ensureUserPrefsTable().catch(console.error);
+
+async function getUserPrefs(userId) {
+  try {
+    const r = await pool.query("SELECT pref_key, pref_value FROM user_preferences WHERE user_id=$1", [userId]);
+    const prefs = {};
+    r.rows.forEach(row => { prefs[row.pref_key] = row.pref_value; });
+    return prefs;
+  } catch { return {}; }
+}
+
+async function setUserPref(userId, key, value) {
+  try {
+    await pool.query(`INSERT INTO user_preferences (user_id, pref_key, pref_value, updated_at)
+      VALUES ($1,$2,$3,NOW()) ON CONFLICT (user_id, pref_key) DO UPDATE SET pref_value=$3, updated_at=NOW()`,
+      [userId, key, String(value)]);
+  } catch {}
+}
+
+async function updateUserMemory(userId, message, response) {
+  if (!userId) return;
+  const m = message.toLowerCase();
+  // Detect and store preferences from conversation
+  if (/indigo|air india|spicejet|vistara|akasa/i.test(m)) {
+    const airline = m.match(/indigo|air india|spicejet|vistara|akasa/i)?.[0];
+    if (airline) await setUserPref(userId, "preferred_airline", airline);
+  }
+  if (/budget|under|₹|rs\.?\s*\d+/i.test(m)) {
+    const budget = extractBudget(message);
+    if (budget) await setUserPref(userId, "typical_budget", String(budget));
+  }
+  // Track trip count
+  if (/flight|bus|hotel|train/i.test(m)) {
+    const prefs = await getUserPrefs(userId);
+    const count = parseInt(prefs.search_count||"0") + 1;
+    await setUserPref(userId, "search_count", String(count));
+    await setUserPref(userId, "last_searched", new Date().toISOString().split("T")[0]);
+  }
+}
+
+function buildPersonalGreeting(userName, prefs, message) {
+  const name = userName ? userName.split(" ")[0] : "there";
+  const searchCount = parseInt(prefs.search_count||"0");
+  const lastSearched = prefs.last_searched;
+  const prefAirline = prefs.preferred_airline;
+  const budget = prefs.typical_budget;
+
+  if (searchCount >= 5) {
+    const tip = prefAirline ? ` I'll prioritize ${prefAirline} options for you.` : "";
+    return `Welcome back, ${name}! 👋 Great to see you again.${tip}`;
+  } else if (searchCount >= 2) {
+    return `Hey ${name}! 👋 Good to see you back on Alvryn!`;
+  }
+  return null; // First-time users get normal greeting
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  TRIP PLANNER STATE MACHINE
+// ════════════════════════════════════════════════════════════════════════════
+
+const tripSessions = new Map(); // sessionId → tripState
+
+function getTripSession(sessionId) {
+  return tripSessions.get(sessionId) || null;
+}
+
+function setTripSession(sessionId, state) {
+  tripSessions.set(sessionId, { ...state, updatedAt: Date.now() });
+  // Clean up old sessions (>2 hours)
+  for (const [k,v] of tripSessions) {
+    if (Date.now() - v.updatedAt > 7200000) tripSessions.delete(k);
+  }
+}
+
+function clearTripSession(sessionId) {
+  tripSessions.delete(sessionId);
+}
+
+// Trip planner: detects if a message starts a trip plan
+function detectsTripIntent(message) {
+  const m = message.toLowerCase();
+  // Needs both origin and destination AND not just a simple search
+  const { from, to } = extractCities(message);
+  const hasRoute = from && to;
+  const isTripContext = /trip|travel|visit|going|tour|vacation|holiday|journey|plan/i.test(m);
+  const hasBudget = /budget|₹|rs|under|cost|spend/i.test(m);
+  const hasDate = /tomorrow|next|this|week|month|january|february|march|april|may|june|july|august|september|october|november|december|\d+\s*(day|night)/i.test(m);
+  // If they mention international destination or complex trip
+  const isInternational = to && !["BLR","BOM","DEL","MAA","HYD","CCU","GOI","PNQ","COK","AMD","JAI","LKO","VNS"].includes(
+    CITY_IATA_SRV[to?.toLowerCase()]||""
+  );
+  return hasRoute && (isTripContext || isInternational || hasBudget || hasDate);
+}
+
+async function runTripPlanner(sessionId, message, userId, userName) {
+  let state = getTripSession(sessionId) || { step: "start" };
+  const m = message.toLowerCase().trim();
+
+  // Step 0: Initial detection
+  if (state.step === "start") {
+    const { from, to } = extractCities(message);
+    const f = from ? normCity(from) : null;
+    const t = to ? normCity(to) : null;
+    setTripSession(sessionId, { step:"ask_purpose", from:f, to:t, fromRaw:from, toRaw:to });
+    const fN = f ? f.charAt(0).toUpperCase()+f.slice(1) : from;
+    const tN = t ? t.charAt(0).toUpperCase()+t.slice(1) : to;
+    return {
+      text: `✈️ **${fN} → ${tN}** — great choice! I'll plan your complete door-to-door trip.
+
+First, what's the purpose of your trip? 🎯`,
+      quickReplies: ["🏖️ Tourism / Vacation", "💼 Business", "🎓 Study / Education", "👨‍👩‍👧 Family Visit", "🎒 Backpacking"],
+      section: "intro", isTripPlanner: true
+    };
+  }
+
+  // Step 1: Purpose
+  if (state.step === "ask_purpose") {
+    let purpose = "tourism";
+    if (/business|work|meeting|conference/i.test(m)) purpose = "business";
+    else if (/study|education|college|university/i.test(m)) purpose = "education";
+    else if (/family|relative|parents|wedding/i.test(m)) purpose = "family";
+    else if (/backpack|solo|budget/i.test(m)) purpose = "backpacking";
+    else if (/tourism|vacation|holiday|tour/i.test(m)) purpose = "tourism";
+    setTripSession(sessionId, { ...state, step:"ask_budget", purpose });
+    const purposeEmoji = {tourism:"🏖️",business:"💼",education:"🎓",family:"👨‍👩‍👧",backpacking:"🎒"}[purpose]||"✈️";
+    return {
+      text: `${purposeEmoji} ${purpose.charAt(0).toUpperCase()+purpose.slice(1)} — perfect!
+
+What's your total budget for this trip? (flights + hotel + activities) 💰`,
+      quickReplies: ["Under ₹10,000", "₹10,000 – ₹30,000", "₹30,000 – ₹60,000", "₹60,000 – ₹1,50,000", "No fixed budget"],
+      section: "purpose", isTripPlanner: true
+    };
+  }
+
+  // Step 2: Budget
+  if (state.step === "ask_budget") {
+    let budget = null;
+    if (/10.?000|10k/i.test(m)) budget = 10000;
+    else if (/30.?000|30k/i.test(m)) budget = 30000;
+    else if (/60.?000|60k/i.test(m)) budget = 60000;
+    else if (/1.?50.?000|1\.5l|1\.5 lakh/i.test(m)) budget = 150000;
+    else budget = extractBudget(message) || null;
+    setTripSession(sessionId, { ...state, step:"ask_dates", budget });
+    if (userId) setUserPref(userId, "typical_budget", String(budget||"flexible")).catch(()=>{});
+    return {
+      text: `💰 Got it! ${budget ? `Budget: ₹${budget.toLocaleString()}` : "Flexible budget — I'll show best options!"}
+
+When are you planning to travel? 📅`,
+      quickReplies: ["This weekend", "Next week", "This month", "Next month", "I'll decide later"],
+      section: "budget", isTripPlanner: true
+    };
+  }
+
+  // Step 3: Dates
+  if (state.step === "ask_dates") {
+    let dateHint = message;
+    if (/weekend/i.test(m)) {
+      const now = new Date(); const day = now.getDay();
+      const daysToSat = (6-day+7)%7||7;
+      const sat = new Date(now); sat.setDate(now.getDate()+daysToSat);
+      dateHint = sat.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});
+    }
+    setTripSession(sessionId, { ...state, step:"ask_homelocation", travelDate:dateHint });
+    return {
+      text: `📅 Noted: **${dateHint}**
+
+One more thing — where are you starting from exactly? (Your area/locality, so I can plan door-to-door) 📍`,
+      quickReplies: state.from==="bangalore" ? ["Electronic City","Whitefield","Koramangala","HSR Layout","Marathahalli","City Centre / Majestic"] : ["City Centre","Near Airport","Suburb / Outskirts"],
+      section: "dates", isTripPlanner: true
+    };
+  }
+
+  // Step 4: Home location → Generate full plan section by section
+  if (state.step === "ask_homelocation") {
+    const homeLocation = message;
+    setTripSession(sessionId, { ...state, step:"show_local_transport", homeLocation });
+    if (userId) setUserPref(userId, "home_location", homeLocation).catch(()=>{});
+
+    const from = state.from || "bangalore";
+    const to   = state.to   || "new york";
+    const fN   = from.charAt(0).toUpperCase()+from.slice(1);
+    const tN   = to.charAt(0).toUpperCase()+to.slice(1);
+    const isInternational = !["bangalore","mumbai","delhi","chennai","hyderabad","kolkata","goa","pune","kochi"].includes(to);
+
+    // Build local transport advice
+    const localTransport = getLocalTransportAdvice(homeLocation, from);
+    const transitTime = localTransport.time;
+
+    return {
+      text: `🗺️ **SECTION 1 of 5 — Getting to the Airport**
+
+From **${homeLocation}** → **${fN} Airport**:
+
+${localTransport.advice}
+
+⏰ Allow **${transitTime}** — add 30 mins buffer for peak hours.
+
+---
+✅ Section 1 done! Ready to see **flights** next?`,
+      quickReplies: ["Yes, show me flights ✈️", "Show all sections at once"],
+      section: "local_transport", sectionNum: 1, totalSections: 5,
+      isTripPlanner: true, isInternational
+    };
+  }
+
+  // Step 5: Flights
+  if (state.step === "show_local_transport" && /flight|yes|next|show/i.test(m)) {
+    setTripSession(sessionId, { ...state, step:"show_flights" });
+    const from = state.from || "bangalore";
+    const to   = state.to   || "destination";
+    const fN   = from.charAt(0).toUpperCase()+from.slice(1);
+    const tN   = to.charAt(0).toUpperCase()+to.slice(1);
+    const fc   = CITY_IATA_SRV[from.toLowerCase()] || from.slice(0,3).toUpperCase();
+    const tc   = CITY_IATA_SRV[to.toLowerCase()]   || to.slice(0,3).toUpperCase();
+    const isIntl = !["BLR","BOM","DEL","MAA","HYD","CCU","GOI","PNQ","COK"].includes(tc);
+    const budget = state.budget;
+
+    const flightCards = [
+      {type:"flight",airline:"Check Live Fares",from:fN,to:tN,fromCode:fc,toCode:tc,
+       departure:"—",arrival:"—",duration:isIntl?"~14–18h (with layover)":"~2h direct",
+       price:null,label:"Best Rates",
+       insight:isIntl?"Most India–US routes have 1 layover (Dubai/Singapore/London)":"Direct flights available",
+       link:buildFlightURL(from,to,"",1)},
+    ];
+
+    const flightTip = isIntl
+      ? `💡 **Flight tips for ${fN} → ${tN}:**
+• Best airlines: Air India (direct), Emirates (via Dubai), Singapore Airlines (via SIN)
+• Book **6–8 weeks early** for best prices
+• Budget estimate: ₹45,000–₹95,000 return
+• ${budget && budget < 50000 ? "⚠️ International flights may exceed your budget — consider increasing slightly for better options." : "Your budget looks good for this route! ✅"}`
+      : `💡 **Flight tips:**
+• IndiGo & Air India cheapest on this route
+• Book **2–4 weeks early** for best prices
+• Early morning (5–7 AM) flights are cheapest
+• Budget estimate: ₹2,500–₹6,000 one way`;
+
+    return {
+      text: `✈️ **SECTION 2 of 5 — Flights: ${fN} → ${tN}**
+
+${flightTip}
+
+---
+✅ Section 2 done! Ready to see **hotels** next?`,
+      cards: flightCards,
+      quickReplies: ["Yes, show me hotels 🏨", "Show all remaining sections"],
+      section: "flights", sectionNum: 2, totalSections: 5,
+      isTripPlanner: true
+    };
+  }
+
+  // Step 6: Hotels
+  if (state.step === "show_flights" && /hotel|yes|next|show/i.test(m)) {
+    setTripSession(sessionId, { ...state, step:"show_activities" });
+    const to = state.to || "destination";
+    const tN = to.charAt(0).toUpperCase()+to.slice(1);
+    const purpose = state.purpose || "tourism";
+    const budget = state.budget;
+
+    const hotelCards = buildHotelCards(to, purpose, budget);
+    const hotelTip = getHotelTip(to, purpose);
+
+    return {
+      text: `🏨 **SECTION 3 of 5 — Hotels in ${tN}**
+
+${hotelTip}
+
+---
+✅ Section 3 done! Ready to see **what to do** there?`,
+      cards: hotelCards,
+      quickReplies: ["Yes, show me activities 🗺️", "Show all remaining sections"],
+      section: "hotels", sectionNum: 3, totalSections: 5,
+      isTripPlanner: true
+    };
+  }
+
+  // Step 7: Activities
+  if (state.step === "show_activities" && /activit|yes|next|show|place|do|visit/i.test(m)) {
+    setTripSession(sessionId, { ...state, step:"show_checklist" });
+    const to = state.to || "destination";
+    const tN = to.charAt(0).toUpperCase()+to.slice(1);
+    const purpose = state.purpose || "tourism";
+    const activities = getDestinationActivities(to, purpose);
+
+    return {
+      text: `🗺️ **SECTION 4 of 5 — Activities & Places in ${tN}**
+
+${activities}
+
+---
+✅ Section 4 done! Ready for your **travel checklist** & complete summary?`,
+      quickReplies: ["Yes, show my checklist ✅", "Show complete summary now"],
+      section: "activities", sectionNum: 4, totalSections: 5,
+      isTripPlanner: true
+    };
+  }
+
+  // Step 8: Checklist + Mind Map + Share
+  if (state.step === "show_checklist" || /checklist|summary|complete|show all/i.test(m)) {
+    setTripSession(sessionId, { ...state, step:"complete" });
+    const { from, to, purpose, budget, travelDate, homeLocation } = state;
+    const tN = to ? to.charAt(0).toUpperCase()+to.slice(1) : "destination";
+    const fN = from ? from.charAt(0).toUpperCase()+from.slice(1) : "origin";
+    const isIntl = !["bangalore","mumbai","delhi","chennai","hyderabad","kolkata","goa","pune","kochi"].includes(to||"");
+    const checklist = generateChecklist(to, purpose, isIntl);
+
+    const tripId = Math.random().toString(36).slice(2,8).toUpperCase();
+    // Store trip for sharing
+    const tripData = { from, to, fN, tN, purpose, budget, travelDate, homeLocation, tripId, checklist, createdAt: new Date().toISOString() };
+    setUserPref(userId||0, `trip_${tripId}`, JSON.stringify(tripData)).catch(()=>{});
+
+    return {
+      text: `✅ **SECTION 5 of 5 — Your Travel Checklist**
+
+${checklist}
+
+---
+🎉 **Your complete trip plan is ready!**`,
+      tripSummary: {
+        tripId, from:fN, to:tN, purpose, budget,
+        travelDate, homeLocation,
+        shareUrl: `https://alvryn.in/trip/${tripId}`,
+        shareText: `✈️ My trip plan: ${fN} → ${tN} on ${travelDate} — check it out on Alvryn!`
+      },
+      showMindMap: true,
+      section: "checklist", sectionNum: 5, totalSections: 5,
+      isTripPlanner: true
+    };
+  }
+
+  return null; // Not in trip planner flow
+}
+
+// ── Local transport advice database ──────────────────────────────────────────
+function getLocalTransportAdvice(homeLocation, fromCity) {
+  const h = homeLocation.toLowerCase();
+  const c = fromCity.toLowerCase();
+
+  if (c === "bangalore" || c === "bengaluru") {
+    if (/electronic city|attibele|hosur/i.test(h)) return { advice:"🚌 **Vayu Vajra Bus:** Take BMTC route 500C or 500CA from Electronic City → KIA (₹270)\n🚖 **Cab (Ola/Uber):** ₹600–900, 45–75 mins (avoid peak hours)\n🚕 **Pre-paid taxi:** Available at Electronic City Phase 1 bus stop", time:"1.5–2 hours" };
+    if (/whitefield|itpl|kadugodi/i.test(h)) return { advice:"🚇 **Metro + Bus:** Purple Line to Baiyappanahalli → Vayu Vajra bus to airport\n🚖 **Cab:** ₹700–1000, 45–90 mins\n💡 Tip: Metro+bus is cheapest (₹80+₹270)", time:"1.5–2.5 hours" };
+    if (/koramangala|hsr|btm/i.test(h)) return { advice:"🚌 **Vayu Vajra Bus:** From Silk Board → KIA (route 500 series) ₹270\n🚖 **Cab:** ₹600–850, 45–75 mins\n💡 Tip: Avoid 8–10AM and 5–8PM traffic", time:"1–1.5 hours" };
+    if (/marathahalli|kr puram/i.test(h)) return { advice:"🚌 **Vayu Vajra Bus:** Multiple routes from Marathahalli ₹270\n🚖 **Cab:** ₹500–750, 40–70 mins\n💡 Tip: Old Airport Road can be congested — leave extra time", time:"1–1.5 hours" };
+    if (/indiranagar|ulsoor|halasuru/i.test(h)) return { advice:"🚇 **Metro:** Purple Line from Indiranagar → connect Vayu Vajra\n🚌 **Direct bus:** Route 500D from Indiranagar ₹270\n🚖 **Cab:** ₹550–800, 40–65 mins", time:"1–1.5 hours" };
+    if (/majestic|city|central|kbs/i.test(h)) return { advice:"🚌 **Vayu Vajra Bus:** Direct from Kempegowda Bus Station (KBS/Majestic) ₹250\n⏱️ Fastest bus option — departs every 20 mins\n🚖 **Cab:** ₹600–900, 45–75 mins via NH 44", time:"1–1.5 hours" };
+    if (/yelahanka|hebbal|jalahalli/i.test(h)) return { advice:"🚖 **Cab:** ₹350–550, 25–40 mins (closest zone!)\n🚌 **Local BMTC bus** to airport: Routes available from Yelahanka\n💡 You're in the closest zone — fastest airport access!", time:"30–45 minutes" };
+    // Default Bangalore
+    return { advice:"🚌 **Vayu Vajra Bus:** From nearest BMTC stop ₹250–350\n🚖 **Cab (Ola/Uber):** ₹500–900 depending on zone\n💡 Book cab 30 mins before departure time", time:"1–2 hours" };
+  }
+
+  if (c === "mumbai" || c === "bombay") {
+    return { advice:"🚇 **Metro Line 1:** Connect to Andheri, then cab to T2\n🚖 **Cab:** ₹300–700 from South/Central Mumbai\n💡 T1 (domestic) and T2 (international) are separate — confirm your terminal", time:"1–2 hours" };
+  }
+  if (c === "delhi") {
+    return { advice:"🚇 **Airport Express Metro:** From New Delhi/Dwarka stations ₹60–100 (FASTEST)\n🚖 **Cab:** ₹300–700 depending on zone\n💡 Airport Express runs 5AM–11:30PM, takes 20 mins from New Delhi", time:"45 mins–1.5 hours" };
+  }
+  if (c === "chennai") {
+    return { advice:"🚇 **MRTS/Metro:** Connect to Airport station (Tirusulam)\n🚖 **Cab:** ₹300–600 from central Chennai\n🚌 **Bus:** Routes from Koyambedu CMBT to airport", time:"1–1.5 hours" };
+  }
+  return { advice:"🚖 **Cab (Ola/Uber):** Most convenient option\n🚌 **City bus:** Check local SRTC routes to airport\n💡 Always book cab 20 mins before you want to leave", time:"1–2 hours (varies)" };
+}
+
+// ── Hotel cards builder ───────────────────────────────────────────────────────
+function buildHotelCards(city, purpose, budget) {
+  const c = city.toLowerCase();
+  const INTL_HOTELS = {
+    "new york":   [{name:"Pod Times Square",area:"Midtown Manhattan",price:"₹8,000–12,000",rating:4.1,note:"Budget-friendly, walking distance to Times Square"},{name:"The Roosevelt Hotel",area:"Midtown East",price:"₹14,000–22,000",rating:4.3,note:"Classic NYC hotel, great location"},{name:"1 Hotel Central Park",area:"Central Park South",price:"₹25,000+",rating:4.7,note:"Luxury, stunning park views"}],
+    "dubai":      [{name:"Rove Downtown",area:"Downtown Dubai",price:"₹6,000–10,000",rating:4.2,note:"Budget pick, near Dubai Mall & Burj Khalifa"},{name:"Sofitel Dubai Downtown",area:"Downtown",price:"₹14,000–20,000",rating:4.5,note:"Great Burj Khalifa view"},{name:"Atlantis The Palm",area:"Palm Jumeirah",price:"₹30,000+",rating:4.6,note:"Iconic, beachfront, waterpark"}],
+    "singapore":  [{name:"Hotel Mono",area:"Chinatown",price:"₹5,000–8,000",rating:4.3,note:"Budget boutique, great MRT access"},{name:"Marriott Tang Plaza",area:"Orchard Road",price:"₹16,000–24,000",rating:4.5,note:"Shopping district"},{name:"Marina Bay Sands",area:"Marina Bay",price:"₹35,000+",rating:4.6,note:"Iconic infinity pool"}],
+    "bangkok":    [{name:"Lub*d Bangkok Siam",area:"Siam",price:"₹1,500–3,000",rating:4.2,note:"Budget/backpacker, central location"},{name:"Centara Grand",area:"CentralWorld",price:"₹7,000–12,000",rating:4.5,note:"Mid-range, great shopping access"},{name:"Capella Bangkok",area:"Charoenkrung",price:"₹25,000+",rating:4.8,note:"Luxury riverfront"}],
+    "london":     [{name:"Point A Hotel Westminster",area:"Westminster",price:"₹9,000–14,000",rating:4.1,note:"Budget-friendly, great tube access"},{name:"The Savoy",area:"Strand",price:"₹45,000+",rating:4.8,note:"Historic luxury, Thames views"}],
+    "bali":       [{name:"Kuta Beach Club",area:"Kuta",price:"₹2,500–5,000",rating:4.0,note:"Budget, near beach & nightlife"},{name:"Four Seasons Sayan",area:"Ubud",price:"₹25,000+",rating:4.9,note:"Jungle luxury, iconic"}],
+  };
+
+  const hotels = INTL_HOTELS[c];
+  if (hotels) {
+    return hotels.slice(0, purpose==="backpacking"?1:3).map(h=>({
+      type:"hotel", city:city.charAt(0).toUpperCase()+city.slice(1),
+      name:h.name, area:h.area, priceRange:h.price, rating:h.rating,
+      label:hotels.indexOf(h)===0?"Best Value":hotels.indexOf(h)===2?"Luxury Pick":null,
+      insight:h.note,
+      link:`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(h.name+", "+city)}`
+    }));
+  }
+  // Indian destinations
+  const pr = HOTEL_PRICES[c] || "800–4,000";
+  return [{type:"hotel",city:city.charAt(0).toUpperCase()+city.slice(1),priceRange:pr,label:"Best Rates",insight:"Browse all options on Booking.com",link:`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}`}];
+}
+
+function getHotelTip(city, purpose) {
+  const c = city.toLowerCase();
+  const tips = {
+    "new york": "🗽 **New York hotel tips:**\n• Midtown Manhattan = best location for tourists\n• Times Square area = central but can be noisy\n• Book **4–6 weeks early** — NYC fills up fast!\n• Check if breakfast is included — saves ₹1,500–2,500/day",
+    "dubai": "🏙️ **Dubai hotel tips:**\n• Downtown Dubai = near Burj Khalifa & Dubai Mall\n• JBR/Marina = beachfront, great for families\n• Book during non-peak (summer = cheaper but very hot)\n• Many hotels include breakfast in packages",
+    "singapore": "🌇 **Singapore hotel tips:**\n• Marina Bay/Orchard = tourist hub\n• Chinatown/Little India = cheaper + local experience\n• Book 3–4 weeks early, especially on weekends",
+    "goa": "🏖️ **Goa hotel tips:**\n• North Goa = parties, nightlife, younger crowd\n• South Goa = peaceful, cleaner beaches, families\n• Oct–Mar: book 2+ weeks early\n• Many resorts include breakfast",
+  };
+  return tips[c] || `🏨 **Hotel tip:** Book early for best rates. Compare prices on Booking.com — prices vary significantly by season.`;
+}
+
+function getDestinationActivities(city, purpose) {
+  const c = city.toLowerCase();
+  const ACTIVITIES = {
+    "new york": `🗽 **Must-do in New York:**
+
+**Free / Cheap:**
+• Central Park walk/picnic
+• Brooklyn Bridge walk (stunning views)
+• Times Square at night
+• High Line park
+• Staten Island Ferry (free, Statue of Liberty view!)
+
+**Paid Attractions:**
+• Statue of Liberty & Ellis Island: ₹2,800/person
+• Empire State Building: ₹3,500/person
+• Metropolitan Museum of Art: ₹2,100/person
+• One World Observatory: ₹3,200/person
+
+**Food:**
+• Joe's Pizza (iconic, ₹300/slice)
+• Katz's Deli (₹1,500)
+• Chinatown for cheap meals (₹400–800)
+
+**Local Transport in NYC:**
+🚇 Subway: $2.90/ride (buy MetroCard or tap card)
+🚶 Most Manhattan sights are walkable
+🚕 Yellow cab for 10pm+ or rainy days`,
+
+    "dubai": `🏙️ **Must-do in Dubai:**
+
+**Free / Cheap:**
+• Burj Khalifa views from outside (free)
+• Dubai Mall & Dubai Fountain show (evenings, free)
+• JBR Walk & beach
+• Old Dubai (Al Fahidi, Gold Souk, Spice Souk)
+
+**Paid Attractions:**
+• Burj Khalifa top (At The Top): ₹3,500–5,000
+• Desert Safari: ₹4,000–6,000 (must-do!)
+• Dubai Frame: ₹2,000
+• IMG Worlds of Adventure: ₹6,000
+
+**Local Transport:**
+🚇 Dubai Metro: very clean, ₹60–150/ride
+🚖 Uber/Careem: affordable
+🚌 RTA buses: cheapest option`,
+
+    "singapore": `🦁 **Must-do in Singapore:**
+
+**Free / Cheap:**
+• Gardens by the Bay light show (8PM & 9PM, free)
+• Marina Bay Sands observation deck view (from outside)
+• Merlion Park
+• Hawker centres (local food ₹200–400/meal)
+• Little India & Chinatown exploration
+
+**Paid:**
+• Universal Studios Singapore: ₹6,000
+• Singapore Zoo/Night Safari: ₹5,000
+• Gardens by the Bay domes: ₹2,000
+• Sentosa island: various options ₹500–8,000
+
+**Transport:**
+🚇 MRT (metro) — extremely efficient, ₹80–200/ride
+📱 Buy EZ-Link card at airport for MRT+bus`,
+
+    "goa": `🏖️ **Must-do in Goa:**
+
+**Beaches:**
+• Baga & Calangute (busy, party scene)
+• Anjuna (hippie markets Wednesday evenings)
+• Palolem, South Goa (peaceful, beautiful)
+• Vagator (sunset views, dramatic cliffs)
+
+**Activities:**
+• Water sports: jet ski, parasailing ₹500–1,500
+• Dudhsagar Waterfalls trek/jeep tour ₹1,200–2,000
+• Old Goa churches (UNESCO heritage, free)
+• Night markets (November–March)
+
+**Food:**
+🍤 Seafood thali: ₹200–400
+🥘 Fish curry rice: ₹150–300
+• Britto's, Infantaria, Fisherman's Wharf (classics)
+
+**Transport in Goa:**
+🏍️ Rent scooter: ₹300–400/day (most popular)
+🚗 Rent car: ₹1,000–1,500/day with driver`,
+  };
+  return ACTIVITIES[c] || `🗺️ **Activities in ${city.charAt(0).toUpperCase()+city.slice(1)}:**
+
+Explore local markets, historical sites, and cuisine. I'll have more specific recommendations as I learn more about your interests! For now, check TripAdvisor for top-rated activities in ${city.charAt(0).toUpperCase()+city.slice(1)}.`;
+}
+
+function generateChecklist(city, purpose, isInternational) {
+  const c = city ? city.toLowerCase() : "";
+  let list = "**📋 Your Travel Checklist:**\n\n";
+
+  if (isInternational) {
+    list += "**Documents:**\n✅ Passport (valid 6+ months beyond return date)\n✅ Visa (apply 3–4 weeks before travel)\n✅ Travel insurance (strongly recommended)\n✅ Flight booking confirmation\n✅ Hotel booking confirmation\n✅ Emergency contacts written down\n\n";
+    list += "**Money:**\n✅ Inform your bank about international travel\n✅ Carry some cash in destination currency\n✅ Get international debit/credit card (zero forex: Niyo, IndusInd)\n✅ Note: 1 USD ≈ ₹84, 1 EUR ≈ ₹91, 1 SGD ≈ ₹63\n\n";
+  } else {
+    list += "**Documents:**\n✅ Aadhaar / PAN / Passport (any valid photo ID)\n✅ Flight/bus/train booking confirmation\n✅ Hotel booking confirmation\n\n";
+    list += "**Money:**\n✅ Cash + UPI (both work everywhere in India)\n✅ Note destination city ATM availability\n\n";
+  }
+
+  list += "**Phone & Tech:**\n✅ Download offline maps (Google Maps → download area)\n✅ Save airline/hotel helpline numbers\n✅ Charge all devices before travel\n";
+  if (isInternational) list += "✅ International SIM or roaming pack (Airtel/Jio ₹600–1500/week)\n";
+
+  if (/goa|beach|bali|maldives|phuket|varkala/.test(c)) {
+    list += "\n**Beach Trip:**\n☀️ Sunscreen SPF 50+\n🩴 Flip flops + water shoes\n👙 Swimwear\n🕶️ Sunglasses\n💊 Sea sickness tablets if prone\n";
+  } else if (/manali|shimla|leh|ladakh|kedarnath|hill/.test(c)) {
+    list += "\n**Hill/Cold Trip:**\n🧥 Heavy jacket / thermal layers\n🥾 Warm waterproof boots\n🧤 Gloves + woollen cap\n💊 AMS tablets if going above 3500m (Diamox)\n⚡ Power bank (cold kills phone battery)\n";
+  } else if (/new york|london|paris|europe/.test(c)) {
+    list += "\n**Western City Trip:**\n🧥 Layers for variable weather\n👟 Comfortable walking shoes (you'll walk 8–12km/day!)\n🔌 Universal power adapter\n💊 Basic medicines\n";
+  } else if (/dubai|middle east/.test(c)) {
+    list += "\n**Dubai/Middle East:**\n👗 Modest clothing for mosques/old areas\n🕶️ Sunglasses (essential!)\n☀️ Sunscreen SPF 50+\n💧 Keep hydrated — extreme heat\n";
+  }
+
+  list += "\n**Before You Leave:**\n✅ Lock your home\n✅ Share itinerary with family\n✅ Download AlVryn app for updates 😊\n✅ Take photos of all important documents";
+  return list;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  SHARE TRIP PLAN endpoint
+// ════════════════════════════════════════════════════════════════════════════
+
+app.get("/trip/:tripId", async (req, res) => {
+  try {
+    const { tripId } = req.params;
+    // Search user_preferences for this trip
+    const r = await pool.query(
+      "SELECT pref_value FROM user_preferences WHERE pref_key=$1 LIMIT 1",
+      [`trip_${tripId}`]
+    );
+    if (!r.rows.length) {
+      return res.status(404).json({ message: "Trip not found" });
+    }
+    const trip = JSON.parse(r.rows[0].pref_value);
+    res.json(trip);
+  } catch(e) {
+    res.status(500).json({ message: "Error loading trip" });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+//  WHATSAPP → WEB HANDOFF
+// ════════════════════════════════════════════════════════════════════════════
+
+const waWebSessions = new Map(); // phone → { messages[], sessionId }
+
+function storeWAMessage(phone, role, content) {
+  const existing = waWebSessions.get(phone) || { messages:[], sessionId: Math.random().toString(36).slice(2,8) };
+  existing.messages.push({ role, content, time: Date.now() });
+  if (existing.messages.length > 50) existing.messages = existing.messages.slice(-50);
+  waWebSessions.set(phone, existing);
+  return existing.sessionId;
+}
+
+app.get("/wa-session/:phone", async (req, res) => {
+  const phone = req.params.phone.replace(/[^0-9]/g,"");
+  const session = waWebSessions.get(phone);
+  if (!session) return res.status(404).json({ message: "No session" });
+  res.json({ messages: session.messages, sessionId: session.sessionId });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+//  UPDATED /ai-chat WITH TRIP PLANNER + MEMORY
+// ════════════════════════════════════════════════════════════════════════════
+
+app.post("/ai-chat-v2", authenticateToken, async (req, res) => {
+  const { message, history=[], sessionId } = req.body || {};
+  if (!message) return res.status(400).json({ message:"No message" });
+
+  const userId   = req.user?.id;
+  const userName = req.user?.name || "";
+  const sid      = sessionId || `web_${userId}_${Date.now()}`;
+
+  try {
+    // Load user memory
+    const prefs = userId ? await getUserPrefs(userId) : {};
+
+    // Update memory in background
+    updateUserMemory(userId, message, "").catch(()=>{});
+
+    // ── TRIP PLANNER FLOW ────────────────────────────────────────────────────
+    // Check if ongoing trip planner session
+    const existingSession = getTripSession(sid);
+    if (existingSession && existingSession.step !== "complete") {
+      const tripResult = await runTripPlanner(sid, message, userId, userName);
+      if (tripResult) {
+        logEvent("ai_trip_planner", `step:${existingSession.step}`, "ai_chat", userId).catch(()=>{});
+        return res.json(tripResult);
+      }
+    }
+
+    // Check if new trip planner intent
+    if (detectsTripIntent(message) && !existingSession) {
+      const tripResult = await runTripPlanner(sid, message, userId, userName);
+      if (tripResult) {
+        logEvent("ai_trip_start", message.slice(0,80), "ai_chat", userId).catch(()=>{});
+        return res.json({ ...tripResult, sessionId: sid });
+      }
+    }
+
+    // ── TIER 1: Knowledge base (instant, free) ───────────────────────────────
+    // Personal greeting for returning users
+    const personalGreeting = userId ? buildPersonalGreeting(userName, prefs, message) : null;
+    const easy = easyResponse(message);
+    if (easy) {
+      if (personalGreeting && /^(hi|hello|hey|hlo)/i.test(message.trim())) {
+        easy.text = personalGreeting + "\n\n" + easy.text;
+      }
+      logEvent("ai_easy", message.slice(0,80), "ai_chat", userId).catch(()=>{});
+      return res.json({ ...easy, sessionId: sid });
+    }
+
+    // ── TIER 2: DB flight lookup ─────────────────────────────────────────────
+    const dbResult = await tryDBFlights(message);
+    if (dbResult) {
+      logEvent("ai_medium", message.slice(0,80), "ai_chat", userId).catch(()=>{});
+      return res.json({ ...dbResult, sessionId: sid });
+    }
+
+    // ── TIER 3: AI (Groq/GPT) ────────────────────────────────────────────────
+    const userCallCount = getUserAiCount(userId);
+    if (userCallCount >= DAILY_LIMIT) {
+      const cards = buildCardsFromIntent(message);
+      return res.json({ sessionId: sid,
+        text: `You've used your ${DAILY_LIMIT} free AI responses today! 🎯
+
+Book a trip via Alvryn to unlock more. Here are options I found 👇`,
+        cards, cta:"💡 Book via Alvryn to unlock unlimited AI responses."
+      });
+    }
+
+    incrementUserAi(userId);
+    const remaining = DAILY_LIMIT - getUserAiCount(userId);
+    const cards = buildCardsFromIntent(message);
+
+    // Choose Groq vs GPT based on query complexity
+    const tier = classifyQuery(message);
+    const aiText = await askAI(
+      message,
+      tier === "hard" ? "complex" : "simple",
+      `You are Alvryn AI. Travel assistant for India. Be friendly, SHORT responses (3-4 sentences), use emojis. User data: ${JSON.stringify({prefs: Object.keys(prefs).slice(0,5)})}`
+    );
+
+    if (aiText) {
+      const limitNote = remaining <= 3 ? `
+
+_💡 ${remaining} AI responses left today._` : "";
+      logEvent("ai_api", message.slice(0,80), "ai_chat", userId).catch(()=>{});
+      return res.json({ sessionId: sid, text: aiText + limitNote, cards, cta: cards.length?"💡 Tap any card for live prices.":null });
+    }
+
+    // Final fallback
+    const fallback = smartFallback(message);
+    return res.json({ ...fallback, sessionId: sid });
+
+  } catch(e) {
+    console.error("AI Chat v2:", e.message);
+    try {
+      return res.json({ ...smartFallback(message), sessionId: sid });
+    } catch {
+      return res.json({ sessionId: sid, text:"I'm here to help with your travel plans! 😊 Try: flights from Bangalore to Delhi", cards:[], cta:null });
+    }
+  }
+});
+
 // ── START SERVER ─────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {

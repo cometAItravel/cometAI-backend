@@ -371,6 +371,10 @@ function AiMsg({m}){
             {m.cta}
           </div>
         )}
+        {(m.sectionNum||m.totalSections)&&<SectionProgress current={m.sectionNum} total={m.totalSections}/>}
+        {m.quickReplies?.length>0&&<QuickReplies replies={m.quickReplies} onSend={m._onSend}/>}
+        {m.showMindMap&&m.tripSummary&&<TripMindMap tripSummary={m.tripSummary}/>}
+        {m.tripSummary&&<ShareTripCard tripSummary={m.tripSummary}/>}
       </div>
     </div>
   );
@@ -444,9 +448,10 @@ export default function AIChatPage(){
   const [input,setInput]     = useState("");
   const [loading,setLoading] = useState(false);
   const [sbOpen,setSbOpen]   = useState(window.innerWidth>768);
-  const bottomRef = useRef(null);
-  const inputRef  = useRef(null);
+  const bottomRef   = useRef(null);
+  const inputRef    = useRef(null);
   const textareaRef = useRef(null);
+  const sessionIdRef = useRef(null);
 
   let user={};
   try{ user=JSON.parse(localStorage.getItem("user")||"{}"); }catch{}
@@ -505,13 +510,14 @@ export default function AIChatPage(){
     setLoading(true);
 
     try{
-      const res = await fetch(`${API}/ai-chat`,{
+      const res = await fetch(`${API}/ai-chat-v2`,{
         method:"POST",
         headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},
-        body:JSON.stringify({message:q,history:messages.slice(-6)}),
+        body:JSON.stringify({message:q,history:messages.slice(-6),sessionId:sessionIdRef.current}),
       });
       const data = await res.json();
-      const aMsg = {role:"assistant",id:Date.now()+1,text:data.text||"",cards:data.cards||[],cta:data.cta||null};
+      if (data.sessionId) sessionIdRef.current = data.sessionId;
+      const aMsg = {role:"assistant",id:Date.now()+1,text:data.text||"",cards:data.cards||[],cta:data.cta||null,quickReplies:data.quickReplies||[],tripSummary:data.tripSummary||null,showMindMap:data.showMindMap||false,sectionNum:data.sectionNum||null,totalSections:data.totalSections||null,_onSend:send};
       const final = [...next,aMsg];
       setMessages(final);
       // Title = first user message only, updates same chat entry
@@ -767,6 +773,127 @@ export default function AIChatPage(){
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+// ── SECTION PROGRESS BAR ─────────────────────────────────────────────────────
+function SectionProgress({current,total}){
+  if(!current||!total)return null;
+  return(
+    <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:12,marginTop:8}}>
+      {Array.from({length:total},(_,i)=>(
+        <div key={i} style={{flex:1,height:4,borderRadius:3,transition:"all 0.4s",
+          background:i<current?"linear-gradient(90deg,#c9a84c,#f0d080)":"rgba(201,168,76,0.15)"}}/>
+      ))}
+      <span style={{fontSize:11,color:"#8B6914",fontFamily:"'Space Mono',monospace",marginLeft:4,whiteSpace:"nowrap"}}>{current}/{total}</span>
+    </div>
+  );
+}
+
+// ── QUICK REPLIES ─────────────────────────────────────────────────────────────
+function QuickReplies({replies,onSend}){
+  if(!replies?.length)return null;
+  return(
+    <div style={{display:"flex",flexWrap:"wrap",gap:8,marginTop:12}}>
+      {replies.map((r,i)=>(
+        <button key={i} onClick={()=>onSend(r)}
+          style={{padding:"8px 14px",borderRadius:100,fontSize:13,cursor:"pointer",
+            background:"rgba(201,168,76,0.1)",border:"1.5px solid rgba(201,168,76,0.28)",
+            color:"#8B6914",fontFamily:"'DM Sans',sans-serif",fontWeight:600,
+            transition:"all 0.18s",animation:`fadeUp 0.3s ${i*60}ms both`}}
+          onMouseEnter={e=>{e.currentTarget.style.background="rgba(201,168,76,0.2)";e.currentTarget.style.borderColor="#c9a84c";}}
+          onMouseLeave={e=>{e.currentTarget.style.background="rgba(201,168,76,0.1)";e.currentTarget.style.borderColor="rgba(201,168,76,0.28)";}}>
+          {r}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── TRIP MIND MAP ─────────────────────────────────────────────────────────────
+function TripMindMap({tripSummary}){
+  if(!tripSummary)return null;
+  const {from,to,purpose,budget,travelDate,homeLocation}=tripSummary;
+  const nodes=[
+    {icon:"🏠",label:homeLocation||"Home",c:"#f59e0b"},
+    {icon:"🚖",label:"To Airport",c:"#8b5cf6"},
+    {icon:"✈️",label:`Fly to ${to}`,c:"#c9a84c"},
+    {icon:"🏨",label:"Hotel",c:"#16a34a"},
+    {icon:"🗺️",label:"Explore",c:"#0ea5e9"},
+    {icon:"🔄",label:"Return",c:"#c9a84c"},
+  ];
+  return(
+    <div style={{background:"rgba(255,255,255,0.97)",borderRadius:16,padding:"18px 16px",
+      border:"1.5px solid rgba(201,168,76,0.25)",marginTop:14,
+      boxShadow:"0 4px 20px rgba(201,168,76,0.1)"}}>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:15,
+        color:"#1a1410",marginBottom:14,textAlign:"center"}}>🗺️ Your Trip at a Glance</div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"center",flexWrap:"wrap",gap:0,marginBottom:14}}>
+        {nodes.map((node,i)=>(
+          <React.Fragment key={i}>
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",animation:`fadeUp 0.3s ${i*80}ms both`}}>
+              <div style={{width:40,height:40,borderRadius:"50%",
+                background:`${node.c}18`,border:`2px solid ${node.c}40`,
+                display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>
+                {node.icon}
+              </div>
+              <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:9,color:"#5a4a3a",
+                marginTop:3,textAlign:"center",maxWidth:54,overflow:"hidden",
+                textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                {node.label}
+              </div>
+            </div>
+            {i<nodes.length-1&&<div style={{width:20,height:2,background:"linear-gradient(90deg,rgba(201,168,76,0.25),rgba(201,168,76,0.5))",margin:"0 1px",marginBottom:18}}/>}
+          </React.Fragment>
+        ))}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
+        {[["🎯 Purpose",purpose],["💰 Budget",budget?`₹${Number(budget).toLocaleString()}`:"Flexible"],
+          ["📅 Date",travelDate||"TBD"],["🛣️ Route",`${from}→${to}`]].map(([k,v])=>(
+          <div key={k} style={{padding:"7px 9px",borderRadius:8,
+            background:"rgba(201,168,76,0.06)",border:"1px solid rgba(201,168,76,0.12)"}}>
+            <div style={{fontFamily:"'Space Mono',monospace",fontSize:8,color:"#a0896a"}}>{k}</div>
+            <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:12,color:"#1a1410",
+              fontWeight:600,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{v||"—"}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── SHARE TRIP CARD ───────────────────────────────────────────────────────────
+function ShareTripCard({tripSummary}){
+  if(!tripSummary)return null;
+  const {shareUrl,shareText}=tripSummary;
+  const [copied,setCopied]=React.useState(false);
+  return(
+    <div style={{background:"linear-gradient(135deg,rgba(201,168,76,0.08),rgba(240,208,128,0.06))",
+      borderRadius:13,padding:"13px 14px",border:"1.5px solid rgba(201,168,76,0.28)",
+      marginTop:12,animation:"fadeUp 0.4s both"}}>
+      <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:600,color:"#8B6914",marginBottom:9}}>
+        🔗 Share your trip plan
+      </div>
+      <div style={{fontFamily:"'Space Mono',monospace",fontSize:9,color:"#5a4a3a",
+        background:"rgba(255,255,255,0.7)",padding:"5px 9px",borderRadius:7,
+        marginBottom:9,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+        {shareUrl}
+      </div>
+      <div style={{display:"flex",gap:7}}>
+        <button onClick={()=>{navigator.clipboard.writeText(shareUrl).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000);});}}
+          style={{flex:1,padding:"8px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",
+            background:copied?"rgba(22,163,74,0.1)":"rgba(201,168,76,0.1)",
+            border:copied?"1px solid #16a34a":"1px solid rgba(201,168,76,0.28)",
+            color:copied?"#16a34a":"#8B6914",fontFamily:"'DM Sans',sans-serif",transition:"all 0.2s"}}>
+          {copied?"✅ Copied!":"📋 Copy Link"}
+        </button>
+        <button onClick={()=>window.open(`https://wa.me/?text=${encodeURIComponent((shareText||"")+" "+(shareUrl||""))}`,"_blank")}
+          style={{flex:1,padding:"8px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",
+            background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.28)",
+            color:"#16a34a",fontFamily:"'DM Sans',sans-serif"}}>
+          📱 WhatsApp
+        </button>
       </div>
     </div>
   );

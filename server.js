@@ -1054,44 +1054,73 @@ function buildTrainURL(from, to, dateStr) {
     "mangalore":"MAQ","mangaluru":"MAQ","mysore":"MYS","mysuru":"MYS",
     "guwahati":"GHY","bhubaneswar":"BBS","ranchi":"RNC","indore":"INDB",
     "surat":"ST","jodhpur":"JU","udaipur":"UDZ","dehradun":"DDN",
+    "salem":"SA","erode":"ED","tirunelveli":"TEN","vellore":"VLR",
+    "vijayawada":"BZA","guntur":"GNT","hubli":"UBL","belgaum":"BGM",
+    "jodhpur":"JU","bikaner":"BKN","ajmer":"AII","kota":"KOTA",
+    "gwalior":"GWL","bhopal":"BPL","indore":"INDB","jabalpur":"JBP",
   };
   const fc = TC[from?.toLowerCase()]||(from||"").slice(0,4).toUpperCase();
   const tc = TC[to?.toLowerCase()]  ||(to||"").slice(0,4).toUpperCase();
-  // Format date for IRCTC: YYYYMMDD
+  // IRCTC date format: DD-MM-YYYY (confirmed working format)
   let dateParam = "";
   if (dateStr) {
     try {
       const d = new Date(dateStr);
       if (!isNaN(d)) {
-        const dd = String(d.getDate()).padStart(2,"0");
-        const mm = String(d.getMonth()+1).padStart(2,"0");
+        const dd  = String(d.getDate()).padStart(2,"0");
+        const mm  = String(d.getMonth()+1).padStart(2,"0");
         const yyyy = d.getFullYear();
-        dateParam = `&journeyDate=${yyyy}${mm}${dd}`;
+        // IRCTC accepts both formats — use DD-MM-YYYY
+        dateParam = `&journeyDate=${dd}-${mm}-${yyyy}`;
       }
     } catch {}
   }
-  return `https://www.irctc.co.in/nget/train-search?fromStation=${fc}&toStation=${tc}${dateParam}`;
+  // Full IRCTC pre-fill URL with all parameters
+  return `https://www.irctc.co.in/nget/train-search?fromStation=${fc}&toStation=${tc}&isCallFromDpDown=true${dateParam}&quota=GN&class=SL`;
 }
 
 // ── TIER 1: Classify query complexity ────────────────────────────────────────
 function classifyQuery(msg) {
   const m = msg.toLowerCase();
-  // Easy: standard route search
-  const hasRoute = extractCities(msg).from && extractCities(msg).to;
-  const isLocalArea = /attibele|hosur|electronic city|silk board|whitefield|koramangala|hsr|indiranagar|btm|hebbal|yelahanka|peenya|kengeri|nice road|airport/i.test(m);
-  const isComplexTrip = /trip|plan|itinerary|suggest|recommend|where.*go|budget.*stay|combo|package|multi.?city|via|both.*and/i.test(m);
-  const isLocalTransport = /bmtc|auto|cab|ola|uber|metro|local.*bus|bus.*number|route.*number|which.*bus|how.*reach|direction|from.*to.*local/i.test(m);
-  const isGeneral = /which.*better|compare|vs|cheaper.*season|best.*time|tips|advice|cheapest.*month|avoid/i.test(m);
-  const isGreeting = /^(hi|hello|hey|hlo|heyy|heyyy|namaste|vanakkam|hai|what.*alvryn|who.*are.*you|help)/.test(m);
+  const hasRoute = !!(extractCities(msg).from && extractCities(msg).to);
 
-  if (isGreeting)                          return "easy";
-  if (isLocalArea || isLocalTransport)     return "medium";
-  if (hasRoute && !isComplexTrip && !isGeneral) return "easy";
-  if (isGeneral || isComplexTrip)          return "hard";
-  // Conversational / unclear — use API for best response
-  const isConversational = !hasRoute && msg.length > 5 && !/hotel|bus|flight|train|trip/.test(m);
-  if (isConversational)                    return "hard";
-  return "medium";
+  // EASY — stored knowledge handles all of these (no API needed)
+  const isGreeting       = /^(hi+|hello+|hey+|hlo+|heyy*|namaste|vanakkam|hai|sup|yo|gm|gn|howdy)/.test(m) || m.length <= 5;
+  const isAboutAlvryn    = /what.*alvryn|who.*are.*you|how.*work|is.*free|what.*do.*you/i.test(m);
+  const isBookingHelp    = /how.*book|how.*cancel|refund|cancell|how.*pay/i.test(m);
+  const isBaggageQ       = /baggage|luggage|kg.*allow|cabin.*bag/i.test(m);
+  const isVisaPassport   = /visa|passport|document.*travel/i.test(m);
+  const isThanks         = /^(thank|thanks|thx|ty|great|nice|awesome|perfect|ok|okay|cool|wow)/.test(m);
+  const isPopularDest    = /popular.*destination|best.*place|top.*tourist|where.*to.*go/i.test(m);
+  const isTravelTips     = /travel.*tip|budget.*tip|packing.*list|how.*save.*money/i.test(m);
+  const isPnrStatus      = /pnr|train.*status|running.*status/i.test(m);
+  const isTatkal         = /tatkal|urgent.*ticket|last.*minute.*train/i.test(m);
+  const isIrctcHelp      = /irctc.*register|create.*irctc|how.*book.*train/i.test(m);
+  const isWebCheckin     = /web.*check|online.*check|boarding.*pass/i.test(m);
+  const isFoodQ          = /food.*train|food.*flight|eat.*journey|meal.*flight/i.test(m);
+  const isDestTrip       = /(goa|kerala|rajasthan|manali|shimla|ladakh|ooty|coorg|hampi|pondicherry|andaman|kashmir).*(trip|visit|travel|tour)/i.test(m);
+  const isIntlDest       = /(burma|myanmar|vietnam|cambodia|sri lanka|thailand|bali|singapore|dubai|london|paris|new york).*(trip|visit|travel|guide|how.*reach)/i.test(m);
+  const isBestTime       = /best.*time|best.*season|best.*month|when.*visit|when.*travel/i.test(m);
+  const isLocalArea      = /attibele|hosur|electronic city|silk board|whitefield|koramangala|hsr|indiranagar|btm|hebbal|yelahanka|peenya|majestic|blr.*airport|bangalore.*airport/i.test(m);
+  const isLocalTransport = /bmtc|vayu vajra|namma metro|auto.*fare|metro.*route|bus.*number|which.*bus|how.*reach/i.test(m);
+
+  if (isGreeting || isAboutAlvryn || isBookingHelp || isBaggageQ ||
+      isVisaPassport || isThanks || isPopularDest || isTravelTips ||
+      isPnrStatus || isTatkal || isIrctcHelp || isWebCheckin ||
+      isFoodQ || isDestTrip || isIntlDest || isBestTime) {
+    return "easy";
+  }
+
+  if (isLocalArea || isLocalTransport) return "medium";
+  if (hasRoute) return "medium"; // try DB, fallback to affiliate links
+
+  // HARD — only truly complex queries that stored data can't handle
+  const isComplexTrip = /plan.*trip|trip.*plan|itinerary|full.*trip|complete.*trip|multi.*city|suggest.*route/i.test(m);
+  const isBudgetCombo = /bus.*and.*hotel|flight.*and.*hotel|cheapest.*combo|total.*cost/i.test(m);
+  if (isComplexTrip || isBudgetCombo) return "hard";
+
+  // Default: easy (stored data handles most general questions)
+  return "easy";
 }
 
 // ── TIER 1: Massive knowledge base — instant answers, no API ─────────────────
@@ -1365,7 +1394,36 @@ function easyResponse(msg) {
     };
   }
 
-  // ── SPECIFIC ROUTE: No cities found ─────────────────────────────────────
+    // ── INTERNATIONAL DESTINATION QUERIES ───────────────────────────────────
+  if (/burma|myanmar/i.test(m)) {
+    return {
+      text: "🇲🇲 **Myanmar (Burma) Travel Guide:**\n\n**Getting there from India:**\n✈️ Flights from Yangon: Bangalore (~3.5h via Bangkok), Delhi (~3h via Bangkok)\n💰 Fare estimate: ₹15,000–35,000 return\n\n**Visa:**\n• e-Visa available online: visa.gov.mm (~$50)\n• Visa on arrival at Yangon airport available\n\n**Top places:**\n🕌 Bagan — thousands of ancient temples (UNESCO heritage)\n🌅 Inle Lake — floating villages, stunning sunrise\n🏙️ Yangon — Shwedagon Pagoda, colonial architecture\n🏔️ Mandalay — royal palace, Mandalay Hill\n\n**Best time:** November to February (cool & dry)\n**Budget:** ₹3,000–5,000/day (very affordable!)\n**Currency:** Myanmar Kyat (MMK). Carry USD cash — better rates.\n\n⚠️ **Important:** Check current travel advisories before booking — situation can change.\n\nShall I search flights from Bangalore to Yangon? 😊",
+      cards: [], cta: null
+    };
+  }
+
+  if (/vietnam/i.test(m)) {
+    return {
+      text: "🇻🇳 **Vietnam Travel Guide:**\n\n**Getting there:**\n✈️ Bangalore → Ho Chi Minh City: ~5h (via Bangkok/Singapore)\n💰 Fare estimate: ₹18,000–40,000 return\n\n**Visa:** e-Visa online, $25, easy process\n**Top places:** Hanoi, Ha Long Bay, Hoi An, Ho Chi Minh City\n**Best time:** November to April\n**Budget:** ₹2,500–4,500/day\n\nShall I search flights? 😊",
+      cards: [], cta: null
+    };
+  }
+
+  if (/cambodia|angkor/i.test(m)) {
+    return {
+      text: "🇰🇭 **Cambodia (Angkor Wat) Travel Guide:**\n\n✈️ Bangalore → Phnom Penh/Siem Reap: ~6h (via Bangkok)\n💰 Fare estimate: ₹20,000–45,000 return\n\n**Visa:** e-Visa $36 online\n**Must visit:** Angkor Wat (UNESCO, world's largest temple complex!)\n**Best time:** November to March\n**Budget:** ₹2,000–3,500/day\n\nShall I search flights? 😊",
+      cards: [], cta: null
+    };
+  }
+
+  if (/sri lanka|ceylon|colombo/i.test(m) && !hasRoute) {
+    return {
+      text: "🇱🇰 **Sri Lanka Travel Guide:**\n\n✈️ Bangalore → Colombo: ~1.5h (shortest international flight from South India!)\n💰 Fare estimate: ₹8,000–18,000 return\n\n**Visa:** ETA online, $35, instant approval\n**Top places:** Sigiriya Rock, Kandy, Galle, Yala Safari, Ella\n**Best time:** December to April (West coast)\n**Budget:** ₹3,000–6,000/day\n\nExcellent weekend trip from Bangalore! Shall I search flights? 😊",
+      cards: [], cta: null
+    };
+  }
+
+// ── SPECIFIC ROUTE: No cities found ─────────────────────────────────────
   if (!f && !t) {
     // Hotel query without city
     if (isHotelQ) {

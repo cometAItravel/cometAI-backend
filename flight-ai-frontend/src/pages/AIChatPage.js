@@ -440,6 +440,63 @@ function EmptyState({onChip}){
 }
 
 // ── MAIN ─────────────────────────────────────────────────────────────────────────
+
+
+// ── Renameable chat title ─────────────────────────────────────────────────────
+function RenameableTitle({chat, onRename}){
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(chat.title);
+  if(editing) return(
+    <input value={val} autoFocus
+      onChange={e=>setVal(e.target.value)}
+      onBlur={()=>{onRename(chat.id,val.trim()||chat.title);setEditing(false);}}
+      onKeyDown={e=>{if(e.key==="Enter"){onRename(chat.id,val.trim()||chat.title);setEditing(false);}if(e.key==="Escape")setEditing(false);}}
+      style={{width:"100%",background:"rgba(255,255,255,0.9)",border:"1px solid rgba(201,168,76,0.4)",
+        borderRadius:5,padding:"2px 6px",fontSize:12,color:"#1a1410",outline:"none",fontFamily:"'DM Sans',sans-serif"}}
+    />
+  );
+  return(
+    <div onDoubleClick={()=>setEditing(true)} title="Double-click to rename"
+      style={{fontSize:13,color:"#1a1410",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:"text"}}>
+      {chat.title}
+    </div>
+  );
+}
+
+// ── Smart chat title generator ────────────────────────────────────────────────
+function smartChatTitle(firstMsg, messages) {
+  const m = firstMsg.toLowerCase().trim();
+  // Greeting → look at second user message for real intent
+  const isGreeting = /^(hi+|hello+|hey+|hlo+|heyy*|namaste|hai|sup)$/.test(m) || m.length <= 4;
+  if (isGreeting) {
+    // Find first non-greeting user message
+    const realMsg = messages.find(msg => msg.role==="user" && msg.content.toLowerCase().trim() !== m);
+    if (realMsg) return smartChatTitle(realMsg.content, []);
+    return "New conversation";
+  }
+  // City pair → "Bangalore → New York"
+  const cities = m.match(/([a-z]+)\s+to\s+([a-z]+)/);
+  if (cities) {
+    const c1 = cities[1].charAt(0).toUpperCase()+cities[1].slice(1);
+    const c2 = cities[2].charAt(0).toUpperCase()+cities[2].slice(1);
+    return `${c1} → ${c2}`;
+  }
+  // Intent detection
+  if (/hotel|stay|room/i.test(m)) {
+    const city = m.match(/in\s+([a-z]+)/)?.[1];
+    return city ? `Hotels in ${city.charAt(0).toUpperCase()+city.slice(1)}` : "Hotel Search";
+  }
+  if (/flight|fly/i.test(m)) return "Flight Search";
+  if (/bus|coach/i.test(m))  return "Bus Search";
+  if (/train|irctc/i.test(m)) return "Train Search";
+  if (/trip|plan|visit|tour/i.test(m)) {
+    const city = m.match(/(?:to|visit|trip to|going to)\s+([a-z]+)/)?.[1];
+    return city ? `Trip to ${city.charAt(0).toUpperCase()+city.slice(1)}` : "Trip Planning";
+  }
+  // Default: truncate
+  return firstMsg.slice(0,36)+(firstMsg.length>36?"…":"");
+}
+
 export default function AIChatPage(){
   const navigate = useNavigate();
   const [chats,setChats]     = useState(()=>{try{return JSON.parse(localStorage.getItem("alvryn_chats")||"[]");}catch{return[];}});
@@ -451,7 +508,7 @@ export default function AIChatPage(){
   const bottomRef   = useRef(null);
   const inputRef    = useRef(null);
   const textareaRef = useRef(null);
-  const sessionIdRef = useRef(null);
+  const sessionIdRef = useRef(sessionStorage.getItem("alvryn_sid")||null);
 
   let user={};
   try{ user=JSON.parse(localStorage.getItem("user")||"{}"); }catch{}
@@ -516,7 +573,7 @@ export default function AIChatPage(){
         body:JSON.stringify({message:q,history:messages.slice(-6),sessionId:sessionIdRef.current}),
       });
       const data = await res.json();
-      if (data.sessionId) sessionIdRef.current = data.sessionId;
+      if (data.sessionId) { sessionIdRef.current = data.sessionId; sessionStorage.setItem("alvryn_sid", data.sessionId); }
       const aMsg = {role:"assistant",id:Date.now()+1,text:data.text||"",cards:data.cards||[],cta:data.cta||null,quickReplies:data.quickReplies||[],tripSummary:data.tripSummary||null,showMindMap:data.showMindMap||false,sectionNum:data.sectionNum||null,totalSections:data.totalSections||null,_onSend:send};
       const final = [...next,aMsg];
       setMessages(final);
@@ -865,9 +922,10 @@ function TripMindMap({tripSummary}){
 
 // ── SHARE TRIP CARD ───────────────────────────────────────────────────────────
 function ShareTripCard({tripSummary}){
+  // Hook MUST be before any early return (React rules)
+  const [copied,setCopied]=useState(false);
   if(!tripSummary)return null;
   const {shareUrl,shareText}=tripSummary;
-  const [copied,setCopied]=React.useState(false);
   return(
     <div style={{background:"linear-gradient(135deg,rgba(201,168,76,0.08),rgba(240,208,128,0.06))",
       borderRadius:13,padding:"13px 14px",border:"1.5px solid rgba(201,168,76,0.28)",

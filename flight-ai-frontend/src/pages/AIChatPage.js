@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
-const API = "https://cometai-backend.onrender.com";
 
 // ── palette ────────────────────────────────────────────────────────────────────
 // ── Alvryn Brand Colors — matches landing page and search page ───────────────
@@ -81,10 +80,12 @@ html,body{height:100%;overflow:hidden;background:#f8f4ec;}
 .send-btn:hover:not(:disabled){transform:scale(1.08);}
 .send-btn:disabled{opacity:0.3;cursor:default;}
 textarea:focus{outline:none;}
-@media(max-width:720px){
-  .sidebar{display:none!important;}
-  .sidebar.open{display:flex!important;position:fixed;left:0;top:0;height:100vh;z-index:100;}
+@media(max-width:768px){
+  .sidebar{width:0!important;padding:0!important;overflow:hidden!important;}
+  .sidebar.open{width:85vw!important;max-width:280px!important;position:fixed!important;left:0!important;top:0!important;height:100vh!important;z-index:200!important;display:flex!important;flex-direction:column!important;padding:14px 11px!important;overflow:visible!important;}
+  .overlay{display:block!important;}
 }
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:190;}
 `;
 
 // ── LOGO ────────────────────────────────────────────────────────────────────────
@@ -119,6 +120,42 @@ function Typing(){
     </div>
   );
 }
+
+
+// ── Price Alert Button ────────────────────────────────────────────────────────
+function PriceAlertButton({from,to,currentPrice}){
+  const [set,setSet]=useState(false);
+  const [loading,setLoading]=useState(false);
+  const token=localStorage.getItem("token");
+
+  const setAlert=async()=>{
+    if(!token){alert("Please sign in to set price alerts");return;}
+    setLoading(true);
+    try{
+      await fetch(`${API}/price-alert`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},
+        body:JSON.stringify({from_city:from,to_city:to,current_price:currentPrice,target_price:currentPrice?Math.round(currentPrice*0.85):null})
+      });
+      setSet(true);
+    }catch{}
+    setLoading(false);
+  };
+
+  if(set)return <div style={{fontSize:11,color:"#16a34a",fontFamily:"'DM Sans',sans-serif"}}>🔔 Alert set! We'll notify you when prices drop.</div>;
+  return(
+    <button onClick={setAlert} disabled={loading}
+      style={{padding:"6px 14px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",
+        background:"rgba(201,168,76,0.08)",border:"1px solid rgba(201,168,76,0.25)",
+        color:"#8B6914",fontFamily:"'DM Sans',sans-serif",transition:"all 0.15s"}}
+      onMouseEnter={e=>e.currentTarget.style.background="rgba(201,168,76,0.15)"}
+      onMouseLeave={e=>e.currentTarget.style.background="rgba(201,168,76,0.08)"}>
+      🔔 {loading?"Setting...":"Track Price"}
+    </button>
+  );
+}
+
+const API = "https://cometai-backend.onrender.com";
 
 // ── FLIGHT CARD ─────────────────────────────────────────────────────────────────
 function FlightCard({f,i}){
@@ -171,11 +208,16 @@ function FlightCard({f,i}){
           </div>
           {f.price&&<div style={{fontSize:10,color:C.textMuted,marginTop:2}}>–₹{Math.round(f.price*1.22).toLocaleString()} · may vary</div>}
         </div>
-        <div style={{padding:"10px 20px",borderRadius:12,
-          background:C.grad,backgroundSize:"200% 200%",animation:"gradShift 3s ease infinite",
-          fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:14,color:"#1a1410",
-          letterSpacing:"0.04em",cursor:"pointer",boxShadow:"0 4px 14px rgba(201,168,76,0.28)"}}>
-          Check Live Prices →
+        <div style={{display:"flex",flexDirection:"column",gap:7,alignItems:"flex-end"}}>
+          <div style={{padding:"10px 20px",borderRadius:12,
+            background:C.grad,backgroundSize:"200% 200%",animation:"gradShift 3s ease infinite",
+            fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:14,color:"#1a1410",
+            letterSpacing:"0.04em",cursor:"pointer",boxShadow:"0 4px 14px rgba(201,168,76,0.28)"}}>
+            Compare & Book Best Price →
+          </div>
+          {f.from&&f.to&&(
+            <PriceAlertButton from={f.from} to={f.to} currentPrice={f.price}/>
+          )}
         </div>
       </div>
     </div>
@@ -344,6 +386,18 @@ function AiMsg({m}){
         <Logo size={22}/>
       </div>
       <div style={{flex:1,minWidth:0}}>
+        {/* Destination image */}
+        {m.image&&(
+          <div style={{marginBottom:14,borderRadius:12,overflow:"hidden",boxShadow:"0 4px 16px rgba(0,0,0,0.08)"}}>
+            <img src={m.image.url} alt={m.image.caption||"destination"}
+              style={{width:"100%",height:160,objectFit:"cover",display:"block"}}
+              onError={e=>{e.target.parentElement.style.display="none";}}/>
+            {m.image.caption&&<div style={{background:"rgba(201,168,76,0.06)",padding:"6px 10px",
+              fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#8B6914",fontStyle:"italic"}}>
+              📷 {m.image.caption}
+            </div>}
+          </div>
+        )}
         {/* Text */}
         {m.text&&(
           <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:15,color:C.textPri,
@@ -372,7 +426,7 @@ function AiMsg({m}){
           </div>
         )}
         {(m.sectionNum||m.totalSections)&&<SectionProgress current={m.sectionNum} total={m.totalSections}/>}
-        {m.quickReplies?.length>0&&<QuickReplies replies={m.quickReplies} onSend={m._onSend}/>}
+        {m.quickReplies?.length>0&&<QuickReplies replies={m.quickReplies} onSend={m._onSend} showInput={m.showTextInput}/>}
         {m.showMindMap&&m.tripSummary&&<TripMindMap tripSummary={m.tripSummary}/>}
         {m.tripSummary&&<ShareTripCard tripSummary={m.tripSummary}/>}
       </div>
@@ -442,6 +496,72 @@ function EmptyState({onChip}){
 // ── MAIN ─────────────────────────────────────────────────────────────────────────
 
 
+
+// ── Chat sidebar item with 3-dot menu ────────────────────────────────────────
+function ChatSidebarItem({chat,isActive,onLoad,onRename,onDelete}){
+  const [menuOpen,setMenuOpen]=useState(false);
+  const [renaming,setRenaming]=useState(false);
+  const [renameVal,setRenameVal]=useState(chat.title);
+
+  return(
+    <div style={{position:"relative",marginBottom:2}}>
+      <div className="sb-item" onClick={()=>{if(!menuOpen&&!renaming)onLoad();}}
+        style={{padding:"9px 12px",borderRadius:9,cursor:"pointer",
+          background:isActive?"rgba(201,168,76,0.11)":"transparent",
+          border:isActive?"1px solid rgba(201,168,76,0.28)":"1px solid transparent",
+          display:"flex",alignItems:"center",gap:6,transition:"all 0.14s"}}>
+        <div style={{flex:1,minWidth:0}}>
+          {renaming?(
+            <input value={renameVal} autoFocus onChange={e=>setRenameVal(e.target.value)}
+              onBlur={()=>{onRename(chat.id,renameVal.trim()||chat.title);setRenaming(false);}}
+              onKeyDown={e=>{if(e.key==="Enter"){onRename(chat.id,renameVal.trim()||chat.title);setRenaming(false);}if(e.key==="Escape")setRenaming(false);}}
+              onClick={e=>e.stopPropagation()}
+              style={{width:"100%",background:"rgba(255,255,255,0.9)",border:"1px solid rgba(201,168,76,0.4)",
+                borderRadius:5,padding:"2px 6px",fontSize:12,color:"#1a1410",outline:"none",fontFamily:"'DM Sans',sans-serif"}}/>
+          ):(
+            <div style={{fontSize:13,color:"#1a1410",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{chat.title}</div>
+          )}
+          <div style={{fontSize:10,color:"#a0896a",marginTop:2}}>{new Date(chat.time).toLocaleDateString("en-IN",{day:"numeric",month:"short"})}</div>
+        </div>
+        {/* 3-dot button */}
+        <button onClick={e=>{e.stopPropagation();setMenuOpen(s=>!s);}}
+          style={{flexShrink:0,width:24,height:24,borderRadius:5,background:"transparent",border:"none",
+            cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",
+            color:"#a0896a",fontSize:14,opacity:isActive?1:0,transition:"opacity 0.15s"}}
+          onMouseEnter={e=>{e.currentTarget.style.opacity="1";e.currentTarget.style.background="rgba(201,168,76,0.15)";}}
+          onMouseLeave={e=>{e.currentTarget.style.background="transparent";if(!isActive)e.currentTarget.style.opacity="0";}}>
+          ⋯
+        </button>
+      </div>
+      {/* Dropdown menu */}
+      {menuOpen&&(
+        <div onClick={e=>e.stopPropagation()}
+          style={{position:"absolute",right:0,top:34,zIndex:100,
+            background:"#fff",borderRadius:10,padding:"4px 0",
+            boxShadow:"0 8px 28px rgba(0,0,0,0.15)",border:"1px solid rgba(201,168,76,0.2)",
+            minWidth:130}}>
+          <button onClick={()=>{setRenaming(true);setMenuOpen(false);}}
+            style={{display:"block",width:"100%",padding:"9px 14px",textAlign:"left",
+              background:"none",border:"none",cursor:"pointer",fontSize:13,
+              fontFamily:"'DM Sans',sans-serif",color:"#1a1410"}}
+            onMouseEnter={e=>e.currentTarget.style.background="rgba(201,168,76,0.08)"}
+            onMouseLeave={e=>e.currentTarget.style.background="none"}>
+            ✏️ Rename
+          </button>
+          <button onClick={()=>{onDelete(chat.id);setMenuOpen(false);}}
+            style={{display:"block",width:"100%",padding:"9px 14px",textAlign:"left",
+              background:"none",border:"none",cursor:"pointer",fontSize:13,
+              fontFamily:"'DM Sans',sans-serif",color:"#ef4444"}}
+            onMouseEnter={e=>e.currentTarget.style.background="rgba(239,68,68,0.06)"}
+            onMouseLeave={e=>e.currentTarget.style.background="none"}>
+            🗑️ Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Renameable chat title ─────────────────────────────────────────────────────
 function RenameableTitle({chat, onRename}){
   const [editing, setEditing] = useState(false);
@@ -499,7 +619,8 @@ function smartChatTitle(firstMsg, messages) {
 
 export default function AIChatPage(){
   const navigate = useNavigate();
-  const [chats,setChats]     = useState(()=>{try{return JSON.parse(localStorage.getItem("alvryn_chats")||"[]");}catch{return[];}});
+  const [chats,setChats]     = useState([]);
+  const [chatsLoaded,setChatsLoaded] = useState(false);
   const [activeId,setActiveId] = useState(null);
   const [messages,setMessages] = useState([]);
   const [input,setInput]     = useState("");
@@ -540,16 +661,29 @@ export default function AIChatPage(){
   },[]);
 
   const saveChat = useCallback((id,msgs,firstMsgTitle)=>{
+    // Update local state
     setChats(prev=>{
       const ex = prev.find(c=>c.id===id);
-      if(ex) {
-        // Keep the original title (first message), just update messages
-        return prev.map(c=>c.id===id?{...c,messages:msgs}:c);
-      }
-      // New chat — use first message as title
-      return [{id,title:firstMsgTitle||"New chat",messages:msgs,time:Date.now()},...prev].slice(0,30);
+      if(ex) return prev.map(c=>c.id===id?{...c,messages:msgs,time:Date.now()}:c);
+      return [{id,title:firstMsgTitle||"New chat",messages:msgs,time:Date.now()},...prev].slice(0,50);
     });
-  },[]);
+    // Sync to DB (non-blocking)
+    if(token){
+      const title = chats.find(c=>c.id===id)?.title || firstMsgTitle || "New chat";
+      fetch(`${API}/chats/${id}`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},
+        body:JSON.stringify({title, messages:msgs.map(m=>({role:m.role,content:m.content||"",text:m.text||"",cards:m.cards||[],time:m.id}))})
+      }).catch(()=>{
+        // Fallback: save to localStorage
+        try{
+          const local=JSON.parse(localStorage.getItem("alvryn_chats")||"[]");
+          const filtered=local.filter(c=>c.id!==id);
+          localStorage.setItem("alvryn_chats",JSON.stringify([{id,title:firstMsgTitle||"New chat",messages:msgs,time:Date.now()},...filtered].slice(0,30)));
+        }catch{}
+      });
+    }
+  },[token,chats]);
 
   const send = useCallback(async(text)=>{
     const q = (text||input).trim();
@@ -574,7 +708,7 @@ export default function AIChatPage(){
       });
       const data = await res.json();
       if (data.sessionId) { sessionIdRef.current = data.sessionId; sessionStorage.setItem("alvryn_sid", data.sessionId); }
-      const aMsg = {role:"assistant",id:Date.now()+1,text:data.text||"",cards:data.cards||[],cta:data.cta||null,quickReplies:data.quickReplies||[],tripSummary:data.tripSummary||null,showMindMap:data.showMindMap||false,sectionNum:data.sectionNum||null,totalSections:data.totalSections||null,_onSend:send};
+      const aMsg = {role:"assistant",id:Date.now()+1,text:data.text||"",cards:data.cards||[],cta:data.cta||null,quickReplies:data.quickReplies||[],tripSummary:data.tripSummary||null,showMindMap:data.showMindMap||false,sectionNum:data.sectionNum||null,totalSections:data.totalSections||null,image:data.image||null,showTextInput:data.showTextInput||null,_onSend:send};
       const final = [...next,aMsg];
       setMessages(final);
       // Title = first user message only, updates same chat entry
@@ -610,6 +744,7 @@ export default function AIChatPage(){
       <style>{CSS}</style>
 
       {/* ══════════════════ SIDEBAR ══════════════════ */}
+      {sbOpen&&<div className="overlay" onClick={()=>setSbOpen(false)}/>}
       <div className={`sidebar${sbOpen?" open":""}`}
         style={{width:sbOpen?260:0,flexShrink:0,
           background:C.sbBg,borderRight:"1px solid rgba(201,168,76,0.2)",
@@ -849,12 +984,14 @@ function SectionProgress({current,total}){
 }
 
 // ── QUICK REPLIES ─────────────────────────────────────────────────────────────
-function QuickReplies({replies,onSend}){
+function QuickReplies({replies,onSend,showInput}){
+  const [otherText,setOtherText]=useState("");
   if(!replies?.length)return null;
   return(
-    <div style={{display:"flex",flexWrap:"wrap",gap:8,marginTop:12}}>
+    <div style={{marginTop:12}}>
+      <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:showInput?10:0}}>
       {replies.map((r,i)=>(
-        <button key={i} onClick={()=>onSend(r)}
+        <button key={i} onClick={()=>r.startsWith("Others")?null:onSend(r)}
           style={{padding:"8px 14px",borderRadius:100,fontSize:13,cursor:"pointer",
             background:"rgba(201,168,76,0.1)",border:"1.5px solid rgba(201,168,76,0.28)",
             color:"#8B6914",fontFamily:"'DM Sans',sans-serif",fontWeight:600,
@@ -864,6 +1001,21 @@ function QuickReplies({replies,onSend}){
           {r}
         </button>
       ))}
+      </div>
+      {showInput&&(
+        <div style={{display:"flex",gap:8,marginTop:6}}>
+          <input value={otherText} onChange={e=>setOtherText(e.target.value)}
+            onKeyDown={e=>{if(e.key==="Enter"&&otherText.trim()){onSend(otherText.trim());setOtherText("");}}}
+            placeholder={showInput} style={{flex:1,padding:"9px 13px",borderRadius:10,
+              border:"1.5px solid rgba(201,168,76,0.3)",fontFamily:"'DM Sans',sans-serif",
+              fontSize:14,color:"#1a1410",background:"rgba(255,255,255,0.9)",outline:"none"}}/>
+          <button onClick={()=>{if(otherText.trim()){onSend(otherText.trim());setOtherText("");}}}
+            style={{padding:"9px 16px",borderRadius:10,background:"linear-gradient(135deg,#c9a84c,#f0d080)",
+              border:"none",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:700,fontSize:13,color:"#1a1410"}}>
+            Go →
+          </button>
+        </div>
+      )}
     </div>
   );
 }

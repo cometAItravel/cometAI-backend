@@ -916,8 +916,19 @@ Or I can search now — just say *search bus* or *search flight*.`;
     userSessions[phone] = { step:"idle" };
   }
 
+  // If reply is long (>600 chars), send summary + link
+  const MAX_WA_LEN = 600;
+  let finalReply = reply;
+  if (reply.length > MAX_WA_LEN) {
+    const sessionId = `wa_${phone.replace(/[^0-9]/g,"")}_${Date.now()}`;
+    // Store WA conversation for web handoff
+    storeWAMessage(phone, "assistant", reply);
+    const shortReply = reply.slice(0, 300) + "...\n\n🔗 *View complete plan on Alvryn:*\nhttps://alvryn.in/wa/" + sessionId.slice(-8);
+    finalReply = shortReply;
+  }
+
   const twiml = new twilio.twiml.MessagingResponse();
-  twiml.message(reply);
+  twiml.message(finalReply);
   res.type("text/xml").send(twiml.toString());
 });
 
@@ -2134,7 +2145,8 @@ First, what's the purpose of your trip? 🎯`,
       text: `${purposeEmoji} ${purpose.charAt(0).toUpperCase()+purpose.slice(1)} — perfect!
 
 What's your total budget for this trip? (flights + hotel + activities) 💰`,
-      quickReplies: ["Under ₹10,000", "₹10,000 – ₹30,000", "₹30,000 – ₹60,000", "₹60,000 – ₹1,50,000", "No fixed budget"],
+      quickReplies: ["Under ₹10,000", "₹10,000 – ₹30,000", "₹30,000 – ₹60,000", "₹60,000 – ₹1,50,000", "No fixed budget", "Others (specify)"],
+      showTextInput: "Or type your exact budget...",
       section: "purpose", isTripPlanner: true
     };
   }
@@ -2172,14 +2184,17 @@ When are you planning to travel? 📅`,
       text: `📅 Noted: **${dateHint}**
 
 One more thing — where are you starting from exactly? (Your area/locality, so I can plan door-to-door) 📍`,
-      quickReplies: state.from==="bangalore" ? ["Electronic City","Whitefield","Koramangala","HSR Layout","Marathahalli","City Centre / Majestic"] : ["City Centre","Near Airport","Suburb / Outskirts"],
+      quickReplies: state.from==="bangalore"
+        ? ["Electronic City","Whitefield","Koramangala","HSR Layout","Marathahalli","City Centre / Majestic","Others (type below)"]
+        : ["City Centre","Near Airport","Suburb / Outskirts","Others (type below)"],
+      showTextInput: "Type your exact area or locality...",
       section: "dates", isTripPlanner: true
     };
   }
 
   // Step 4: Home location → Generate full plan section by section
   if (state.step === "ask_homelocation") {
-    const homeLocation = message;
+    const homeLocation = message.toLowerCase().trim() === "others" ? "" : message;
     setTripSession(sessionId, { ...state, step:"show_local_transport", homeLocation });
     if (userId) setUserPref(userId, "home_location", homeLocation).catch(()=>{});
 
@@ -2187,26 +2202,31 @@ One more thing — where are you starting from exactly? (Your area/locality, so 
     const to   = state.to   || "new york";
     const fN   = from.charAt(0).toUpperCase()+from.slice(1);
     const tN   = to.charAt(0).toUpperCase()+to.slice(1);
-    const isInternational = !["bangalore","mumbai","delhi","chennai","hyderabad","kolkata","goa","pune","kochi"].includes(to);
 
-    // Build local transport advice
-    const localTransport = getLocalTransportAdvice(homeLocation, from);
-    const transitTime = localTransport.time;
+    // Use global airport DB first
+    const airportInfo = getAirportInfo(homeLocation || from);
+    let localAdvice, transitTime;
 
+    if (airportInfo) {
+      localAdvice = `🚕 **From ${homeLocation||fN} → ${airportInfo.airport}:**\n\n${airportInfo.transport}\n\n⏰ Allow **${airportInfo.time}** total journey time.`;
+      transitTime = airportInfo.time;
+    } else if (homeLocation) {
+      // Unknown location — give generic advice + AI will fill in
+      localAdvice = `📍 **From ${homeLocation} → nearest airport:**\n\n🚖 Use Google Maps or Ola/Uber to find the fastest route\n🔍 Search: "${homeLocation} to airport" on Google Maps for live directions\n💡 Always allow 30 minutes extra buffer\n\n**General airport timing:**\n• Domestic flights: Arrive 2 hours before\n• International flights: Arrive 3 hours before`;
+      transitTime = "Check Google Maps for exact time";
+    } else {
+      const stored = getLocalTransportAdvice(from, from);
+      localAdvice = stored.advice;
+      transitTime = stored.time;
+    }
+
+    const destImage = getDestImageUrl(to);
     return {
-      text: `🗺️ **SECTION 1 of 5 — Getting to the Airport**
-
-From **${homeLocation}** → **${fN} Airport**:
-
-${localTransport.advice}
-
-⏰ Allow **${transitTime}** — add 30 mins buffer for peak hours.
-
----
-✅ Section 1 done! Ready to see **flights** next?`,
+      text: `🗺️ **SECTION 1 of 5 — Getting to the Airport**\n\n${localAdvice}\n\n⚠️ **Arrive early:**\n• Domestic flights: 2 hours before departure\n• International flights: 3 hours before departure\n\n---\n✅ Section 1 done! Ready to see **flights** next?`,
+      image: destImage ? { url: destImage, caption: `${tN} awaits you! 🌍` } : null,
       quickReplies: ["Yes, show me flights ✈️", "Show all sections at once"],
-      section: "local_transport", sectionNum: 1, totalSections: 5,
-      isTripPlanner: true, isInternational
+      section:"local_transport", sectionNum:1, totalSections:5,
+      isTripPlanner:true
     };
   }
 
@@ -2673,6 +2693,277 @@ _💡 ${remaining} AI responses left today._` : "";
       return res.json({ sessionId: sid, text:"I'm here to help with your travel plans! 😊 Try: flights from Bangalore to Delhi", cards:[], cta:null });
     }
   }
+});
+
+
+// ════════════════════════════════════════════════════════════════════════════
+//  CHAT HISTORY — Sync across devices via DB
+// ════════════════════════════════════════════════════════════════════════════
+
+async function ensureChatsTable() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_chats (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        chat_id VARCHAR(64) NOT NULL,
+        title VARCHAR(200) DEFAULT 'New chat',
+        messages JSONB DEFAULT '[]',
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id, chat_id)
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_user_chats_user ON user_chats(user_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_user_chats_updated ON user_chats(updated_at DESC)`);
+  } catch(e) { console.error("user_chats table:", e.message); }
+}
+ensureChatsTable().catch(console.error);
+
+// GET all chats for user
+app.get("/chats", authenticateToken, async (req, res) => {
+  try {
+    const r = await pool.query(
+      "SELECT chat_id, title, messages, created_at, updated_at FROM user_chats WHERE user_id=$1 ORDER BY updated_at DESC LIMIT 50",
+      [req.user.id]
+    );
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message:"Error loading chats" }); }
+});
+
+// Save/update a chat
+app.post("/chats/:chatId", authenticateToken, async (req, res) => {
+  try {
+    const { title, messages } = req.body;
+    const { chatId } = req.params;
+    await pool.query(`
+      INSERT INTO user_chats (user_id, chat_id, title, messages, updated_at)
+      VALUES ($1,$2,$3,$4,NOW())
+      ON CONFLICT (user_id, chat_id)
+      DO UPDATE SET title=$3, messages=$4, updated_at=NOW()
+    `, [req.user.id, chatId, title||"New chat", JSON.stringify(messages||[])]);
+    res.json({ ok:true });
+  } catch(e) { res.status(500).json({ message:"Error saving chat" }); }
+});
+
+// Delete a chat
+app.delete("/chats/:chatId", authenticateToken, async (req, res) => {
+  try {
+    await pool.query("DELETE FROM user_chats WHERE user_id=$1 AND chat_id=$2", [req.user.id, req.params.chatId]);
+    res.json({ ok:true });
+  } catch(e) { res.status(500).json({ message:"Error deleting chat" }); }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+//  PRICE ALERTS
+// ════════════════════════════════════════════════════════════════════════════
+
+async function ensurePriceAlertsTable() {
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS price_alerts (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      from_city VARCHAR(80),
+      to_city VARCHAR(80),
+      current_price INTEGER,
+      target_price INTEGER,
+      email VARCHAR(200),
+      notified BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`);
+  } catch(e) { console.error("price_alerts table:", e.message); }
+}
+ensurePriceAlertsTable().catch(console.error);
+
+app.post("/price-alert", authenticateToken, async (req, res) => {
+  try {
+    const { from_city, to_city, current_price, target_price } = req.body;
+    const userResult = await pool.query("SELECT email,name FROM users WHERE id=$1",[req.user.id]);
+    const email = userResult.rows[0]?.email;
+    await pool.query(
+      "INSERT INTO price_alerts (user_id,from_city,to_city,current_price,target_price,email) VALUES ($1,$2,$3,$4,$5,$6)",
+      [req.user.id, from_city, to_city, current_price||null, target_price||null, email]
+    );
+    res.json({ ok:true, message:`Price alert set! We'll notify you at ${email} when prices drop.` });
+  } catch(e) { res.status(500).json({ message:"Error setting alert" }); }
+});
+
+app.get("/price-alerts", authenticateToken, async (req, res) => {
+  try {
+    const r = await pool.query("SELECT * FROM price_alerts WHERE user_id=$1 AND notified=FALSE ORDER BY created_at DESC", [req.user.id]);
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message:"Error loading alerts" }); }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+//  PRICE INTELLIGENCE — stored data, no API needed
+// ════════════════════════════════════════════════════════════════════════════
+
+const PRICE_INTELLIGENCE = {
+  // Domestic India routes — cheapest months and days
+  "blr-del": { cheapestMonths:["February","March","September","October"], cheapestDays:["Tuesday","Wednesday"], avgPrice:3200, peakMonths:["December","January","April","May"], tip:"Book 4–6 weeks ahead. Morning flights (5–8AM) are 20% cheaper." },
+  "blr-bom": { cheapestMonths:["February","March","October"], cheapestDays:["Tuesday","Wednesday","Saturday"], avgPrice:2800, peakMonths:["December","May"], tip:"Multiple direct flights daily. IndiGo and Air India cheapest." },
+  "blr-maa": { cheapestMonths:["February","March","October","November"], cheapestDays:["Tuesday","Wednesday"], avgPrice:1800, peakMonths:["December","April"], tip:"Short 1h flight. Take morning or late-night for cheapest fares." },
+  "del-bom": { cheapestMonths:["February","September","October"], cheapestDays:["Tuesday","Wednesday"], avgPrice:3500, peakMonths:["December","January","May"], tip:"Book 3–5 weeks ahead. Air India and IndiGo most frequent." },
+  "blr-hyd": { cheapestMonths:["February","March","October"], cheapestDays:["Monday","Tuesday","Wednesday"], avgPrice:1500, peakMonths:["December","April"], tip:"Only 45-min flight. Sometimes bus is cheaper for flexible travellers." },
+  "blr-goi": { cheapestMonths:["June","July","August","September","October"], cheapestDays:["Tuesday","Wednesday"], avgPrice:2200, peakMonths:["December","January","February"], tip:"Fly in monsoon (Jun–Sep) for 40% cheaper fares — Goa is still beautiful!" },
+  "blr-cok": { cheapestMonths:["February","March","September","October"], cheapestDays:["Tuesday","Wednesday"], avgPrice:1900, peakMonths:["December","January"], tip:"1h flight to Kochi. IndiGo usually cheapest." },
+  // International
+  "blr-dxb": { cheapestMonths:["May","June","July","August","September"], cheapestDays:["Tuesday","Wednesday","Thursday"], avgPrice:18000, peakMonths:["December","January","February"], tip:"Dubai summer (May–Aug) is hot but flights are 40% cheaper. Air Arabia and IndiGo cheapest." },
+  "blr-sin": { cheapestMonths:["February","March","September","October"], cheapestDays:["Tuesday","Wednesday"], avgPrice:16000, peakMonths:["June","December"], tip:"IndiGo direct Bangalore–Singapore is cheapest. Book 6–8 weeks ahead." },
+  "del-lhr": { cheapestMonths:["January","February","March","October","November"], cheapestDays:["Tuesday","Wednesday","Thursday"], avgPrice:45000, peakMonths:["June","July","December"], tip:"Air India direct cheapest. Via Middle East (Emirates/Qatar) often cheaper by ₹8,000–12,000." },
+};
+
+function getPriceIntelligence(from, to) {
+  if (!from || !to) return null;
+  const fc = CITY_IATA_SRV[from?.toLowerCase()]?.toLowerCase() || from?.slice(0,3).toLowerCase();
+  const tc = CITY_IATA_SRV[to?.toLowerCase()]?.toLowerCase()   || to?.slice(0,3).toLowerCase();
+  return PRICE_INTELLIGENCE[`${fc}-${tc}`] || PRICE_INTELLIGENCE[`${tc}-${fc}`] || null;
+}
+
+// GET price intelligence for a route
+app.get("/price-intel", async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    const intel = getPriceIntelligence(from, to);
+    if (!intel) return res.json({ found:false });
+    res.json({ found:true, ...intel });
+  } catch(e) { res.status(500).json({ found:false }); }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+//  DESTINATION IMAGES — Unsplash free API
+// ════════════════════════════════════════════════════════════════════════════
+
+const DEST_IMAGES = {
+  // Pre-stored Unsplash image IDs for top destinations (free, no API key needed for these)
+  "goa":          "photo-1512343879784-a960bf40e7f2",
+  "mumbai":       "photo-1529253355930-ddbe423a2ac7",
+  "delhi":        "photo-1587474260584-136574528ed5",
+  "jaipur":       "photo-1477587458883-47145ed6d1f5",
+  "kerala":       "photo-1602216056096-3b40cc0c9944",
+  "bangalore":    "photo-1596176530529-78163a4f7af2",
+  "hyderabad":    "photo-1570168007204-dfb528c6958f",
+  "kolkata":      "photo-1558431382-27e303142255",
+  "agra":         "photo-1564507592333-c60657eea523",
+  "varanasi":     "photo-1561361058-c24e0bde46c6",
+  "manali":       "photo-1626621341517-bbf3d9990a23",
+  "shimla":       "photo-1597916829826-02e5bb4a54e0",
+  "coorg":        "photo-1599661046289-e31897846e41",
+  "ooty":         "photo-1582719508461-905c673771fd",
+  "new york":     "photo-1496442226666-8d4d0e62e6e9",
+  "dubai":        "photo-1512453979798-5ea266f8880c",
+  "singapore":    "photo-1525625293386-3f8f99389edd",
+  "bangkok":      "photo-1508009603885-50cf7c579365",
+  "bali":         "photo-1537996194471-e657df975ab4",
+  "london":       "photo-1513635269975-59663e0ac1ad",
+  "paris":        "photo-1502602898657-3e91760cbb34",
+  "tokyo":        "photo-1540959733332-eab4deabeeaf",
+  "maldives":     "photo-1514282401047-d79a71a590e8",
+  "sri lanka":    "photo-1578662996442-48f60103fc96",
+  "myanmar":      "photo-1558618666-fcd25c85cd64",
+  "vietnam":      "photo-1583417319070-4a69db38a482",
+};
+
+function getDestImageUrl(city, size="800x450") {
+  const key = city?.toLowerCase().trim();
+  const photoId = DEST_IMAGES[key] || DEST_IMAGES[Object.keys(DEST_IMAGES).find(k => key?.includes(k))||""];
+  if (!photoId) return null;
+  const [w,h] = size.split("x");
+  return `https://images.unsplash.com/${photoId}?auto=format&fit=crop&w=${w}&h=${h}&q=80`;
+}
+
+// GET destination image
+app.get("/dest-image", async (req, res) => {
+  try {
+    const { city } = req.query;
+    const url = getDestImageUrl(city);
+    if (!url) return res.json({ found:false });
+    res.json({ found:true, url, credit:"Photo from Unsplash" });
+  } catch(e) { res.json({ found:false }); }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+//  GLOBAL AIRPORT PROXIMITY — handle worldwide home locations
+// ════════════════════════════════════════════════════════════════════════════
+
+const GLOBAL_AIRPORTS = {
+  // India — major cities + areas
+  "electronic city":    {airport:"Kempegowda International Airport (BLR)", code:"BLR", time:"1.5–2 hours", transport:"BMTC Vayu Vajra bus ₹270 or Ola/Uber ₹600–900"},
+  "whitefield":         {airport:"Kempegowda International Airport (BLR)", code:"BLR", time:"1.5–2.5 hours", transport:"Metro Purple Line → Vayu Vajra bus, or Ola/Uber ₹700–1000"},
+  "koramangala":        {airport:"Kempegowda International Airport (BLR)", code:"BLR", time:"1–1.5 hours", transport:"Vayu Vajra bus from Silk Board ₹270 or Ola/Uber ₹600–850"},
+  "hsr layout":         {airport:"Kempegowda International Airport (BLR)", code:"BLR", time:"1–1.5 hours", transport:"Vayu Vajra bus from Silk Board ₹270 or Ola/Uber ₹600–800"},
+  "marathahalli":       {airport:"Kempegowda International Airport (BLR)", code:"BLR", time:"1–1.5 hours", transport:"Vayu Vajra bus ₹270 or Ola/Uber ₹500–750"},
+  "indiranagar":        {airport:"Kempegowda International Airport (BLR)", code:"BLR", time:"1–1.5 hours", transport:"Metro + Vayu Vajra or Ola/Uber ₹550–800"},
+  "jp nagar":           {airport:"Kempegowda International Airport (BLR)", code:"BLR", time:"1–1.5 hours", transport:"Vayu Vajra from Banashankari ₹270 or Ola/Uber ₹600–850"},
+  "hebbal":             {airport:"Kempegowda International Airport (BLR)", code:"BLR", time:"30–45 minutes", transport:"Direct via NH44, Ola/Uber ₹350–550 — closest zone!"},
+  "yelahanka":          {airport:"Kempegowda International Airport (BLR)", code:"BLR", time:"25–40 minutes", transport:"Ola/Uber ₹300–500 — very close to airport"},
+  "majestic":           {airport:"Kempegowda International Airport (BLR)", code:"BLR", time:"1–1.5 hours", transport:"Direct Vayu Vajra bus from KBS ₹250 every 20 mins"},
+  "bangalore":          {airport:"Kempegowda International Airport (BLR)", code:"BLR", time:"1–2 hours", transport:"Vayu Vajra bus ₹250–350 or Ola/Uber ₹500–900"},
+  "chennai":            {airport:"Chennai International Airport (MAA)", code:"MAA", time:"30–60 minutes", transport:"Airport Metro Line or Ola/Uber ₹300–600"},
+  "mumbai":             {airport:"CSIA Mumbai Airport (BOM)", code:"BOM", time:"30–90 minutes", transport:"Metro Line 1 to Andheri, then cab. Or Ola/Uber ₹300–700"},
+  "delhi":              {airport:"IGI Airport Delhi (DEL)", code:"DEL", time:"30–60 minutes", transport:"Airport Express Metro from New Delhi station ₹60–100 (fastest!), or Ola/Uber ₹300–700"},
+  "hyderabad":          {airport:"Rajiv Gandhi Intl Airport (HYD)", code:"HYD", time:"45–75 minutes", transport:"TSRTC airport bus ₹200 or Ola/Uber ₹500–800"},
+  "kolkata":            {airport:"Netaji Subhash Chandra Bose Airport (CCU)", code:"CCU", time:"30–60 minutes", transport:"Ola/Uber ₹300–600 or AC bus"},
+  "pune":               {airport:"Pune Airport (PNQ)", code:"PNQ", time:"20–40 minutes", transport:"Ola/Uber ₹300–500"},
+  "goa":                {airport:"Goa International Airport (GOI)", code:"GOI", time:"20–60 minutes", transport:"Ola/Uber ₹300–600 or prepaid taxi"},
+  "kochi":              {airport:"Cochin International Airport (COK)", code:"COK", time:"30–60 minutes", transport:"Airport shuttle or Ola/Uber ₹400–700"},
+  // International cities
+  "new york":           {airport:"John F. Kennedy (JFK) or Newark (EWR) or LaGuardia (LGA)", code:"JFK/EWR/LGA", time:"45–90 minutes", transport:"NYC Subway AirTrain to JFK $8.25, or Uber/Lyft $45–80"},
+  "manhattan":          {airport:"JFK Airport", code:"JFK", time:"45–75 minutes", transport:"AirTrain + Subway $8.25 (cheapest!) or Uber $45–70"},
+  "brooklyn":           {airport:"JFK Airport", code:"JFK", time:"30–60 minutes", transport:"AirTrain + Subway $8.25 or Uber $35–55"},
+  "dubai":              {airport:"Dubai International Airport (DXB)", code:"DXB", time:"20–60 minutes", transport:"Dubai Metro (Red Line) ₹180–240 or Careem/Uber ₹600–1200"},
+  "downtown dubai":     {airport:"Dubai International Airport (DXB)", code:"DXB", time:"25–45 minutes", transport:"Metro Red Line (very clean!) ₹180 or Careem ₹600–900"},
+  "singapore":          {airport:"Changi Airport (SIN)", code:"SIN", time:"20–50 minutes", transport:"MRT East-West Line $2.10–3.50 SGD (fastest!) or Grab $18–28 SGD"},
+  "orchard road":       {airport:"Changi Airport (SIN)", code:"SIN", time:"30–50 minutes", transport:"MRT from Orchard station $2.50 SGD or Grab $22–30 SGD"},
+  "bangkok":            {airport:"Suvarnabhumi Airport (BKK)", code:"BKK", time:"30–60 minutes", transport:"Airport Rail Link 45 baht (fastest!) or Grab $5–15 USD"},
+  "london":             {airport:"Heathrow (LHR) or Gatwick (LGW) or Stansted (STN)", code:"LHR", time:"30–75 minutes", transport:"Heathrow Express £25 (fastest, 15 min) or Tube £5.60 or Uber £45–70"},
+  "central london":     {airport:"Heathrow Airport (LHR)", code:"LHR", time:"40–60 minutes", transport:"Piccadilly Line Tube £5.60 or Heathrow Express £25"},
+  "paris":              {airport:"Charles de Gaulle Airport (CDG)", code:"CDG", time:"35–60 minutes", transport:"RER B train €11.80 or Uber €35–55"},
+  "tokyo":              {airport:"Narita (NRT) or Haneda (HND)", code:"NRT/HND", time:"1–2 hours", transport:"Narita Express ¥3,070 or Haneda Monorail ¥500 (much closer!)"},
+  "kuala lumpur":       {airport:"KLIA or KLIA2 (KUL)", code:"KUL", time:"45–75 minutes", transport:"KLIA Ekspres RM55 (35 min, fastest!) or Grab RM60–80"},
+  "sydney":             {airport:"Sydney Airport (SYD)", code:"SYD", time:"20–40 minutes", transport:"Airport train $20 AUD or Uber $35–50 AUD"},
+  "bali":               {airport:"Ngurah Rai International Airport (DPS)", code:"DPS", time:"20–60 minutes", transport:"Grab/GoJek ₹300–500 or metered taxi ₹400–700"},
+  "seminyak":           {airport:"Bali Airport (DPS)", code:"DPS", time:"20–35 minutes", transport:"Grab ₹250–400 or hotel transfer"},
+  "ubud":               {airport:"Bali Airport (DPS)", code:"DPS", time:"60–90 minutes", transport:"Private transfer ₹600–1000 (no public transport) — book in advance!"},
+  "colombo":            {airport:"Bandaranaike International Airport (CMB)", code:"CMB", time:"30–45 minutes", transport:"Bus ₹80–120 or taxi ₹500–800"},
+};
+
+function getAirportInfo(homeLocation) {
+  if (!homeLocation) return null;
+  const h = homeLocation.toLowerCase().trim();
+  // Direct match
+  if (GLOBAL_AIRPORTS[h]) return GLOBAL_AIRPORTS[h];
+  // Partial match
+  const key = Object.keys(GLOBAL_AIRPORTS).find(k => h.includes(k) || k.includes(h.split(" ")[0]));
+  if (key) return GLOBAL_AIRPORTS[key];
+  return null; // Unknown location — AI will handle
+}
+
+
+// WhatsApp → Web session handoff
+app.get("/wa/:shortId", async (req, res) => {
+  // Find the WA session by short ID suffix
+  const shortId = req.params.shortId;
+  let foundPhone = null;
+  for (const [phone, session] of waWebSessions) {
+    if (session.sessionId?.slice(-8) === shortId) {
+      foundPhone = phone;
+      break;
+    }
+  }
+  if (!foundPhone) {
+    return res.redirect("https://alvryn.in/ai");
+  }
+  // Redirect to AI chat with session
+  res.redirect(`https://alvryn.in/ai?wa_session=${foundPhone}`);
+});
+
+app.get("/wa-session/:phone", async (req, res) => {
+  const phone = req.params.phone.replace(/[^0-9]/g,"");
+  const session = waWebSessions.get(phone);
+  if (!session) return res.status(404).json({ message:"No session" });
+  res.json({ messages:session.messages, sessionId:session.sessionId });
 });
 
 // ── START SERVER ─────────────────────────────────────────────────────────────

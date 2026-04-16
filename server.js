@@ -1496,6 +1496,103 @@ function easyResponse(msg) {
     };
   }
 
+
+  // ── MORE INTERNATIONAL DESTINATIONS ──────────────────────────────────────
+  if (/usa|united states|america.*trip|trip.*america/i.test(m) && !(/flight|fly/).test(m)) {
+    return { text: "🇺🇸 **Visiting the USA? Here's your quick guide!**\n\n**Top destinations for Indians:**\n🗽 **New York** — Times Square, Central Park, Statue of Liberty\n🎬 **Los Angeles** — Hollywood, Venice Beach, Disneyland\n🌉 **San Francisco** — Golden Gate Bridge, Alcatraz, Napa Valley\n🎰 **Las Vegas** — Casinos, shows, Grand Canyon nearby\n🌴 **Florida** — Disney World, Miami Beach, Universal Studios\n\n**Visa:** B1/B2 Tourist Visa — apply 3-4 months ahead, $185 fee\n**Best time:** April–June & September–October (avoid peak summer)\n**Budget:** ₹8,000–15,000/day for mid-range travel\n**Currency:** USD ($1 ≈ ₹84)\n\nWhich US city are you heading to? I'll plan the whole thing! 😊", cards:[], cta:null };
+  }
+
+  if (/europe|europe.*trip|trip.*europe/i.test(m) && !(/flight|fly/).test(m)) {
+    return { text: "🇪🇺 **Europe Trip Guide for Indians!**\n\nEurope is STUNNING and more doable than you think! 🎉\n\n**Best cities for first-timers:**\n🗼 **Paris** — Eiffel Tower, Louvre, croissants 🥐\n🏰 **London** — Big Ben, Buckingham Palace, pubs\n🌊 **Barcelona** — Gaudi, beaches, tapas\n🎨 **Amsterdam** — canals, museums, tulips\n🏔️ **Switzerland** — Alps, chocolate, insanely beautiful\n\n**Schengen Visa:** Covers 26 countries! Apply 3-4 months ahead\n**Best time:** May–June & September (avoid peak Jul-Aug)\n**Budget tip:** Paris + London + Amsterdam in 10 days ≈ ₹1.5–2L total (if you plan smart!)\n\nWhich country/city interests you? 😊", cards:[], cta:null };
+  }
+
+  if (/japan|tokyo|osaka|kyoto/i.test(m) && !(/flight|fly/).test(m)) {
+    return { text: "🇯🇵 **Japan — The most unique country you'll ever visit!** 🌸\n\nSeriously, Japan will ruin every other country for you (in the best way 😂)\n\n**Must-visit:**\n🗼 Tokyo — Shibuya crossing, Akihabara, Tsukiji Fish Market\n⛩️ Kyoto — 1000+ temples, geishas, bamboo groves\n🏯 Osaka — best street food in Asia, Osaka Castle\n🌸 Mt Fuji — worth every yen\n🦌 Nara — deer literally bow to you!\n\n**Visa:** Japan visa — apply through embassy, usually 2-3 weeks\n**Best time:** March-April (cherry blossoms 🌸) or Oct-Nov (autumn colors)\n**Budget:** ₹6,000–12,000/day (surprisingly affordable for quality!)\n**IC Card:** Buy Suica/Pasmo card for all trains/metro\n\nFlight from Bangalore: ~₹35,000–60,000 return\nShall I search? 😊", cards:[], cta:null };
+  }
+
+  if (/australia|sydney|melbourne/i.test(m) && !(/flight|fly/).test(m)) {
+    return { text: "🇦🇺 **Australia — Where kangaroos actually exist** 🦘😄\n\n**Top spots:**\n🦘 Sydney — Opera House, Harbour Bridge, Bondi Beach (stunning!)\n☕ Melbourne — coffee capital, street art, Great Ocean Road\n🐠 Great Barrier Reef — best diving in the world\n🪨 Uluru — sacred red rock in the outback\n🐨 Cairns — koalas, rainforest, reef\n\n**Visa:** Australian Tourist Visa (subclass 600) — ₹8,000–12,000, takes 2-3 weeks\n**Best time:** Sep–Nov (spring) or Mar–May (autumn)\n**Currency:** AUD ($1 AUD ≈ ₹55)\n**Budget:** ₹8,000–15,000/day\n\nFlights from India: ~₹55,000–90,000 return\nSydney is cheapest to fly into from Bangalore/Mumbai.", cards:[], cta:null };
+  }
+
+  if (/canada|toronto|vancouver/i.test(m) && !(/flight|fly/).test(m)) {
+    return { text: "🇨🇦 **Canada — Maple syrup and massive kindness** 🍁\n\n**Top destinations:**\n🏙️ Toronto — CN Tower, Niagara Falls nearby, multicultural food scene\n🌊 Vancouver — mountains + ocean, Banff National Park nearby\n🏔️ Banff — arguably the most beautiful place on Earth 🤩\n🎭 Montreal — French vibes, incredible food, affordable\n\n**Visa:** Canada Tourist Visa — can be tricky, apply 3-4 months ahead\n**Best time:** June–August (summers gorgeous), Dec-Feb for snow/skiing\n**Currency:** CAD ($1 CAD ≈ ₹63)\n**Indian community:** Very large! Especially in Brampton/Toronto\n\nFlights: ~₹55,000–85,000 return from India", cards:[], cta:null };
+  }
+
+  if (/nepal|kathmandu|everest|pokhara/i.test(m) && !(/flight|fly/).test(m)) {
+    return { text: "🇳🇵 **Nepal — India's magical neighbour!** 🏔️\n\nAnd the BEST part? Indians don't need a visa! 🎉\n\n**Why Nepal is amazing:**\n🏔️ Everest Base Camp trek — bucket list item #1\n🛕 Kathmandu — temples, culture, amazing food (momos!)\n🌊 Pokhara — Phewa Lake, paragliding, Annapurna views\n🐘 Chitwan — jungle safari, rhinos, elephants\n\n**For Indians:**\n✅ No visa needed — just carry Aadhaar/Passport\n✅ Indian currency accepted (₹1 = NPR 1.6)\n✅ Direct flights from most Indian cities\n✅ Only 1.5–2 hours from Delhi/Patna/Lucknow\n\n**Budget:** Super affordable — ₹2,000–4,000/day!\n\nFlight from Bangalore: ₹8,000–20,000 return 😊", cards:[], cta:null };
+  }
+
+  if (/oman|muscat/i.test(m) && !(/flight|fly/).test(m)) {
+    return { text: "🇴🇲 **Oman — The hidden gem of the Middle East!** 💎\n\nWhile everyone goes to Dubai, smart travellers go to Oman 😄\n\n**Why Oman?**\n🏖️ Beautiful beaches + deserts + mountains (all in one country!)\n🕌 Mutrah Souq — best traditional market in the Gulf\n🏜️ Wahiba Sands — desert camping under stars\n🌊 Wadi Shab — swimming in an emerald canyon\n🐢 Ras Al Jinz — watch sea turtles hatch!\n\n**Visa:** e-Visa available, easy process\n**Budget:** ₹4,000–8,000/day (cheaper than Dubai!)\n**Best time:** October to March\n\nFlight from Bangalore: ~₹12,000–25,000 return", cards:[], cta:null };
+  }
+
+  if (/turkey|istanbul|cappadocia/i.test(m) && !(/flight|fly/).test(m)) {
+    return { text: "🇹🇷 **Turkey — East meets West!** 🌙\n\nIstanbul is literally split between Europe and Asia — on two different continents! How cool is that?! 🤩\n\n**Must-see:**\n🕌 Istanbul — Hagia Sophia, Blue Mosque, Grand Bazaar\n🎈 Cappadocia — hot air balloons over fairy chimneys (Instagram gold!)\n🏊 Pamukkale — natural white travertine terraces\n🏖️ Turkish Riviera — Antalya, Bodrum, crystal clear water\n🥙 Turkish food — kebabs, baklava, Turkish tea 😍\n\n**Visa:** e-Visa online, easy, $60\n**Best time:** April–June & September–November\n**Currency:** Lira (currently great exchange rate for Indians!)\n**Budget:** Very affordable — ₹3,000–6,000/day!\n\nFlight from India: ~₹30,000–55,000 return", cards:[], cta:null };
+  }
+
+  if (/georgia.*country|tbilisi|batumi/i.test(m)) {
+    return { text: "🇬🇪 **Georgia (the country, not the US state!) — Europe's hidden secret** 🏔️\n\nIndians are discovering this gem in huge numbers now! Here's why:\n\n✅ **Indians get visa on arrival!** (Just ₹5,000 or free!)\n✅ Incredibly affordable — cheapest wine in the world 🍷\n✅ Stunning Caucasus mountains\n✅ Ancient churches older than most civilizations\n✅ Warm, friendly people\n\n**Top spots:**\n🏙️ Tbilisi — old town, sulphur baths, rooftop bars\n🎿 Gudauri — skiing in the Caucasus (Dec-Mar)\n🏖️ Batumi — Black Sea resort town\n⛰️ Kazbegi — mind-blowing mountain views\n\n**Budget:** ₹2,500–5,000/day (amazing value!)\n\nFlights: ~₹20,000–35,000 return from India", cards:[], cta:null };
+  }
+
+  if (/new zealand|auckland|queenstown/i.test(m) && !(/flight|fly/).test(m)) {
+    return { text: "🇳🇿 **New Zealand — Middle Earth is real!** 🌿\n\n(Yes, they literally filmed Lord of the Rings here 😄)\n\n**Why NZ blows people's minds:**\n🎿 Queenstown — bungee jumping capital, skiing, adventure sports\n🌋 Rotorua — geysers, Maori culture, bubbling mud pools\n🐑 South Island — fjords, glaciers, absurd natural beauty\n🌊 Bay of Islands — sailing, dolphins, beaches\n🏔️ Milford Sound — one of the most beautiful places on Earth\n\n**Visa:** NZeTA (easy online) + visitor visa\n**Best time:** Dec–Feb (NZ summer) for outdoors; Jun–Aug for skiing\n**Budget:** ₹10,000–18,000/day\n\nFlights from India: ~₹65,000–95,000 return (long haul but worth it!)", cards:[], cta:null };
+  }
+
+  // ── INDIAN TOURIST DESTINATIONS (MORE DETAIL) ───────────────────────────
+  if (/andaman|port blair|havelock|neil island/i.test(m) && !(/flight|fly/).test(m)) {
+    return { text: "🏝️ **Andaman & Nicobar Islands — India's own tropical paradise!** 🌊\n\nAnd you won't believe it — you DON'T need a passport! It's India! 😄\n\n**Best islands:**\n🏖️ Havelock Island (Swaraj Dweep) — Radhanagar Beach (Asia's best beach!)\n🤿 Neil Island (Shaheed Dweep) — snorkelling paradise\n🏙️ Port Blair — Cellular Jail (powerful history), Ross Island\n🦈 Barren Island — India's only active volcano!\n\n**How to reach:**\nFlight: Chennai/Kolkata/Delhi → Port Blair (2–3 hours)\nFerry: Kolkata/Chennai → Port Blair (overnight ship, experience in itself!)\n\n**Best time:** October to May (avoid monsoon Jun-Sep)\n**Budget:** ₹4,000–8,000/day including accommodation\n\n💡 **Pro tip:** Book government ferries between islands 2-3 weeks ahead!", cards:[], cta:null };
+  }
+
+  if (/kashmir|srinagar|dal lake|gulmarg|pahalgam/i.test(m) && !(/flight|fly/).test(m)) {
+    return { text: "🏔️ **Kashmir — Heaven on Earth (for real!)** ❄️\n\n*'Gar firdaus bar-roo-e zameen ast, hameen ast, hameen ast!'*\n(If there is paradise on earth, it is here, it is here, it is here!) 🕌\n\n**Must-see:**\n🌊 Dal Lake — houseboat stay, shikara ride at sunrise (magical!)\n⛷️ Gulmarg — best skiing in Asia, gondola ride\n🌸 Pahalgam — Betaab Valley, Aru Valley, rafting\n🌺 Tulip Garden — largest in Asia (March-April only)\n🏔️ Sonamarg — glaciers, trek to Thajiwas glacier\n\n**Best time:**\n• March–April: Tulips in bloom, everything turns green\n• July–August: Cool, lush, green\n• December–February: Snow, skiing (Gulmarg)\n\n**Budget:** ₹3,000–7,000/day\n⚠️ Check current travel advisories before booking.", cards:[], cta:null };
+  }
+
+  if (/lakshadweep|agatti|kavaratti/i.test(m)) {
+    return { text: "🏝️ **Lakshadweep — India's most pristine islands!** 💙\n\nCoral reefs, turquoise water, and almost no tourists — this is luxury travel without the insane price tag!\n\n**Key facts:**\n✅ Indian territory — no passport needed\n⚠️ Entry permit required (apply in advance)\n🤿 Best snorkelling/diving in India\n🚫 Alcohol not available on most islands\n\n**Best islands:** Agatti, Bangaram, Kadmat, Lakshadweep islands\n\n**How to reach:**\n✈️ Flights: Kochi → Agatti (cheapest entry point)\n🚢 Ships from Kochi (takes 14-20 hours, check schedule)\n\n**Best time:** October to April\n**Budget:** ₹6,000–15,000/day (resorts are pricier due to remoteness)", cards:[], cta:null };
+  }
+
+  if (/spiti|spiti valley|kaza|tabo/i.test(m)) {
+    return { text: "🏔️ **Spiti Valley — India's most surreal landscape!** 🌌\n\nForget Instagram filters — this place IS the filter 😄\n\n**Why Spiti is unique:**\n🏜️ Cold desert at 4,000m+ altitude\n🛕 500-year-old monasteries hanging off cliffs\n🌌 Best stargazing in India (zero light pollution)\n❄️ One of the most remote inhabited places on Earth\n🦁 Snow leopard territory\n\n**Route options:**\n🚗 Shimla → Kaza (Hindustan-Tibet Highway) — longer, more scenic\n🚗 Manali → Kaza (Kunzum Pass) — open only June-October\n\n**Key spots:** Kaza (base), Ki Monastery, Chandratal Lake, Tabo, Pin Valley\n\n**Best time:** June to September ONLY (roads closed in winter)\n**Budget:** ₹2,000–4,000/day (very affordable once you're there)\n⚠️ Altitude sickness is real — acclimatize properly!", cards:[], cta:null };
+  }
+
+  if (/meghalaya|shillong|cherrapunji|mawlynnong/i.test(m)) {
+    return { text: "🌧️ **Meghalaya — The Scotland of the East!** 🌿\n\n(Also the wettest place on Earth, but hey, that's why it's so green! 😄)\n\n**Must-see:**\n🌉 Living Root Bridges — trees trained to form actual bridges over 500+ years!\n💧 Nohkalikai Falls — one of India's tallest waterfalls\n🏘️ Mawlynnong — cleanest village in Asia\n🏊 Dawki — crystal clear river, you can see the bottom 10m down!\n🗻 Shillong Peak — views across the entire plateau\n\n**From Bangalore:**\n✈️ Fly to Guwahati → drive to Shillong (3 hrs)\nOR Fly directly to Shillong (limited flights)\n\n**Best time:** October–May (avoid monsoon unless you love rain!)\n**Budget:** ₹2,500–5,000/day\n**Bonus:** Food is amazing — Jadoh, Dohneiiong, smoked pork!", cards:[], cta:null };
+  }
+
+  if (/coorg|kodagu|madikeri/i.test(m) && !(/flight|fly/).test(m)) {
+    return { text: "☕ **Coorg (Kodagu) — The Scotland of India!** 🌿\n\n(Everyone calls their fav place 'Scotland of India' but Coorg really earns it 😄)\n\n**Why Coorg is special:**\n☕ Coffee estates you can actually stay on and wake up to the smell of fresh coffee\n🌊 Abbey Falls, Iruppu Falls — stunning\n🐘 Dubare Elephant Camp — feed and bathe elephants!\n⛰️ Tadiandamol peak — highest in Karnataka, great trek\n🌿 Nagarhole/Kabini — tiger reserve nearby\n\n**From Bangalore:** 5–6 hours by road (270km)\n**Stay options:** Coffee estate homestays (₹1,500–4,000/night — AMAZING experience)\n**Best time:** October to March (avoid monsoon unless you love mist and rain)\n**Budget:** ₹3,000–6,000/day total\n\nBonus: Try Coorg pandi curry and bamboo shoot curry! 🍛", cards:[], cta:null };
+  }
+
+  if (/hampi/i.test(m) && !(/flight|fly/).test(m)) {
+    return { text: "🏛️ **Hampi — India's most mind-blowing ancient city!** 🗿\n\nSeriously, Hampi is a UNESCO World Heritage Site and one of the most visited places in Karnataka. And yet somehow it still feels undiscovered! 😄\n\n**Why Hampi is unforgettable:**\n🏛️ Virupaksha Temple — still active, 7th century\n🗿 Giant Monolithic Bull — Nandi that'll make your jaw drop\n⛰️ Boulder landscapes — looks like another planet\n🚤 Tungabhadra river — coracle boat rides (circular boat, SO fun!)\n👑 Vittala Temple — famous stone chariot\n🚲 Best explored by cycle-rickshaw or bicycle\n\n**From Bangalore:** Overnight bus (₹400–600) or train to Hospet (then 15km to Hampi)\n**Best time:** October to February\n**Budget:** ₹1,500–3,000/day (very backpacker-friendly!)", cards:[], cta:null };
+  }
+
+  // ── PRACTICAL TRAVEL INFO ─────────────────────────────────────────────────
+  if (/best.*credit.*card|travel.*credit.*card|zero forex|niyo|indus.*ind/i.test(m)) {
+    return { text: "💳 **Best cards for international travel (no forex fees!):**\n\n🏆 **Niyo Global Card** — Zero forex fees, free ATM withdrawals abroad, load in ₹\n🏆 **IndusInd Pinnacle/Scapes** — Zero forex markup, good rewards\n🏆 **HDFC Regalia** — 2% forex markup, excellent rewards\n🏆 **Axis Vistara/Miles & More** — Good for frequent flyers\n\n**For beginners:** Niyo Global is BEST — easy app, free to use, reload from UPI\n\n**Before international travel:**\n✅ Inform your bank (call or app)\n✅ Check if card has contactless (most places abroad use tap-to-pay)\n✅ Carry some cash backup (local currency)\n✅ Save international helpline number\n\n💡 Niyo Global vs regular debit card:\n• Regular card: Pays ₹2,400 in forex fees on ₹1,00,000 spend\n• Niyo Global: Pays ₹0 forex fees! 🎉", cards:[], cta:null };
+  }
+
+  if (/travel insurance|trip insurance|medical.*abroad|insurance.*travel/i.test(m)) {
+    return { text: "🛡️ **Travel Insurance — Don't skip this!**\n\nHonestly, travel insurance is the one thing most Indians skip and then regret 😅\n\n**Why you NEED it:**\n🏥 Medical emergency abroad can cost ₹5–50 LAKH without insurance\n✈️ Flight cancellation reimbursement\n🧳 Lost baggage coverage\n🔒 Trip cancellation coverage\n\n**Recommended providers:**\n🏆 Bajaj Allianz Travel Insurance — good coverage, affordable\n🏆 HDFC ERGO Travel Insurance — reliable claims\n🏆 Niva Bupa — good for families\n\n**Cost:** ₹500–2,000 for a 2-week international trip\n**Where to buy:** Bank app, PolicyBazaar, or insurers directly\n\n**For Schengen visa:** Travel insurance is MANDATORY (min €30,000 coverage)\n\n💡 **Pro tip:** Buy insurance RIGHT AFTER booking flights — pre-existing cancellation coverage starts then!", cards:[], cta:null };
+  }
+
+  if (/currency exchange|forex|where.*exchange.*money|how.*exchange/i.test(m)) {
+    return { text: "💱 **Currency Exchange — Get the best rates!**\n\n🚫 **WORST places to exchange:**\n• Airport forex counters (rates are 5-8% worse)\n• Hotel exchange desks\n• Random shops at tourist spots\n\n✅ **BEST ways to get foreign currency:**\n\n**1. Niyo Global / Wise Card** 🏆\nLoad ₹ from UPI, use abroad. Zero forex fees. Best rate every time.\n\n**2. Bookmyforex / EbixCash**\nBook online at good rates, home delivery or airport pickup\n\n**3. Thomas Cook / Centrum Forex**\nPhysical stores in major cities. Rates better than banks.\n\n**4. Your Bank (last resort)**\nHDFC/SBI/ICICI — decent rates but service charges apply\n\n💡 **Emergency abroad:** Use a Visa/MC debit card at local ATMs (better rate than manual exchange)", cards:[], cta:null };
+  }
+
+  if (/solo.*travel|travelling alone|first.*solo/i.test(m)) {
+    return { text: "🎒 **Solo Travel Guide — The most liberating thing you'll do!**\n\nSolo travel is scary for 5 minutes and then you'll wonder why you waited so long 😄\n\n**Best solo trip destinations for Indians:**\n🏖️ **Goa** — safe, fun, tons of solo travellers\n🌿 **Rishikesh** — adventure, yoga, amazing solo community\n🌊 **Varkala, Kerala** — chill beach, safe, beautiful\n🏔️ **Manali** — hostels full of other solo travellers\n🌏 **Bangkok/Bali** — international classic solo trips\n🇳🇵 **Nepal** — very solo-traveller friendly, no visa for Indians\n\n**Solo travel tips:**\n✅ Stay in hostels — instant friend-making!\n✅ Share your itinerary with family\n✅ Keep emergency contacts saved\n✅ Trust your gut — if something feels wrong, leave\n✅ Buy travel insurance (especially for international)\n\nSolo travel will change your life. Book it. Go! 🚀", cards:[], cta:null };
+  }
+
+  if (/group.*travel|travelling.*friends|friends.*trip|group.*trip/i.test(m)) {
+    return { text: "👫 **Group Trip Planning — Making it work without drama!** 😄\n\n(Every group trip has that one person who's always late. Plan accordingly 😂)\n\n**Making group travel smooth:**\n\n**1. Budget planning first**\nSplit into: transport + accommodation + food + activities\nUse Splitwise app to track shared expenses\n\n**2. Best destinations for groups:**\n🏖️ Goa — everyone has something to do\n🌿 Coorg — homestays with common areas\n🏔️ Manali — adventure for all levels\n🌊 Pondicherry — culture + beach mix\n\n**3. Accommodation tips:**\nRent a villa/house > book individual rooms (cheaper + more fun!)\nAirbnb/MakeMyTrip group stays\n\n**4. Transport tips:**\nTempo Traveller (12-seater) — cheapest per head for 8+ people\nCar rental pooling — 5-6 people in an SUV\n\n**5. Rule for harmony:**\nEveryone contributes to one activity each person REALLY wants. That's it! 😄", cards:[], cta:null };
+  }
+
+  if (/honeymoon|couples.*trip|romantic.*trip|anniversary.*trip/i.test(m)) {
+    return { text: "💕 **Honeymoon & Romantic Trip Ideas!**\n\nAlvryn is blushing helping with this but here goes 😄❤️\n\n**Best romantic destinations:**\n\n**India:**\n🌊 **Andaman** — private beaches, snorkelling, sunsets\n🏔️ **Manali** — snow, cozy cafés, couple activities\n🌿 **Munnar, Kerala** — misty mountains, tea gardens, houseboat\n🏰 **Udaipur** — City of Lakes, palace hotels, so romantic!\n🏖️ **Goa** — beach sunsets, Portuguese architecture\n\n**International:**\n🏝️ **Maldives** — overwater bungalows (₹60,000–1.5L/night but SO worth it!)\n🌺 **Bali** — rice fields, temples, villa with private pool\n🇹🇭 **Thailand, Phuket** — luxury at budget prices\n🗼 **Paris** — cliché but it's cliché for a reason 😄\n\n**Budget tips:**\nMaldives on budget: Stay in guesthouses on local islands (₹5,000–8,000/night vs ₹60,000 at resorts!) 🤫", cards:[], cta:null };
+  }
+
+
   return null; // let medium handle flight DB lookup
 }
 
@@ -1950,8 +2047,9 @@ app.get("/admin/promo-codes", async (req, res) => {
 
 async function callGroq(prompt, systemMsg) {
   const key = process.env.GROQ_API_KEY;
-  if (!key) return null;
+  if (!key) { console.log("[AI] No GROQ_API_KEY found"); return null; }
   try {
+    console.log("[AI] Calling Groq API...");
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method:"POST",
       headers:{"Content-Type":"application/json","Authorization":`Bearer ${key}`},
@@ -1962,8 +2060,11 @@ async function callGroq(prompt, systemMsg) {
       })
     });
     const d = await res.json();
-    return d.choices?.[0]?.message?.content || null;
-  } catch { return null; }
+    const result = d.choices?.[0]?.message?.content || null;
+    if (result) console.log("[AI] Groq responded successfully");
+    else console.log("[AI] Groq returned empty:", JSON.stringify(d).slice(0,200));
+    return result;
+  } catch(e) { console.log("[AI] Groq error:", e.message); return null; }
 }
 
 async function callOpenAI(prompt, systemMsg, maxTokens=400) {
@@ -2270,6 +2371,7 @@ ${flightTip}
 ---
 ✅ Section 2 done! Ready to see **hotels** next?`,
       cards: flightCards,
+      image: (()=>{const u=getDestImageUrl(to||"");return u?{url:u,caption:"Your destination awaits! ✈️"}:null;})(),
       quickReplies: ["Yes, show me hotels 🏨", "Show all remaining sections"],
       section: "flights", sectionNum: 2, totalSections: 5,
       isTripPlanner: true
@@ -2295,6 +2397,7 @@ ${hotelTip}
 ---
 ✅ Section 3 done! Ready to see **what to do** there?`,
       cards: hotelCards,
+      image: (()=>{const u=getDestImageUrl(to||"");return u?{url:u,caption:"Where you'll stay 🏨"}:null;})(),
       quickReplies: ["Yes, show me activities 🗺️", "Show all remaining sections"],
       section: "hotels", sectionNum: 3, totalSections: 5,
       isTripPlanner: true
@@ -2316,6 +2419,7 @@ ${activities}
 
 ---
 ✅ Section 4 done! Ready for your **travel checklist** & complete summary?`,
+      image: (()=>{const u=getDestImageUrl(to||"");return u?{url:u,caption:"Explore like a local! 🗺️"}:null;})(),
       quickReplies: ["Yes, show my checklist ✅", "Show complete summary now"],
       section: "activities", sectionNum: 4, totalSections: 5,
       isTripPlanner: true

@@ -86,6 +86,10 @@ textarea:focus{outline:none;}
   .overlay{display:block!important;}
 }
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:190;}
+@media(max-width:480px){
+  .travel-card{padding:12px!important;}
+  .travel-card .price{font-size:18px!important;}
+}
 `;
 
 // ── LOGO ────────────────────────────────────────────────────────────────────────
@@ -648,6 +652,37 @@ export default function AIChatPage(){
     return ()=>clearInterval(t);
   },[]);
 
+  // ── LOAD CHATS FROM DB (cross-device sync) ────────────────────────────────
+  useEffect(()=>{
+    if(!token) return;
+    // First load from localStorage immediately (instant display)
+    try{
+      const local=JSON.parse(localStorage.getItem("alvryn_chats")||"[]");
+      if(local.length>0) setChats(local);
+    }catch{}
+    // Then sync from DB (authoritative)
+    fetch(`${API}/chats`,{headers:{Authorization:`Bearer ${token}`}})
+      .then(r=>{if(!r.ok)throw new Error(r.status);return r.json();})
+      .then(data=>{
+        if(!Array.isArray(data)||!data.length) return;
+        const mapped=data.map(c=>({
+          id:c.chat_id,
+          title:c.title||"New chat",
+          messages:(Array.isArray(c.messages)?c.messages:[]).map(m=>({
+            ...m,
+            id:m.id||m.time||Date.now(),
+            role:m.role||"user",
+            content:m.content||m.text||""
+          })),
+          time:new Date(c.updated_at||c.created_at).getTime()
+        }));
+        setChats(mapped);
+        // Update localStorage with DB version
+        localStorage.setItem("alvryn_chats",JSON.stringify(mapped.slice(0,30)));
+      })
+      .catch(()=>{}); // Silently fall back to localStorage version
+  },[token]);
+
   const newChat = useCallback(()=>{
     setActiveId(Date.now().toString());
     setMessages([]);
@@ -661,29 +696,42 @@ export default function AIChatPage(){
   },[]);
 
   const saveChat = useCallback((id,msgs,firstMsgTitle)=>{
-    // Update local state
+    const chatTitle = firstMsgTitle || "New chat";
+    // Update local state immediately
     setChats(prev=>{
       const ex = prev.find(c=>c.id===id);
+      const title = ex?.title || chatTitle;
       if(ex) return prev.map(c=>c.id===id?{...c,messages:msgs,time:Date.now()}:c);
-      return [{id,title:firstMsgTitle||"New chat",messages:msgs,time:Date.now()},...prev].slice(0,50);
+      return [{id,title,messages:msgs,time:Date.now()},...prev].slice(0,50);
     });
-    // Sync to DB (non-blocking)
+    // Always save to localStorage as immediate backup
+    try{
+      const stored = JSON.parse(localStorage.getItem("alvryn_chats")||"[]");
+      const filtered = stored.filter(c=>c.id!==id);
+      const title = stored.find(c=>c.id===id)?.title || chatTitle;
+      localStorage.setItem("alvryn_chats",JSON.stringify([{id,title,messages:msgs,time:Date.now()},...filtered].slice(0,30)));
+    }catch{}
+    // Also sync to DB
     if(token){
-      const title = chats.find(c=>c.id===id)?.title || firstMsgTitle || "New chat";
+      const storedChats = JSON.parse(localStorage.getItem("alvryn_chats")||"[]");
+      const title = storedChats.find(c=>c.id===id)?.title || chatTitle;
       fetch(`${API}/chats/${id}`,{
         method:"POST",
         headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},
-        body:JSON.stringify({title, messages:msgs.map(m=>({role:m.role,content:m.content||"",text:m.text||"",cards:m.cards||[],time:m.id}))})
-      }).catch(()=>{
-        // Fallback: save to localStorage
-        try{
-          const local=JSON.parse(localStorage.getItem("alvryn_chats")||"[]");
-          const filtered=local.filter(c=>c.id!==id);
-          localStorage.setItem("alvryn_chats",JSON.stringify([{id,title:firstMsgTitle||"New chat",messages:msgs,time:Date.now()},...filtered].slice(0,30)));
-        }catch{}
-      });
+        body:JSON.stringify({
+          title,
+          messages:msgs.slice(0,100).map(m=>({
+            role:m.role,content:m.content||"",
+            text:m.text||"",cards:(m.cards||[]).slice(0,5),
+            id:m.id,image:m.image||null,
+            quickReplies:m.quickReplies||[],
+            cta:m.cta||null,sectionNum:m.sectionNum||null,
+            totalSections:m.totalSections||null
+          }))
+        })
+      }).catch(()=>{}); // Ignore DB errors — localStorage is the fallback
     }
-  },[token,chats]);
+  },[token]);
 
   const send = useCallback(async(text)=>{
     const q = (text||input).trim();
@@ -789,18 +837,12 @@ export default function AIChatPage(){
                     color:"#a0896a",letterSpacing:"0.15em",marginBottom:8,paddingLeft:8}}>
                     RECENT
                   </div>
-                  {chats.slice(0,25).map(chat=>(
-                    <div key={chat.id} className="sb-item" onClick={()=>loadChat(chat)}
-                      style={{padding:"9px 12px",borderRadius:9,cursor:"pointer",
-                        background:activeId===chat.id?"rgba(201,168,76,0.15)":"transparent",
-                        border:activeId===chat.id?"1px solid rgba(201,168,76,0.38)":"1px solid transparent",
-                        marginBottom:2,transition:"all 0.14s"}}>
-                      <div style={{fontSize:13,color:"#1a1410",overflow:"hidden",
-                        textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{chat.title}</div>
-                      <div style={{fontSize:10,color:C.textMuted,marginTop:2}}>
-                        {new Date(chat.time).toLocaleDateString("en-IN",{day:"numeric",month:"short"})}
-                      </div>
-                    </div>
+                  {chats.slice(0,30).map(chat=>(
+                    <ChatSidebarItem key={chat.id} chat={chat}
+                      isActive={activeId===chat.id}
+                      onLoad={()=>loadChat(chat)}
+                      onRename={(id,t)=>renameChat(id,t)}
+                      onDelete={(id)=>deleteChat(id)}/>
                   ))}
                 </>
               )}
@@ -886,7 +928,7 @@ export default function AIChatPage(){
         </div>
 
         {/* ── Messages ── */}
-        <div style={{flex:1,overflowY:"auto",padding:"24px 16px",background:"#f0e8d4"}}>
+        <div style={{flex:1,overflowY:"auto",padding:"clamp(12px,3vw,24px) clamp(10px,3vw,20px)",background:"#f0e8d4"}}>
           <div style={{maxWidth:740,margin:"0 auto"}}>
             {empty&&<EmptyState onChip={send}/>}
             {messages.map(m=>(
@@ -935,7 +977,7 @@ export default function AIChatPage(){
                 value={input}
                 onChange={handleInput}
                 onKeyDown={handleKey}
-                placeholder="Ask anything — flights, buses, hotels, trains…"
+                placeholder="Ask anything…"
                 rows={1}
                 style={{flex:1,background:"transparent",border:"none",outline:"none",
                   fontFamily:"'DM Sans',sans-serif",fontSize:15,color:C.textPri,

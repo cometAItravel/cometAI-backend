@@ -791,13 +791,13 @@ Or I can search now — just say *search bus* or *search flight*.`;
       } else {
         const displayCity = city.charAt(0).toUpperCase() + city.slice(1);
         await logEvent("hotel_search", `WhatsApp: ${displayCity}`, "whatsapp");
-        reply = `🏨 *Hotels in ${displayCity}*\n\n💡 I'll find the best options via our partner.\n\n👉 Tap to view hotels:\nhttps://www.booking.com/searchresults.html?ss=${encodeURIComponent(displayCity)}\n\n_Best prices on Booking.com · Prices may vary_`;
+        reply = `🏨 *Hotels in ${displayCity}*\n\n💡 I'll find the best options via our partner.\n\n👉 Tap to view hotels:\nhttps://www.booking.com/searchresults.html?ss=${encodeURIComponent(displayCity)}\n\n_Best prices on other booking sites · Prices may vary_`;
         session.step = "idle";
       }
     }
     else if (session.step === "asking_hotel_city") {
       const displayCity = msg.charAt(0).toUpperCase() + msg.slice(1);
-      reply = `🏨 *Hotels in ${displayCity}*\n\n👉 Tap to view:\nhttps://www.booking.com/searchresults.html?ss=${encodeURIComponent(displayCity)}\n\n_Prices may vary. Live availability on Booking.com._`;
+      reply = `🏨 *Hotels in ${displayCity}*\n\n👉 Tap to view:\nhttps://www.booking.com/searchresults.html?ss=${encodeURIComponent(displayCity)}\n\n_Prices may vary. Live availability on other booking sites._`;
       session.step = "idle";
     }
     else if (busKw.test(msg)) {
@@ -1155,16 +1155,20 @@ function easyResponse(msg) {
   if (/^(hi+|hello+|hey+|hlo+|heyy*|heyyy*|namaste|vanakkam|hai|sup|yo|howdy|gm|gn|good (morning|afternoon|evening)|namaskar|sat sri akal|kem cho)/.test(m) || (m.length <= 5 && /^[a-z]+$/.test(m))) {
     const hour = new Date().getHours();
     const timeGreet = hour<12?"Good morning":hour<17?"Good afternoon":"Good evening";
-    return {
-      text: `${timeGreet}! 👋 I'm Alvryn AI — your personal travel assistant.\n\nHere's what I can do for you:\n\n✈️ **Flights** — India & international, find cheapest fares\n🚌 **Buses** — overnight AC sleepers, all major routes\n🏨 **Hotels** — budget to luxury, anywhere\n🚂 **Trains** — IRCTC booking, dates pre-filled\n🗺️ **Trip planning** — full itinerary within your budget\n\nJust tell me where you want to go, or try:\n• _"Cheapest flight Bangalore to Delhi tomorrow"_\n• _"Bus from Chennai to Hyderabad tonight"_\n• _"Plan a 2-day Goa trip under ₹8000"_\n\nWhat's your next adventure? 🌍`,
-      cards: [], cta: null
-    };
+    const greetVariants = [
+      `${timeGreet}! 👋 Welcome to Alvryn — where travel planning actually becomes fun!\n\nI'm your AI travel buddy 🧳 (basically a travel agent, but I never put you on hold 😄)\n\n✈️ **Flights** — cheapest fares, India & international\n🚌 **Buses** — overnight AC sleepers, all major routes\n🏨 **Hotels** — budget to 5-star luxury\n🚂 **Trains** — IRCTC with everything pre-filled (you're welcome!)\n🗺️ **Full trip plans** — door-to-door, within your budget\n\nUsed to spend 2 hours comparing prices? I do it in 2 seconds ⚡\n\nSo... where are we going today? 🌍`,
+
+      `${timeGreet}! I'm Alvryn AI 🤖✈️\n\nImagine having a friend who's been everywhere, remembers every price, and is awake 24/7 just to help you travel cheaper 😎\nThat's me! (except I don't eat your food 😂)\n\nHere's what I can do:\n🔥 Find cheapest flights in seconds\n🌙 Overnight buses so you save on hotels\n🏨 Hotels for every budget\n🚂 Train bookings pre-filled on IRCTC\n🗺️ Complete trip plans within your budget\n\nGo ahead — tell me where you want to go!\nWhat's the plan? 🌟`,
+
+      `${timeGreet}! Namaste! 🙏 I'm Alvryn AI — your 24/7 travel companion!\n\n🎯 Finding cheap travel used to mean:\n— Opening 10 tabs\n— Comparing prices for 2 hours\n— Crying at the total 😂\n\nWith me? Just type where you're going!\n\n✈️ Flights · 🚌 Buses · 🏨 Hotels · 🚂 Trains · 🗺️ Trip planning\n\nAll in one conversation. Zero drama. Just great deals.\nWhat's your next adventure? 🚀`,
+    ];
+    return { text: greetVariants[Math.floor(Math.random()*greetVariants.length)], cards: [], cta: null };
   }
 
   // ── WHAT IS ALVRYN ────────────────────────────────────────────────────────
   if (/what.*(is|are).*(alvryn|this|you|site|app|platform)|who.*are.*you|tell.*about.*yourself|how.*does.*this.*work|how.*does.*alvryn.*work/.test(m)) {
     return {
-      text: "Alvryn is India's smartest travel search platform! 🚀\n\nHere's how it works:\n\n1️⃣ You tell me where you want to go\n2️⃣ I search across 700+ airlines, buses, hotels and trains\n3️⃣ I show you the best options sorted by price, speed and value\n4️⃣ You click to book on our partner site (Aviasales, RedBus, Booking.com, IRCTC)\n\n**Why Alvryn?**\n✅ Find cheapest fares instantly\n✅ Compare flights, buses AND trains side by side\n✅ AI understands natural language — type like you talk\n✅ Works in English, Hindi, Tamil, and even with typos!\n\nAlvryn earns a small commission from partners when you book — at no extra cost to you. 🙏",
+      text: "Alvryn is India's smartest travel search platform! 🚀\n\nHere's how it works:\n\n1️⃣ You tell me where you want to go\n2️⃣ I search across 700+ airlines, buses, hotels and trains\n3️⃣ I show you the best options sorted by price, speed and value\n4️⃣ You click to book on our partner site (Aviasales, RedBus, other booking sites, IRCTC)\n\n**Why Alvryn?**\n✅ Find cheapest fares instantly\n✅ Compare flights, buses AND trains side by side\n✅ AI understands natural language — type like you talk\n✅ Works in English, Hindi, Tamil, and even with typos!\n\nAlvryn earns a small commission from partners when you book — at no extra cost to you. 🙏",
       cards: [], cta: null
     };
   }
@@ -1172,7 +1176,7 @@ function easyResponse(msg) {
   // ── HOW TO BOOK ──────────────────────────────────────────────────────────
   if (/how.*(to|do i|can i).*(book|buy|purchase|reserve|order)|booking.*process|steps.*book/.test(m)) {
     return {
-      text: "Booking through Alvryn is super easy! Here's how:\n\n**Step 1:** Tell me your route (e.g. \"flight from Bangalore to Mumbai on April 20\")\n**Step 2:** I show you the best options with prices\n**Step 3:** Click **\"Check Live Prices\"** on the flight/bus card\n**Step 4:** You land on our partner site (Aviasales/RedBus/Booking.com/IRCTC) with your route pre-filled\n**Step 5:** Complete the booking and payment there\n\n💡 **Tip:** Booking is done on our partner site — they handle payment and send you the confirmation ticket. Alvryn doesn't charge anything extra!",
+      text: "Booking through Alvryn is super easy! Here's how:\n\n**Step 1:** Tell me your route (e.g. \"flight from Bangalore to Mumbai on April 20\")\n**Step 2:** I show you the best options with prices\n**Step 3:** Click **\"Check Live Prices\"** on the flight/bus card\n**Step 4:** You land on our partner site (Aviasales/RedBus/other booking sites/IRCTC) with your route pre-filled\n**Step 5:** Complete the booking and payment there\n\n💡 **Tip:** Booking is done on our partner site — they handle payment and send you the confirmation ticket. Alvryn doesn't charge anything extra!",
       cards: [], cta: "Ready to search? Just tell me your route! ✈️"
     };
   }
@@ -1492,7 +1496,7 @@ function easyResponse(msg) {
     return {
       text: `🏨 Hotels in ${cityN} — let me find the best options for you!${budgetNote}\n\n💡 **Pro tips for ${cityN}:**\n• Book 2–4 weeks in advance for best rates\n• Read recent reviews (last 3 months)\n• Check cancellation policy before booking`,
       cards:[{type:"hotel",city:cityN,priceRange:pr,label:"Best Rates",insight:`Popular destination — book early for best prices in ${cityN}.`,link:`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}`}],
-      cta: "💡 Tap to browse all available hotels on Booking.com with live prices and reviews."
+      cta: "💡 Tap to browse all available hotels on other booking sites with live prices and reviews."
     };
   }
 
@@ -1585,11 +1589,71 @@ function easyResponse(msg) {
   }
 
   if (/group.*travel|travelling.*friends|friends.*trip|group.*trip/i.test(m)) {
-    return { text: "👫 **Group Trip Planning — Making it work without drama!** 😄\n\n(Every group trip has that one person who's always late. Plan accordingly 😂)\n\n**Making group travel smooth:**\n\n**1. Budget planning first**\nSplit into: transport + accommodation + food + activities\nUse Splitwise app to track shared expenses\n\n**2. Best destinations for groups:**\n🏖️ Goa — everyone has something to do\n🌿 Coorg — homestays with common areas\n🏔️ Manali — adventure for all levels\n🌊 Pondicherry — culture + beach mix\n\n**3. Accommodation tips:**\nRent a villa/house > book individual rooms (cheaper + more fun!)\nAirbnb/MakeMyTrip group stays\n\n**4. Transport tips:**\nTempo Traveller (12-seater) — cheapest per head for 8+ people\nCar rental pooling — 5-6 people in an SUV\n\n**5. Rule for harmony:**\nEveryone contributes to one activity each person REALLY wants. That's it! 😄", cards:[], cta:null };
+    return { text: "👫 **Group Trip Planning — Making it work without drama!** 😄\n\n(Every group trip has that one person who's always late. Plan accordingly 😂)\n\n**Making group travel smooth:**\n\n**1. Budget planning first**\nSplit into: transport + accommodation + food + activities\nUse Splitwise app to track shared expenses\n\n**2. Best destinations for groups:**\n🏖️ Goa — everyone has something to do\n🌿 Coorg — homestays with common areas\n🏔️ Manali — adventure for all levels\n🌊 Pondicherry — culture + beach mix\n\n**3. Accommodation tips:**\nRent a villa/house > book individual rooms (cheaper + more fun!)\nSearch for group/villa stays on our Hotels section\n\n**4. Transport tips:**\nTempo Traveller (12-seater) — cheapest per head for 8+ people\nCar rental pooling — 5-6 people in an SUV\n\n**5. Rule for harmony:**\nEveryone contributes to one activity each person REALLY wants. That's it! 😄", cards:[], cta:null };
   }
 
   if (/honeymoon|couples.*trip|romantic.*trip|anniversary.*trip/i.test(m)) {
     return { text: "💕 **Honeymoon & Romantic Trip Ideas!**\n\nAlvryn is blushing helping with this but here goes 😄❤️\n\n**Best romantic destinations:**\n\n**India:**\n🌊 **Andaman** — private beaches, snorkelling, sunsets\n🏔️ **Manali** — snow, cozy cafés, couple activities\n🌿 **Munnar, Kerala** — misty mountains, tea gardens, houseboat\n🏰 **Udaipur** — City of Lakes, palace hotels, so romantic!\n🏖️ **Goa** — beach sunsets, Portuguese architecture\n\n**International:**\n🏝️ **Maldives** — overwater bungalows (₹60,000–1.5L/night but SO worth it!)\n🌺 **Bali** — rice fields, temples, villa with private pool\n🇹🇭 **Thailand, Phuket** — luxury at budget prices\n🗼 **Paris** — cliché but it's cliché for a reason 😄\n\n**Budget tips:**\nMaldives on budget: Stay in guesthouses on local islands (₹5,000–8,000/night vs ₹60,000 at resorts!) 🤫", cards:[], cta:null };
+  }
+
+
+
+  // ── FLIGHT-SPECIFIC KNOWLEDGE ──────────────────────────────────────────────
+  if (/why.*flight.*expensive|flight.*price.*high|why.*price.*increase/i.test(m)) {
+    return { text: "✈️ **Why flight prices go up and down (the honest truth!):**\n\n🕐 **Time before departure:**\n• 6-8 weeks ahead = CHEAPEST (sweet spot!)\n• 2-3 weeks = Prices start rising\n• Last week = Usually most expensive\n• Last minute = Sometimes cheap (airlines dumping unsold seats — lottery!)\n\n📅 **Day of the week matters:**\n• Tuesday/Wednesday = Cheapest to FLY\n• Monday/Friday = Most expensive (business travel)\n• Book on Tuesday/Wednesday = Sometimes 10% cheaper\n\n⏰ **Time of day:**\n• Early morning (5-7am) = Cheapest\n• Late night (10pm-midnight) = Often cheap\n• Afternoon = Most expensive\n\n📆 **Season:**\n• School holidays = 40-60% more expensive\n• Shoulder season (Apr-May, Sep-Oct) = Best deals\n\n💡 **The real reason:** Airlines use dynamic pricing algorithms that adjust every hour based on demand, competition and seat availability. They're not being evil — they're being nerds! 😄", cards:[], cta:null };
+  }
+
+  if (/direct.*flight|non.?stop|layover.*good|one.*stop/i.test(m)) {
+    return { text: "✈️ **Direct vs Connecting flights — which is better?**\n\n**Direct (Non-stop) ✅**\n• Faster, less stressful\n• Better for: business travel, elderly, families with kids\n• Usually 20-40% more expensive\n\n**Connecting flight ⏱️**\n• Usually cheaper (sometimes by ₹5,000-15,000 on international!)\n• If layover is 4+ hours: can explore the connecting city!\n• Dubai, Singapore, Abu Dhabi are popular layover cities\n\n**Sweet layover spots:**\n🇸🇬 Singapore Changi Airport — considered the world's best airport (shops, butterfly garden, cinema!)\n🇦🇪 Dubai Airport — huge, great duty free\n🇶🇦 Doha Hamad — new, beautiful, comfortable\n\n**My advice:**\n• Under 4 hours layover = fine, book it if it saves money\n• Under 2 hours layover = bit risky (what if first flight delays?)\n• Over 4 hours = get a transit visa, explore the city! 😄", cards:[], cta:null };
+  }
+
+  if (/web check.?in|online check.?in|seat select|choose seat/i.test(m)) {
+    return { text: "💺 **Web Check-in Guide — Do this before your flight!**\n\n**Why web check-in:**\n✅ Choose your seat (window/aisle!)\n✅ Skip the check-in queue at airport\n✅ Faster security clearance\n✅ Sometimes get better seats for free\n\n**How to do it:**\n**IndiGo:** goindigo.in → Manage Booking → Check-in (opens 48 hours before)\n**Air India:** airindia.in → Check-in (opens 48 hours before)\n**SpiceJet:** spicejet.com → Manage Booking → Check-in\n\n**Best seats to pick:**\n• Exit row = extra legroom (usually free, just ask!)\n• Row 1 = most legroom but no underseat storage\n• Window = great for views and sleeping on wall\n• Aisle = easier to move around, exit first\n• Avoid: seats near toilet (noise + smell!) and last row (no recline)\n\n💡 **DigiYatra app** — paperless boarding at major airports using face recognition. Setup once, use forever. Super convenient!", cards:[], cta:null };
+  }
+
+  if (/airport lounge|lounge.*access|credit card.*lounge/i.test(m)) {
+    return { text: "🛋️ **Airport Lounge Access — How to get in FREE!**\n\nAirport lounges are basically paradise before your flight — free food, quiet, WiFi, sometimes showers 🚿\n\n**Free access with these cards:**\n🏆 **HDFC Infinia/Diners Black** — unlimited worldwide lounge access (premium cards)\n🏆 **Axis Magnus/Reserve** — good lounge access\n🏆 **Amex Platinum** — Priority Pass included (700+ lounges worldwide!)\n\n**Budget options:**\n• **DreamFolks card** — Pay ₹2 per visit, covers 30+ Indian airports\n• **Priority Pass** — Pay per visit or subscription\n• **Day passes** — Buy at the lounge directly (₹1,000-2,500/person)\n\n**Major airport lounges (India):**\n🛫 BLR T1: TGI Fridays (yes really, and it counts as a lounge!), Encalm\n🛫 BLR T2: Encalm Privé (beautiful new one!)\n🛫 DEL T3: Plexus, No1 Lounge, Encalm\n🛫 BOM T2: GVK Lounge, Tata Premium\n\n💡 **Free food + quiet seating = worth the credit card annual fee many times over!**", cards:[], cta:null };
+  }
+
+  // ── TRAIN-SPECIFIC KNOWLEDGE ──────────────────────────────────────────────
+  if (/which.*train.*class|train.*class.*difference|sleeper.*vs.*ac|1a.*2a.*3a/i.test(m)) {
+    return { text: "🚂 **Train Classes Explained (Indian Railways!):**\n\n🥇 **1AC (1st Class AC)** — ₹₹₹₹\nPrivate cabins, 2-4 berths, fully enclosed. Most expensive. Like a 4-star hotel on wheels!\n\n🥈 **2AC (2-tier AC)** — ₹₹₹\nOpen bays, 4 berths, AC, curtains for privacy. Most comfortable for overnight trips.\n\n🥉 **3AC (3-tier AC)** — ₹₹\nStack of 3 berths, AC, most popular choice. Good comfort at reasonable price.\n\n💺 **SL (Sleeper Class)** — ₹\nNo AC, 3-tier berths, fan. Very affordable (₹150-500 for most routes). Not bad at all for short journeys or budget travel!\n\n🚌 **GS/2S (General/Seated)** — ₹\nVery cheap, no reservation. Best avoided for long trips.\n\n**My recommendation:**\n• Budget travel + long journey → Sleeper (SL) — book well in advance!\n• Comfortable + good sleep → 3AC (sweet spot!)\n• VIP/business travel → 2AC or 1AC\n• Day trip (6 hours or less) → 2S or SL is fine", cards:[], cta:null };
+  }
+
+  if (/tatkal.*time|tatkal.*quota|when.*tatkal.*open|tatkal.*booking/i.test(m)) {
+    return { text: "⚡ **Tatkal Booking — Exact timing guide!**\n\nTatkal is for last-minute bookings (opens 1 day before journey date)\n\n🕙 **Opening times:**\n• **AC classes (1A, 2A, 3A, EC):** Opens at **10:00 AM** (D-1)\n• **Non-AC classes (SL, 2S):** Opens at **11:00 AM** (D-1)\n\n**Tatkal charges (extra over base fare):**\n• SL: ₹100-200 extra\n• 3A: ₹300-400 extra\n• 2A: ₹400-500 extra\n\n**Tips to actually get Tatkal tickets:**\n1. Be on IRCTC at 9:55 AM (for AC) or 10:55 AM (for SL)\n2. Pre-fill passenger details — saves 2 minutes\n3. Have UPI/debit card ready (UPI is fastest!)\n4. IRCTC often crashes at 10 AM — keep refreshing!\n5. Use IRCTC Rail Connect app (sometimes faster)\n\n⚠️ **Important:** Tatkal tickets are non-refundable on cancellation!\n\n💡 **Pro tip:** Premium Tatkal (pTATKAL) has more quota but costs more. Good option if regular Tatkal is full!", cards:[], cta:null };
+  }
+
+  // ── BUS-SPECIFIC KNOWLEDGE ────────────────────────────────────────────────
+  if (/overnight bus|sleeper bus|volvo bus|ac.*bus.*long/i.test(m)) {
+    return { text: "🚌 **Overnight Bus Guide — Sleep your way to the destination!**\n\n**Why overnight buses are GENIUS:**\n✅ Save on hotel cost (you sleep on the bus!)\n✅ Travel + accommodation in one\n✅ Wake up at destination fresh(ish)\n✅ Much cheaper than flights\n\n**Types of buses:**\n🛏️ **AC Sleeper** — Full flat berth, AC, most comfortable. ₹600-1500\n💺 **AC Semi-Sleeper** — Reclining seats, AC. ₹400-900\n🪑 **AC Seater** — Normal seats with AC. ₹300-700\n\n**Tips for overnight bus:**\n✅ Book upper berth for privacy (no one walks past you)\n✅ Carry a shawl/light blanket (AC can be COLD)\n✅ Keep valuables in your backpack, under your head\n✅ Download offline entertainment before boarding\n✅ Avoid last-minute food — keep it light\n✅ Many buses stop at dhabas — factor in 1-2 stops\n\n**Popular overnight routes from Bangalore:**\n🏖️ Bangalore → Goa: 10-12 hours (depart 9-10 PM, arrive 7-8 AM)\n🌊 Bangalore → Pondicherry: 6-7 hours\n🏔️ Bangalore → Ooty: 7-8 hours", cards:[], cta:null };
+  }
+
+  // ── HOTELS KNOWLEDGE ─────────────────────────────────────────────────────
+  if (/how.*book.*hotel|best.*hotel.*app|hotel.*tips|choose.*hotel/i.test(m)) {
+    return { text: "🏨 **Hotel Booking Tips — Get the best deal!**\n\n**Where to book:**\n🌐 Booking.com — biggest selection, free cancellation options\n🌐 Agoda — often cheaper for Asia\n🌐 Hotels.com — get 1 night free after 10 nights\n🌐 Hotel direct website — sometimes 5-10% cheaper!\n\n**Timing:**\n• Book 2-4 weeks ahead for best rates + selection\n• Last-minute (1-2 days) — sometimes get good deals on empty rooms\n• Avoid booking peak season last minute (Goa in December = disaster!)\n\n**Filters that matter:**\n✅ Free cancellation (ALWAYS choose this if price is similar!)\n✅ Breakfast included (saves ₹300-600/day)\n✅ Check distance from city center/attractions\n✅ Read reviews from last 3 months (recent is key)\n\n**Red flags in reviews:**\n🚫 'Front desk rude' in multiple reviews = real problem\n🚫 'Cockroach/pest' mentioned even once = skip\n🚫 'Noisy road/construction' = check photos for location\n\n**Rating guide:**\n⭐ Under 7.5 = take a risk\n⭐ 7.5-8.4 = good\n⭐ 8.5-9.0 = very good\n⭐ Above 9.0 = excellent!", cards:[], cta:null };
+  }
+
+  if (/hostel|budget.*stay|cheap.*accommodation|backpacker/i.test(m)) {
+    return { text: "🎒 **Hostels & Budget Stays — The backpacker's guide!**\n\nHostels aren't what your parents warned you about! Modern hostels are actually amazing 😄\n\n**Why hostels are great:**\n✅ 3-5x cheaper than hotels (₹400-800/bed vs ₹2000+ for private room)\n✅ Instant community — you'll make friends from everywhere\n✅ Staff give insider travel tips\n✅ Common areas, kitchens, sometimes rooftop bars!\n\n**Best hostels in India:**\n🏖️ Goa — Backpacker Panda, StayVista\n🏔️ Manali — Drifters Inn, Moustache Hostel\n🌊 Rishikesh — Moustache Hostel (famous!)\n🏙️ Bangalore — The Bunk Hostel, Zostel\n🕌 Varanasi — Stops Hostel\n\n**International:**\n🌏 Thailand/Bali — ₹500-800/night in great hostels\n\n**Types of beds:**\n🛏️ **Dorm bed** — shared room, cheapest, great for meeting people\n🚪 **Private room in hostel** — own room, hostel facilities, middle ground\n\n**Booking:** Hostelworld.com, Zostel.com, direct booking often cheaper!", cards:[], cta:null };
+  }
+
+  // ── FOOD & TRAVEL ─────────────────────────────────────────────────────────
+  if (/food.*goa|goa.*food|best.*eat.*goa/i.test(m)) {
+    return { text: "🍤 **Goa Food Guide — Eat like a local!**\n\nWarning: After eating in Goa, normal food will disappoint you 😄\n\n**Must-eat dishes:**\n🦞 **Prawn curry rice** — The Goa staple. ₹180-300. Get it at local beach shacks, not fancy restaurants!\n🐟 **Fish tawa fry** — Fresh pomfret or kingfish. ₹250-400\n🥘 **Cafreal chicken** — Green masala, Goan special. ₹250-350\n🍚 **Goan pork vindaloo** — Tangy, spicy, legendary. ₹200-300\n🍞 **Poi bread** — Local bread, best with butter early morning\n\n**Where to eat:**\n🌊 **Beach shacks** (Oct-Mar) — Fresh seafood, best atmosphere\n🏘️ **Local South Goa markets** — Authentic, affordable\n🍴 **Britto's, Infantaria, Fisherman's Wharf** — Tourist-friendly but good\n\n**Budget per meal:** ₹200-400 at local places, ₹600-1200 at mid-range restaurants\n\n**Avoid:** Hotels inside tourist zones charge 2-3x for same quality. Walk 5 mins away and eat half the price! 😄", cards:[], cta:null };
+  }
+
+  if (/street food|local food.*india|eat.*cheap.*travel/i.test(m)) {
+    return { text: "🌮 **Indian Street Food Guide — Eat adventurously, eat cheap!**\n\nThe real India is on the streets, not in the restaurants 😄\n\n**City by city:**\n\n**Mumbai 🏙️**\n• Vada Pav (₹15-25) — Mumbai's burger\n• Pav Bhaji at Juhu beach (₹60-80)\n• Misal Pav at Sardar's or Aaswad (₹80-120)\n\n**Delhi 🏛️**\n• Chole Bhature at Sita Ram Diwan Chand (₹80-120)\n• Jalebi at Old Delhi (₹40/100g)\n• Parathas at Paranthe Wali Gali (₹60-100)\n\n**Kolkata 🌸**\n• Kathi Roll (₹40-80) — invented here!\n• Mishti Doi & Sandesh (₹30-60)\n• Puchka/Pani Puri (₹20 for 6)\n\n**Bangalore ☕**\n• MTR Masala Dosa (₹80) — legendary\n• Vidyarthi Bhavan dosa — queue for it, worth it\n• Darshini restaurants — ₹60-100 for full meal\n\n**Safety tips:**\n✅ Eat where locals eat (busy stall = fresh food!)\n✅ Avoid cut fruits from stalls\n✅ Hot food is generally safe\n✅ Carry ORS sachets just in case 😄", cards:[], cta:null };
+  }
+
+  // ── TRAVEL HACKS ─────────────────────────────────────────────────────────
+  if (/travel hack|save money travel|budget.*trick|cheap.*travel.*trick/i.test(m)) {
+    return { text: "💡 **Travel Hacks that actually work (not clickbait!):**\n\n**Flights:**\n✈️ Use incognito mode when searching (prices can increase based on your cookies!)\n✈️ Search for nearby airports — sometimes ₹3,000 cheaper\n✈️ Round trip isn't always cheaper — check one-way x2\n✈️ Set price alerts (we can do this for you! 🔔)\n\n**Hotels:**\n🏨 Book refundable rate → watch for lower prices → rebook\n🏨 Call hotel directly and ask for 'best available rate'\n🏨 Airbnb for 3+ nights often cheaper than hotels\n🏨 Check if hotel offers free airport pickup (many do!)\n\n**Money:**\n💰 Withdraw cash at local ATMs abroad (better rate than airport exchange)\n💰 Notify bank before international travel (prevent card block)\n💰 Keep ₹500-1000 emergency cash separately from main wallet\n\n**Packing:**\n🎒 Roll clothes, don't fold — 30% more space!\n🎒 Keep medicines in carry-on (not checked luggage)\n🎒 Take photos of all important documents before trip\n\n**At the destination:**\n🗺️ Download offline maps before leaving hotel WiFi\n🚌 Local buses = cheapest, Google Maps shows them now!\n🎫 Buy attraction tickets online (usually 10-20% cheaper)", cards:[], cta:null };
+  }
+
+  if (/first.*time.*fly|never.*flown|first.*flight.*tips|scared.*fly/i.test(m)) {
+    return { text: "✈️ **First Time Flying? Here's everything you need to know!**\n\nDon't worry — millions of people do this every day. You've got this! 😊\n\n**Step by step process:**\n\n**1. At home (day before):**\n• Web check-in online and download boarding pass\n• Pack liquids in 100ml bottles in transparent bag (carry-on)\n• Charge your phone fully!\n\n**2. Reaching airport:**\n• Domestic: Arrive 2 hours early\n• International: Arrive 3 hours early\n• Keep ID + boarding pass ready\n\n**3. At airport:**\n• Find your airline's check-in counter (for checked bags)\n• OR go directly to security (if only carry-on)\n• Security: Remove laptop, liquids, belt, metal items\n• After security: Find your gate number from display boards\n\n**4. Boarding:**\n• Listen for boarding announcements\n• Queue when your row/zone is called\n• Show boarding pass + ID at gate\n\n**5. On the plane:**\n• Switch phone to airplane mode (or just switch off)\n• Seatbelt on when light is on\n• Turbulence = normal, don't panic 😄\n\n**6. Landing:**\n• Wait for seatbelt sign to turn off before standing\n• Collect bags from carousel (your airline will be displayed)\n\nYou'll be a pro by your second flight! 🛫", cards:[], cta:null };
   }
 
 
@@ -1749,7 +1813,7 @@ function buildCardsFromIntent(message) {
     } else if (isHotel) {
       const city = t||f;
       const pr = HOTEL_PRICES[city.toLowerCase()]||"700–4,000";
-      cards.push({type:"hotel",city:tN||fN,priceRange:pr,label:"Best Rates",insight:"Live hotel prices on Booking.com.",link:`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}`});
+      cards.push({type:"hotel",city:tN||fN,priceRange:pr,label:"Best Rates",insight:"Live hotel prices on other booking sites.",link:`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}`});
     } else {
       // Default: flight
       cards.push({type:"flight",airline:"Multiple Airlines",from:fN,to:tN,fromCode:(CITY_IATA_SRV[f]||(f.slice(0,3).toUpperCase())),toCode:(CITY_IATA_SRV[t]||(t.slice(0,3).toUpperCase())),departure:"—",arrival:"—",duration:"Direct",price:null,label:"Live Fares",insight:"Tap to see live fares from all major airlines.",link:buildFlightURL(f,t,ddmm,1)});
@@ -1757,7 +1821,7 @@ function buildCardsFromIntent(message) {
   } else if (isHotel && (f||t)) {
     const city = t||f||"India";
     const pr = HOTEL_PRICES[city.toLowerCase()]||"700–4,000";
-    cards.push({type:"hotel",city:city.charAt(0).toUpperCase()+city.slice(1),priceRange:pr,label:"Best Rates",insight:"Check Booking.com for live prices and availability.",link:`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}`});
+    cards.push({type:"hotel",city:city.charAt(0).toUpperCase()+city.slice(1),priceRange:pr,label:"Best Rates",insight:"Check other booking sites for live prices and availability.",link:`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}`});
   }
 
   return cards;
@@ -1849,7 +1913,7 @@ function smartFallback(message) {
 
   if (/hotel|stay/i.test(m) && (f||t)) {
     return {
-      text: `🏨 Best hotels in **${tN||fN}**! Browse live options on Booking.com — filter by price, rating and location. 👇`,
+      text: `🏨 Best hotels in **${tN||fN}**! Browse live options on other booking sites — filter by price, rating and location. 👇`,
       cards, cta: "💡 Tap to browse live hotel prices."
     };
   }
@@ -1948,7 +2012,7 @@ app.post("/ai-chat", authenticateToken, async (req, res) => {
     if (userCallCount >= DAILY_LIMIT) {
       const cards = buildCardsFromIntent(message);
       return res.json({
-        text: `You've used your ${DAILY_LIMIT} free AI responses for today. 🎯\n\nBook a flight, bus or hotel through Alvryn to unlock more AI responses instantly!\n\nMeanwhile, here are the best options I found for you 👇`,
+        text: `You've reached today's AI limit (${DAILY_LIMIT} responses/day). 🎯\n\n✅ Still FREE forever: travel tips, destinations, all basic Q&A\n🔓 Book any trip via Alvryn → limit resets instantly!\n\nHere are the best options 👇`,
         cards, cta: "💡 Book via Alvryn to get unlimited AI responses."
       });
     }
@@ -2515,7 +2579,7 @@ function buildHotelCards(city, purpose, budget) {
   }
   // Indian destinations
   const pr = HOTEL_PRICES[c] || "800–4,000";
-  return [{type:"hotel",city:city.charAt(0).toUpperCase()+city.slice(1),priceRange:pr,label:"Best Rates",insight:"Browse all options on Booking.com",link:`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}`}];
+  return [{type:"hotel",city:city.charAt(0).toUpperCase()+city.slice(1),priceRange:pr,label:"Best Rates",insight:"Browse all options on other booking sites",link:`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}`}];
 }
 
 function getHotelTip(city, purpose) {
@@ -2526,7 +2590,7 @@ function getHotelTip(city, purpose) {
     "singapore": "🌇 **Singapore hotel tips:**\n• Marina Bay/Orchard = tourist hub\n• Chinatown/Little India = cheaper + local experience\n• Book 3–4 weeks early, especially on weekends",
     "goa": "🏖️ **Goa hotel tips:**\n• North Goa = parties, nightlife, younger crowd\n• South Goa = peaceful, cleaner beaches, families\n• Oct–Mar: book 2+ weeks early\n• Many resorts include breakfast",
   };
-  return tips[c] || `🏨 **Hotel tip:** Book early for best rates. Compare prices on Booking.com — prices vary significantly by season.`;
+  return tips[c] || `🏨 **Hotel tip:** Book early for best rates. Compare prices on other booking sites — prices vary significantly by season.`;
 }
 
 function getDestinationActivities(city, purpose) {
@@ -2620,7 +2684,7 @@ function getDestinationActivities(city, purpose) {
   };
   return ACTIVITIES[c] || `🗺️ **Activities in ${city.charAt(0).toUpperCase()+city.slice(1)}:**
 
-Explore local markets, historical sites, and cuisine. I'll have more specific recommendations as I learn more about your interests! For now, check TripAdvisor for top-rated activities in ${city.charAt(0).toUpperCase()+city.slice(1)}.`;
+Explore local markets, historical sites, and cuisine. I'll have more specific recommendations as I learn more about your interests! For now, check other booking sites for top-rated activities in ${city.charAt(0).toUpperCase()+city.slice(1)}.`;
 }
 
 function generateChecklist(city, purpose, isInternational) {

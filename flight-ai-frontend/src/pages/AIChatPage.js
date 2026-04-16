@@ -695,6 +695,34 @@ export default function AIChatPage(){
     setMessages(chat.messages||[]);
   },[]);
 
+  const deleteChat = useCallback((chatId)=>{
+    setChats(prev=>prev.filter(c=>c.id!==chatId));
+    if(chatId===activeId){ setActiveId(null); setMessages([]); }
+    try{
+      const local=JSON.parse(localStorage.getItem("alvryn_chats")||"[]");
+      localStorage.setItem("alvryn_chats",JSON.stringify(local.filter(c=>c.id!==chatId)));
+    }catch{}
+    if(token){
+      fetch(`${API}/chats/${chatId}`,{method:"DELETE",headers:{Authorization:`Bearer ${token}`}}).catch(()=>{});
+    }
+  },[activeId,token]);
+
+  const renameChat = useCallback((chatId, newTitle)=>{
+    setChats(prev=>prev.map(c=>c.id===chatId?{...c,title:newTitle}:c));
+    try{
+      const local=JSON.parse(localStorage.getItem("alvryn_chats")||"[]");
+      localStorage.setItem("alvryn_chats",JSON.stringify(local.map(c=>c.id===chatId?{...c,title:newTitle}:c)));
+    }catch{}
+    if(token){
+      const chat=JSON.parse(localStorage.getItem("alvryn_chats")||"[]").find(c=>c.id===chatId);
+      if(chat) fetch(`${API}/chats/${chatId}`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},
+        body:JSON.stringify({title:newTitle,messages:chat.messages||[]})
+      }).catch(()=>{});
+    }
+  },[token]);
+
   const saveChat = useCallback((id,msgs,firstMsgTitle)=>{
     const chatTitle = firstMsgTitle || "New chat";
     // Update local state immediately

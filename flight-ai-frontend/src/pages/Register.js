@@ -87,7 +87,7 @@ export default function Register() {
 
   return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",
-      background:"linear-gradient(135deg,#0a0f0b 0%,#0f1a10 50%,#0a0f0b 100%)",
+      background:"linear-gradient(135deg,#1a1508 0%,#2a1e08 40%,#1a1508 100%)",
       fontFamily:"'DM Sans',sans-serif",padding:"20px"}}>
 
       <style>{`
@@ -96,7 +96,7 @@ export default function Register() {
         @keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
         @keyframes spin{to{transform:rotate(360deg);}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
-        input:-webkit-autofill{-webkit-box-shadow:0 0 0 100px rgba(255,255,255,0.95) inset!important;-webkit-text-fill-color:#1a1410!important;}
+        *{box-sizing:border-box;}input:-webkit-autofill{-webkit-box-shadow:0 0 0 100px rgba(255,255,255,0.95) inset!important;-webkit-text-fill-color:#1a1410!important;}
         .inp:focus{border-color:rgba(201,168,76,0.6)!important;box-shadow:0 0 0 3px rgba(201,168,76,0.1)!important;}
         .eye-btn:hover{color:${GOLD}!important;}
         .sub-btn:hover{opacity:0.9;transform:translateY(-1px);}

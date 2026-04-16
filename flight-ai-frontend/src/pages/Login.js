@@ -60,21 +60,21 @@ export default function Login() {
 
   return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",
-      background:"linear-gradient(135deg,#0a0f0b 0%,#0f1a10 50%,#0a0f0b 100%)",
-      fontFamily:"'DM Sans',sans-serif",padding:"20px"}}>
+      background:"linear-gradient(135deg,#1a1508 0%,#2a1e08 40%,#1a1508 100%)",
+      fontFamily:"'DM Sans',sans-serif",padding:"20px",boxSizing:"border-box",overflowX:"hidden"}}>
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;600;700&family=DM+Sans:wght@400;500;600&display=swap');
         @keyframes gradShift{0%,100%{background-position:0% 50%;}50%{background-position:100% 50%;}}
         @keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
-        input:-webkit-autofill{-webkit-box-shadow:0 0 0 100px rgba(255,255,255,0.95) inset!important;-webkit-text-fill-color:#1a1410!important;}
+        *{box-sizing:border-box;}input:-webkit-autofill{-webkit-box-shadow:0 0 0 100px rgba(255,255,255,0.95) inset!important;-webkit-text-fill-color:#1a1410!important;}
         .inp:focus{border-color:rgba(201,168,76,0.6)!important;box-shadow:0 0 0 3px rgba(201,168,76,0.1)!important;}
         .eye-btn:hover{color:${GOLD}!important;}
         .sub-btn:hover{opacity:0.9;transform:translateY(-1px);}
       `}</style>
 
-      <div style={{width:"100%",maxWidth:420,animation:"fadeUp 0.45s both"}}>
+      <div style={{width:"100%",maxWidth:420,animation:"fadeUp 0.45s both",padding:"0 4px",boxSizing:"border-box"}}>
         {/* Logo */}
         <div style={{textAlign:"center",marginBottom:36}}>
           <div style={{animation:"float 4s ease-in-out infinite",display:"inline-block",marginBottom:14}}>
@@ -95,8 +95,8 @@ export default function Login() {
         </div>
 
         {/* Card */}
-        <div style={{background:"rgba(255,255,255,0.97)",borderRadius:22,padding:"36px 32px",
-          boxShadow:"0 24px 64px rgba(0,0,0,0.35),0 0 0 1px rgba(201,168,76,0.15)"}}>
+        <div style={{background:"rgba(255,255,255,0.97)",borderRadius:22,padding:"clamp(20px,5vw,36px) clamp(18px,5vw,32px)",
+          boxShadow:"0 24px 64px rgba(0,0,0,0.35),0 0 0 1px rgba(201,168,76,0.15)",boxSizing:"border-box",overflow:"hidden",width:"100%"}}>
           <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:26,
             color:"#1a1410",marginBottom:6}}>Welcome back</h2>
           <p style={{fontSize:14,color:"#888",marginBottom:28}}>
@@ -125,7 +125,7 @@ export default function Login() {
             <div style={{marginBottom:24}}>
               <label style={{display:"block",fontSize:12,fontWeight:600,
                 color:"#5a4a3a",marginBottom:7,letterSpacing:"0.06em"}}>PASSWORD</label>
-              <div style={{position:"relative"}}>
+              <div style={{position:"relative",width:"100%",boxSizing:"border-box"}}>
                 <input className="inp" name="password"
                   type={showPass?"text":"password"}
                   value={form.password} onChange={handle}

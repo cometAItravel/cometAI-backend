@@ -1657,6 +1657,55 @@ function easyResponse(msg) {
   }
 
 
+
+  // ── WEATHER & BEST TIME ADVANCED ─────────────────────────────────────────
+  if (/monsoon.*travel|rain.*travel|travel.*rain|best.*trip.*rain|rainy.*season.*travel/i.test(m)) {
+    return { text: "🌧️ **Travelling during monsoon? Here's what nobody tells you!**\n\nMonsoon travel is wildly underrated. Here's why:\n\n**Why monsoon travel is amazing:**\n🌿 Everything is lush GREEN and beautiful\n💰 Prices drop 30-50% (fewer tourists!)\n🏨 Hotels negotiate — you can get amazing deals\n🚗 Roads are empty\n\n**Best monsoon destinations:**\n🌊 **Kerala backwaters** — most beautiful in July-Aug (but check flooding)\n🏔️ **Coorg/Wayanad** — magical mist and waterfalls\n🌿 **Meghalaya** — worth the rain, incredible waterfalls\n🏛️ **Hampi** — dramatic skies over ruins\n🌊 **Mumbai rains** — chai and vada pav on Marine Drive 😄\n\n**Avoid in monsoon:**\n❌ Goa beaches (closed, rough sea)\n❌ Hill treks (landslide risk)\n❌ Andaman (cyclone season)\n❌ Rajasthan (extreme heat + humidity)\n\n**Pro tips:**\n✅ Carry light rain jacket (not heavy umbrella)\n✅ Waterproof your bag/phone\n✅ Book flexible/refundable tickets", cards:[], cta:null };
+  }
+
+  if (/what.*pack|packing.*list|what.*carry|what.*bring.*trip/i.test(m)) {
+    return { text: "📦 **Packing list for your trip:**\n\n**Documents (MOST IMPORTANT):**\n✅ Aadhaar / Passport / PAN (valid photo ID)\n✅ Booking confirmations (flight/bus/train + hotel)\n✅ Travel insurance (for international trips)\n✅ International debit/credit card (if going abroad)\n\n**Clothes (pack LESS than you think!):**\n👕 2-3 t-shirts per 3 days (hand wash works!)\n👖 2 pants (1 comfortable, 1 smart)\n👟 Comfortable walking shoes — MOST IMPORTANT thing you pack!\n🧥 One light jacket (AC is everywhere in India!)\n\n**Tech & Misc:**\n🔋 Power bank — 20,000mAh recommended\n🔌 Universal adapter (for international travel)\n📱 Earphones\n💊 Paracetamol, ibuprofen, antacid, ORS sachets\n🌐 International SIM or roaming pack (if going abroad)\n\n**Golden rule:** If you're unsure whether to pack it, DON'T. You can buy almost anything you forgot at the destination! 😄", cards:[], cta:null };
+  }
+
+  // ── TRANSPORT COMPARISONS ─────────────────────────────────────────────────
+  if (/flight.*vs.*train|train.*vs.*flight|better.*flight.*train|which.*faster/i.test(m)) {
+    return { text: "✈️🚂 **Flight vs Train — which should YOU choose?**\n\nHonest comparison:\n\n| | **Flight** | **Train** |\n|---|---|---|\n| Speed | 1-3 hours | 5-20 hours |\n| Price | ₹2,000-8,000 | ₹200-1,500 |\n| Luggage | Limits apply | Very generous |\n| Experience | Stressful | Relaxing |\n| Scenery | Clouds 😄 | Beautiful |\n| City centre | Far (airport) | City centre |\n\n**Choose flight when:**\n• Distance is over 700km\n• You value time over money\n• Overnight isn't convenient\n\n**Choose train when:**\n• Budget is priority\n• You enjoy the journey\n• Route is scenic (Konkan, North East)\n• Carrying lots of luggage\n\n**My honest take:**\nFor Bangalore → Goa: Train or bus wins (beautiful Konkan route + cheaper)\nFor Bangalore → Delhi: Flight wins (saves a whole day)\nFor Bangalore → Mumbai: Train wins for budget (Udyan Express, scenic!)", cards:[], cta:null };
+  }
+
+  if (/flight.*vs.*bus|bus.*vs.*flight|should.*take.*bus.*or.*flight/i.test(m)) {
+    return { text: "🚌✈️ **Bus vs Flight — the real comparison:**\n\n**Bus wins when:**\n✅ Route is under 500km (8-10 hours or less)\n✅ Budget is tight (bus is 3-6x cheaper!)\n✅ You travel overnight (save hotel cost!)\n✅ Destination city centre is far from airport\n\n**Flight wins when:**\n✅ Distance is over 700km\n✅ Your time is worth more than the price difference\n✅ You're travelling with kids/elderly\n\n**Popular routes where BUS is actually better:**\n🏖️ Bangalore → Goa: Bus ₹800 vs Flight ₹4,000+ (10-12h overnight bus = save ₹3,200!)\n🌊 Bangalore → Pondicherry: Bus ₹450 vs Flight (no direct, via Chennai) ₹3,500\n🏔️ Bangalore → Ooty: Bus ₹400, no direct flight\n🏖️ Chennai → Pondicherry: Bus ₹150, 2 hours, no contest!\n\nWant me to find bus options for your route? 😊", cards:[], cta:null };
+  }
+
+  // ── SPECIFIC CITY TRAVEL GUIDES ───────────────────────────────────────────
+  if (/bangalore.*guide|what.*do.*bangalore|explore.*bangalore|visit.*bangalore/i.test(m)) {
+    return { text: "🏙️ **Bangalore — More than just IT parks!** (I know, shocking 😄)\n\nBangalore is underrated as a tourist city. Here's what's actually worth doing:\n\n**In the city:**\n🌸 Lalbagh Botanical Garden — morning walk, gorgeous\n🏛️ Vidhana Soudha — grand at night (lit beautifully)\n🛍️ Commercial Street & Brigade Road — shopping\n🍻 Indiranagar & Koramangala — best food/cafe scene\n☕ Third Wave Coffee, Blue Tokai, Matteo — coffee culture is REAL here\n\n**Day trips from Bangalore:**\n🌿 Nandi Hills — 60km, sunrise, cycling\n🏰 Mysore — 150km, Mysore Palace (stunning!), Chamundi Hills\n⛩️ Shravanabelagola — Gomateshwara statue (58ft Jain monolith!)\n☕ Coorg — 270km, coffee estates, stunning\n🏛️ Hampi — 350km, UNESCO ruins, unforgettable\n\n**Food you must eat in Bangalore:**\n🥣 MTR Masala Dosa — legendary (150+ year old restaurant!)\n🥣 Darshini restaurants — ₹50-100 for idli/dosa breakfast\n🥘 Chole-Bhature at CTR, Malleshwaram\n🍺 Microbreweries — Toit, Windmills Craftworks", cards:[], cta:null };
+  }
+
+  if (/mumbai.*guide|visit.*mumbai|what.*do.*mumbai/i.test(m)) {
+    return { text: "🌊 **Mumbai — The city that never sleeps (literally!)** 😄\n\n**Must-do:**\n🌉 **Gateway of India** — start here, evening is magical\n🌊 **Marine Drive** — Queen's Necklace at night, world class\n🏝️ **Elephanta Caves** — UNESCO, ferry from Gateway of India\n🎬 **Bollywood Studio tour** — Film City Goregaon\n🏘️ **Dharavi** — actually fascinating, book a guided tour\n🛍️ **Chor Bazaar** — antiques, vintage, wild\n\n**Essential Mumbai food:**\n🥟 **Vada Pav** — ₹15-25, the Mumbai burger, eat it from a street stall\n🍛 **Pav Bhaji** at Juhu Beach — legendary\n🥩 **Trishna/Mahesh Lunch Home** — best seafood\n☕ **Irani chai** at Kyani & Co, old-school\n\n**Getting around:**\nLocal trains — fastest but crowded in peak hours\nUber/Ola — decent, avoid peak traffic times\nBest areas to stay: Bandra (trendy), Colaba (touristy), Andheri (central)", cards:[], cta:null };
+  }
+
+  // ── BUDGET CALCULATIONS ───────────────────────────────────────────────────
+  if (/total.*cost.*goa|goa.*budget.*calculate|how.*much.*goa|goa.*trip.*cost/i.test(m)) {
+    return { text: "💰 **Goa trip cost calculator — 3 days, 2 nights:**\n\n**Budget trip (per person):**\n🚌 Bus from Bangalore: ₹900 x2 (round trip) = ₹1,800\n🏨 Hostel/budget stay: ₹600/night x2 = ₹1,200\n🍱 Food: ₹500/day x3 = ₹1,500\n🏍️ Scooter rental: ₹350/day x2 = ₹700\n🎉 Activities: ₹1,000\n**Total: ~₹6,200 per person** ✅\n\n**Mid-range trip (per person):**\n✈️ Flight round trip: ₹6,000\n🏨 3-star hotel: ₹1,800/night x2 = ₹3,600\n🍴 Food: ₹1,000/day x3 = ₹3,000\n🚖 Cab + activities: ₹2,500\n**Total: ~₹15,100 per person** ✅\n\n**Tips to save:**\n• Travel in monsoon (Jun-Sep): 40% cheaper on everything!\n• Book bus instead of flight: save ₹4,000-5,000\n• Stay in North Goa hostels: social + cheap\n• Eat at beach shacks (not restaurants): same food, half price\n\nShall I find bus/flight options for your dates? 😊", cards:[], cta:null };
+  }
+
+  if (/total.*cost.*kerala|kerala.*budget.*calculate|how.*much.*kerala/i.test(m)) {
+    return { text: "💰 **Kerala trip cost — 5 days breakdown:**\n\n**Budget trip (per person from Bangalore):**\n✈️ Flight to Kochi: ₹2,500-4,000\n🏨 Budget stays: ₹800/night x4 = ₹3,200\n🚤 Houseboat 1 night (shared): ₹2,500\n🍱 Food: ₹400/day x5 = ₹2,000\n🚌 Local transport: ₹1,500\n**Total: ~₹12,000-13,500 per person** ✅\n\n**What to prioritise:**\n1️⃣ Houseboat in Alleppey — must do, book 2+ weeks ahead\n2️⃣ Munnar tea gardens — free to explore\n3️⃣ Fort Kochi walk — free, fascinating\n4️⃣ Varkala cliff beach — cheapest beach in Kerala\n\n**Best value route:**\nKochi arrive → Munnar (2 days) → Alleppey houseboat (1 night) → Kochi depart\nPacked, affordable, unforgettable!", cards:[], cta:null };
+  }
+
+  // ── PRACTICAL BANKING & MONEY TIPS ───────────────────────────────────────
+  if (/upi.*abroad|use.*upi.*international|google.*pay.*abroad|phonepe.*outside/i.test(m)) {
+    return { text: "💳 **UPI abroad — what works and what doesn't:**\n\nBad news first: UPI doesn't work outside India (yet 😅)\n\n**But here's what DOES work abroad:**\n\n✅ **Niyo Global card** — Best option! Load ₹, spend abroad with zero forex fees\n✅ **Wise app** — Send/receive money internationally at great rates\n✅ **Your regular Visa/Mastercard** — Works everywhere, but forex charges apply\n\n**UPI IS available in:**\n🇳🇵 Nepal — yes!\n🇸🇬 Singapore — at some merchants\n🇦🇪 UAE — at some merchants (slowly expanding!)\n🇧🇭 Bahrain, 🇲🇾 Malaysia — limited\n\n**Practical tip for international trips:**\n1. Get Niyo Global card before travel (free, instant)\n2. Keep some cash in local currency (for small vendors)\n3. Inform your regular bank before trip\n4. Save international helpline number of your card\n\nFor Nepal specifically — your UPI and Indian currency work! It's the easiest international trip from India for payments.", cards:[], cta:null };
+  }
+
+  // ── MENTAL & PRACTICAL TRAVEL PREP ───────────────────────────────────────
+  if (/nervous.*travel|scared.*travel|anxious.*trip|worry.*travel|flight.*fear|scared.*fly/i.test(m)) {
+    return { text: "💙 **Travel anxiety is completely normal! Here's how to handle it:**\n\nAlmost everyone feels some anxiety before a big trip. Even experienced travellers! 😊\n\n**For flight anxiety:**\n✈️ Turbulence is normal — planes are built for it (seriously, they test beyond what you'd ever experience)\n✈️ Modern planes have multiple redundant systems\n✈️ Distract yourself: download shows/music before boarding\n✈️ Tell cabin crew — they're trained to help nervous flyers\n\n**For general travel anxiety:**\n📋 Make a checklist (done = calm 😄)\n📱 Download offline maps BEFORE you go\n👨‍👩‍👧 Share itinerary with family/friends\n💊 Pack your regular medicines + a bit extra\n🆘 Save local emergency numbers (we can give you these!)\n\n**The honest truth:**\nThe 5 minutes before a trip is the worst. Once you're moving, you'll be fine. And when you arrive? You'll wonder why you were ever nervous. 🌍\n\nTravel is ALWAYS worth it. What trip are you planning? Let me help make it feel manageable!", cards:[], cta:null };
+  }
+
+
+  return null; // let medium handle flight DB lookup
   return null; // let medium handle flight DB lookup
 }
 

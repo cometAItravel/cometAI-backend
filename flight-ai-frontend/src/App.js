@@ -806,69 +806,242 @@ function getBusLabel(bus, allBuses) {
 
 // ─── TRAIN PANEL ─────────────────────────────────────────────────────────────
 function TrainPanel() {
-  const FROM_STATIONS = ["BANGALORE (SBC)","MUMBAI (CSTM)","DELHI (NDLS)","CHENNAI (MAS)","HYDERABAD (HYB)","KOLKATA (HWH)","PUNE (PUNE)","KOCHI (ERS)","JAIPUR (JP)","AHMEDABAD (ADI)","LUCKNOW (LKO)","VARANASI (BSB)","PATNA (PNBE)","BHOPAL (BPL)","NAGPUR (NGP)","CHANDIGARH (CDG)","GUWAHATI (GHY)","COIMBATORE (CBE)","MADURAI (MDU)","TRIVANDRUM (TVC)","VISAKHAPATNAM (VSKP)","RANCHI (RNC)","AMRITSAR (ASR)","INDORE (INDB)","SURAT (ST)"];
-  const [from, setFrom] = useState("BANGALORE (SBC)");
-  const [to, setTo]     = useState("CHENNAI (MAS)");
-  const [date, setDate] = useState("");
+  // ── 150+ Indian stations with IRCTC codes ──────────────────────────────────
+  const STATIONS = [
+    {name:"Bangalore (Bengaluru)",code:"SBC"},    {name:"Bangalore Cantonment",code:"BNC"},
+    {name:"Yeshwanthpur Bangalore",code:"YPR"},   {name:"KSR Bangalore City",code:"SBC"},
+    {name:"Mumbai CSMT",code:"CSTM"},             {name:"Mumbai Central",code:"BCT"},
+    {name:"Bandra Terminus Mumbai",code:"BDTS"},  {name:"Dadar Mumbai",code:"DR"},
+    {name:"Delhi New Delhi",code:"NDLS"},         {name:"Delhi Hazrat Nizamuddin",code:"NZM"},
+    {name:"Delhi Anand Vihar",code:"ANVT"},       {name:"Old Delhi Junction",code:"DLI"},
+    {name:"Chennai Central",code:"MAS"},          {name:"Chennai Egmore",code:"MS"},
+    {name:"Hyderabad Deccan",code:"HYB"},         {name:"Secunderabad",code:"SC"},
+    {name:"Kolkata Howrah",code:"HWH"},           {name:"Kolkata Sealdah",code:"SDAH"},
+    {name:"Pune Junction",code:"PUNE"},           {name:"Kochi Ernakulam",code:"ERS"},
+    {name:"Jaipur Junction",code:"JP"},           {name:"Ahmedabad Junction",code:"ADI"},
+    {name:"Lucknow Charbagh",code:"LKO"},        {name:"Lucknow NE",code:"LJN"},
+    {name:"Varanasi Junction",code:"BSB"},        {name:"Patna Junction",code:"PNBE"},
+    {name:"Bhopal Junction",code:"BPL"},          {name:"Nagpur Junction",code:"NGP"},
+    {name:"Chandigarh",code:"CDG"},              {name:"Guwahati",code:"GHY"},
+    {name:"Coimbatore Junction",code:"CBE"},      {name:"Madurai Junction",code:"MDU"},
+    {name:"Trivandrum Central",code:"TVC"},       {name:"Visakhapatnam",code:"VSKP"},
+    {name:"Ranchi",code:"RNC"},                  {name:"Amritsar",code:"ASR"},
+    {name:"Indore Junction",code:"INDB"},         {name:"Surat",code:"ST"},
+    {name:"Jodhpur",code:"JU"},                  {name:"Udaipur City",code:"UDZ"},
+    {name:"Ajmer Junction",code:"AII"},           {name:"Kota Junction",code:"KOTA"},
+    {name:"Gwalior",code:"GWL"},                 {name:"Jabalpur",code:"JBP"},
+    {name:"Salem Junction",code:"SA"},            {name:"Erode Junction",code:"ED"},
+    {name:"Tirunelveli Junction",code:"TEN"},     {name:"Vellore Cantonment",code:"VLR"},
+    {name:"Vijayawada Junction",code:"BZA"},      {name:"Guntur Junction",code:"GNT"},
+    {name:"Hubli Junction",code:"UBL"},           {name:"Belgaum",code:"BGM"},
+    {name:"Mangalore Central",code:"MAQ"},        {name:"Mysore Junction",code:"MYS"},
+    {name:"Hospet Junction",code:"HPT"},          {name:"Shimoga Town",code:"SMET"},
+    {name:"Davangere",code:"DVG"},               {name:"Tumkur",code:"TK"},
+    {name:"Hassan Junction",code:"HAS"},          {name:"Tirupati",code:"TPTY"},
+    {name:"Nellore",code:"NLR"},                 {name:"Ongole",code:"OGL"},
+    {name:"Rajahmundry",code:"RJY"},             {name:"Warangal",code:"WL"},
+    {name:"Nanded",code:"NED"},                  {name:"Aurangabad",code:"AWB"},
+    {name:"Nashik Road",code:"NK"},              {name:"Kolhapur CSMT",code:"KOP"},
+    {name:"Solapur Junction",code:"SUR"},         {name:"Goa Madgaon",code:"MAO"},
+    {name:"Hospet Hampi",code:"HPT"},             {name:"Shimla",code:"SML"},
+    {name:"Kalka",code:"KLK"},                   {name:"Pathankot",code:"PTK"},
+    {name:"Jammu Tawi",code:"JAT"},              {name:"Dehradun",code:"DDN"},
+    {name:"Haridwar",code:"HW"},                 {name:"Rishikesh",code:"RKSH"},
+    {name:"Agra Cantt",code:"AGC"},              {name:"Mathura Junction",code:"MTJ"},
+    {name:"Allahabad Junction",code:"ALD"},       {name:"Gorakhpur",code:"GKP"},
+    {name:"Gaya Junction",code:"GAYA"},          {name:"Muzaffarpur",code:"MFP"},
+    {name:"Darbhanga",code:"DBG"},               {name:"Bhagalpur",code:"BGP"},
+    {name:"Dhanbad",code:"DHN"},                 {name:"Jamshedpur Tatanagar",code:"TATA"},
+    {name:"Bhubaneswar",code:"BBS"},             {name:"Puri",code:"PURI"},
+    {name:"Vijaywada Vijayawada",code:"BZA"},    {name:"Tiruchirapalli",code:"TPJ"},
+    {name:"Nagercoil Junction",code:"NCJ"},       {name:"Kanyakumari",code:"CAPE"},
+    {name:"Thrissur",code:"TCR"},                {name:"Kozhikode Calicut",code:"CLT"},
+    {name:"Kannur",code:"CAN"},                  {name:"Kasaragod",code:"KGQ"},
+    {name:"Palakkad Junction",code:"PGT"},        {name:"Kollam Junction",code:"QLN"},
+    {name:"Alappuzha Alleppey",code:"ALLP"},      {name:"Thrissur",code:"TCR"},
+    {name:"Hosur",code:"HOS"},                   {name:"Katpadi Junction",code:"KPD"},
+    {name:"Jolarpettai",code:"JTJ"},             {name:"Dindigul Junction",code:"DG"},
+    {name:"Villupuram",code:"VM"},               {name:"Cuddalore Port",code:"CUPJ"},
+    {name:"Pondicherry",code:"PDY"},             {name:"Chengalpattu",code:"CGL"},
+    {name:"Tambaram",code:"TBM"},               {name:"Vriddhachalam",code:"VRI"},
+    {name:"Ernakulam Town",code:"ERN"},          {name:"Aluva",code:"AWY"},
+    {name:"Shoranur Junction",code:"SRR"},        {name:"Guruvayur",code:"GUV"},
+    {name:"Kottayam",code:"KTYM"},              {name:"Cherthala",code:"CRF"},
+    {name:"Kasaragod",code:"KGQ"},               {name:"Thalassery",code:"TLY"},
+    {name:"Ratnagiri",code:"RN"},               {name:"Roha",code:"ROHA"},
+    {name:"Thane",code:"TNA"},                  {name:"Kalyan",code:"KYN"},
+    {name:"Panvel",code:"PNVL"},               {name:"Vasai Road",code:"BSR"},
+    {name:"Sawantwadi Road",code:"SWV"},         {name:"Udupi",code:"UD"},
+    {name:"Karwar",code:"KAWR"},               {name:"Harihar",code:"HRR"},
+    {name:"Birur Junction",code:"RRB"},         {name:"Arsikere Junction",code:"ASK"},
+    {name:"Mandya",code:"MYA"},                {name:"Chamarajanagar",code:"CH"},
+    {name:"Ramanagara",code:"RMGM"},           {name:"Kengeri",code:"KGAI"},
+    {name:"Bangarapet",code:"BWT"},            {name:"Kolar",code:"KQZ"},
+    {name:"Bhopal Habibganj",code:"HBJ"},      {name:"Itarsi Junction",code:"ET"},
+    {name:"Raipur Junction",code:"R"},         {name:"Bilaspur Junction",code:"BSP"},
+    {name:"Durg",code:"DURG"},                {name:"Korba",code:"KRBA"},
+    {name:"Rajkot Junction",code:"RJT"},       {name:"Vadodara Junction",code:"BRC"},
+    {name:"Anand Junction",code:"ANND"},       {name:"Gandhinagar Capital",code:"GNC"},
+    {name:"Mehsana Junction",code:"MSH"},      {name:"Bhavnagar Terminus",code:"BVC"},
+  ];
+
+  const [from,setFrom]         = useState("Bangalore (Bengaluru)");
+  const [to,setTo]             = useState("Chennai Central");
+  const [date,setDate]         = useState("");
+  const [fromQ,setFromQ]       = useState("Bangalore (Bengaluru)");
+  const [toQ,setToQ]           = useState("Chennai Central");
+  const [fromOpen,setFromOpen] = useState(false);
+  const [toOpen,setToOpen]     = useState(false);
   const today = new Date().toISOString().split("T")[0];
 
+  const fromFiltered = fromQ.trim() ? STATIONS.filter(s=>s.name.toLowerCase().includes(fromQ.toLowerCase())||s.code.toLowerCase().includes(fromQ.toLowerCase())).slice(0,8) : STATIONS.slice(0,8);
+  const toFiltered   = toQ.trim() ? STATIONS.filter(s=>s.name.toLowerCase().includes(toQ.toLowerCase())||s.code.toLowerCase().includes(toQ.toLowerCase())).slice(0,8) : STATIONS.slice(0,8);
+
+  const selectFrom = (s) => { setFrom(s.name); setFromQ(s.name); setFromOpen(false); };
+  const selectTo   = (s) => { setTo(s.name);   setToQ(s.name);   setToOpen(false); };
+  const swap = () => { const tmp=from; setFrom(to); setFromQ(to); setTo(tmp); setToQ(tmp); };
+
   const search = () => {
-    // Extract station code from "BANGALORE (SBC)" → "SBC"
-    const getCode = s => (s.match(/\(([^)]+)\)/) || ["",""])[1];
-    const fc = getCode(from);
-    const tc = getCode(to);
-    // IRCTC deep link — Cuelinks auto-converts to affiliate
-    const url = date
-      ? `https://www.irctc.co.in/nget/train-search?fromStation=${fc}&toStation=${tc}&jdate=${date.replace(/-/g,"")}&class=SL`
-      : `https://www.irctc.co.in/nget/train-search?fromStation=${fc}&toStation=${tc}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    const fromCode = STATIONS.find(s=>s.name===from)?.code || from.slice(0,4).toUpperCase();
+    const toCode   = STATIONS.find(s=>s.name===to)?.code   || to.slice(0,4).toUpperCase();
+    // IRCTC pre-fill URL with DD-MM-YYYY format
+    let url = `https://www.irctc.co.in/nget/train-search?fromStation=${fromCode}&toStation=${toCode}&isCallFromDpDown=true&quota=GN&class=SL`;
+    if (date) {
+      const d = new Date(date);
+      const dd   = String(d.getDate()).padStart(2,"0");
+      const mm   = String(d.getMonth()+1).padStart(2,"0");
+      const yyyy = d.getFullYear();
+      url += `&journeyDate=${dd}-${mm}-${yyyy}`;
+    }
+    window.open(url,"_blank","noopener,noreferrer");
   };
 
   const POPULAR = [
-    {from:"DELHI (NDLS)",   to:"MUMBAI (CSTM)"},
-    {from:"BANGALORE (SBC)",to:"CHENNAI (MAS)"},
-    {from:"DELHI (NDLS)",   to:"KOLKATA (HWH)"},
-    {from:"MUMBAI (CSTM)",  to:"HYDERABAD (HYB)"},
+    {from:"Bangalore (Bengaluru)",to:"Chennai Central"},
+    {from:"Delhi New Delhi",to:"Mumbai CSMT"},
+    {from:"Bangalore (Bengaluru)",to:"Mysore Junction"},
+    {from:"Chennai Central",to:"Nagercoil Junction"},
+    {from:"Delhi New Delhi",to:"Varanasi Junction"},
+    {from:"Mumbai CSMT",to:"Pune Junction"},
+    {from:"Hyderabad Deccan",to:"Bangalore (Bengaluru)"},
+    {from:"Hosur",to:"Nagercoil Junction"},
   ];
 
-  const inp2 = {padding:"12px 14px",borderRadius:12,fontSize:14,fontFamily:"'DM Sans',sans-serif",border:"1.5px solid rgba(201,168,76,0.25)",outline:"none",color:"#1a1410",background:"#fafaf8",width:"100%",cursor:"pointer"};
+  const inp2 = {padding:"11px 14px",borderRadius:12,fontSize:14,
+    fontFamily:"'DM Sans',sans-serif",border:"1.5px solid rgba(201,168,76,0.25)",
+    outline:"none",color:"#1a1410",background:"#fafaf8",width:"100%",
+    boxSizing:"border-box"};
+
+  const dropStyle = {position:"absolute",top:"100%",left:0,right:0,zIndex:200,
+    background:"#fff",borderRadius:10,boxShadow:"0 8px 28px rgba(0,0,0,0.12)",
+    border:"1px solid rgba(201,168,76,0.2)",maxHeight:220,overflowY:"auto",marginTop:2};
 
   return (
-    <div style={{background:"rgba(255,255,255,0.88)",backdropFilter:"blur(10px)",borderRadius:"0 0 20px 20px",padding:"28px 26px",boxShadow:"0 4px 20px rgba(0,0,0,0.05)",border:"1px solid rgba(201,168,76,0.15)",borderTop:"none",marginBottom:22,animation:"fadeUp 0.4s both"}}>
-      <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:22,color:"#1a1410",marginBottom:6}}>Find Trains</div>
-      <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:14,color:"#666",marginBottom:20}}>Search trains on IRCTC — fastest route to your destination.</div>
+    <div style={{background:"rgba(255,255,255,0.88)",backdropFilter:"blur(10px)",
+      borderRadius:"0 0 20px 20px",padding:"clamp(18px,4vw,28px) clamp(16px,4vw,26px)",
+      boxShadow:"0 4px 20px rgba(0,0,0,0.05)",border:"1px solid rgba(201,168,76,0.15)",
+      borderTop:"none",marginBottom:22,animation:"fadeUp 0.4s both"}}>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:22,color:"#1a1410",marginBottom:4}}>Find Trains</div>
+      <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"#888",marginBottom:18}}>
+        Search trains — dates & cities pre-filled on IRCTC when you click Search.
+      </div>
+
+      {/* FROM / SWAP / TO */}
       <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:10,alignItems:"center",marginBottom:14}}>
+        {/* FROM */}
         <div>
           <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,fontWeight:700,color:"#5a4a3a",marginBottom:6,letterSpacing:"0.08em"}}>FROM</div>
-          <select value={from} onChange={e=>setFrom(e.target.value)} style={inp2}>
-            {FROM_STATIONS.map(s=><option key={s}>{s}</option>)}
-          </select>
+          <div style={{position:"relative"}}>
+            <input value={fromQ} placeholder="City or station code..."
+              onChange={e=>{setFromQ(e.target.value);setFromOpen(true);}}
+              onFocus={e=>{e.target.select();setFromQ("");setFromOpen(true);}}
+              onBlur={()=>setTimeout(()=>{setFromOpen(false);if(!fromQ.trim())setFromQ(from);},200)}
+              style={inp2}/>
+            {fromOpen&&fromFiltered.length>0&&(
+              <div style={dropStyle}>
+                {fromFiltered.map(s=>(
+                  <div key={s.code} onMouseDown={()=>selectFrom(s)}
+                    style={{padding:"9px 14px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",
+                      fontSize:13,color:"#1a1410",display:"flex",justifyContent:"space-between",alignItems:"center"}}
+                    onMouseEnter={e=>e.currentTarget.style.background="rgba(201,168,76,0.08)"}
+                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <span>{s.name}</span>
+                    <span style={{fontSize:10,color:"#8B6914",fontFamily:"'Space Mono',monospace",
+                      background:"rgba(201,168,76,0.12)",padding:"2px 6px",borderRadius:4}}>{s.code}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-        <button onClick={()=>{const t=from;setFrom(to);setTo(t);}} style={{width:40,height:40,borderRadius:"50%",background:"rgba(201,168,76,0.12)",border:"1.5px solid rgba(201,168,76,0.3)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:18,color:"#8B6914",marginTop:18}}>⇄</button>
+
+        {/* SWAP */}
+        <button onClick={swap}
+          style={{width:40,height:40,borderRadius:"50%",background:"rgba(201,168,76,0.12)",
+            border:"1.5px solid rgba(201,168,76,0.3)",display:"flex",alignItems:"center",
+            justifyContent:"center",cursor:"pointer",fontSize:18,color:"#8B6914",marginTop:18,flexShrink:0}}>
+          ⇄
+        </button>
+
+        {/* TO */}
         <div>
           <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,fontWeight:700,color:"#5a4a3a",marginBottom:6,letterSpacing:"0.08em"}}>TO</div>
-          <select value={to} onChange={e=>setTo(e.target.value)} style={inp2}>
-            {FROM_STATIONS.map(s=><option key={s}>{s}</option>)}
-          </select>
+          <div style={{position:"relative"}}>
+            <input value={toQ} placeholder="City or station code..."
+              onChange={e=>{setToQ(e.target.value);setToOpen(true);}}
+              onFocus={e=>{e.target.select();setToQ("");setToOpen(true);}}
+              onBlur={()=>setTimeout(()=>{setToOpen(false);if(!toQ.trim())setToQ(to);},200)}
+              style={inp2}/>
+            {toOpen&&toFiltered.length>0&&(
+              <div style={dropStyle}>
+                {toFiltered.map(s=>(
+                  <div key={s.code} onMouseDown={()=>selectTo(s)}
+                    style={{padding:"9px 14px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",
+                      fontSize:13,color:"#1a1410",display:"flex",justifyContent:"space-between",alignItems:"center"}}
+                    onMouseEnter={e=>e.currentTarget.style.background="rgba(201,168,76,0.08)"}
+                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <span>{s.name}</span>
+                    <span style={{fontSize:10,color:"#8B6914",fontFamily:"'Space Mono',monospace",
+                      background:"rgba(201,168,76,0.12)",padding:"2px 6px",borderRadius:4}}>{s.code}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* DATE */}
       <div style={{marginBottom:16}}>
         <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,fontWeight:700,color:"#5a4a3a",marginBottom:6,letterSpacing:"0.08em"}}>JOURNEY DATE</div>
         <input type="date" value={date} min={today} onChange={e=>setDate(e.target.value)} style={inp2}/>
       </div>
-      <button onClick={search} style={{width:"100%",padding:"14px",borderRadius:13,fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.08em",color:"#1a1410",border:"none",cursor:"pointer",background:"linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)",backgroundSize:"200% 200%",animation:"gradShift 3s ease infinite",boxShadow:"0 6px 22px rgba(201,168,76,0.4)",marginBottom:16}}>
-        Search Trains 🚂
+
+      {/* SEARCH BUTTON */}
+      <button onClick={search}
+        style={{width:"100%",padding:"14px",borderRadius:13,fontSize:15,fontWeight:700,
+          fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.08em",color:"#1a1410",
+          border:"none",cursor:"pointer",
+          background:"linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)",backgroundSize:"200% 200%",
+          animation:"gradShift 3s ease infinite",boxShadow:"0 6px 22px rgba(201,168,76,0.4)",marginBottom:16}}>
+        Search Trains on IRCTC 🚂
       </button>
-      <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:12,color:"#888",marginBottom:14}}>POPULAR ROUTES</div>
-      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+
+      <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#aaa",marginBottom:12,textAlign:"center"}}>
+        ✅ From, To and Date auto pre-filled on IRCTC when you click Search
+      </div>
+
+      {/* POPULAR ROUTES */}
+      <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#888",marginBottom:10,letterSpacing:"0.06em"}}>POPULAR ROUTES</div>
+      <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
         {POPULAR.map((r,i)=>(
-          <button key={i} onClick={()=>{setFrom(r.from);setTo(r.to);}} style={{padding:"7px 14px",borderRadius:100,fontSize:12,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.25)",color:"#8B6914",fontWeight:500}}>
+          <button key={i} onClick={()=>{setFrom(r.from);setFromQ(r.from);setTo(r.to);setToQ(r.to);}}
+            style={{padding:"7px 13px",borderRadius:100,fontSize:11,fontFamily:"'DM Sans',sans-serif",
+              cursor:"pointer",background:"rgba(201,168,76,0.08)",border:"1px solid rgba(201,168,76,0.22)",
+              color:"#8B6914",fontWeight:500}}>
             {r.from.split(" ")[0]} → {r.to.split(" ")[0]}
           </button>
         ))}
-      </div>
-      <div style={{marginTop:14,fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#bbb"}}>
-        Opens IRCTC — you may earn via Cuelinks affiliate when users book.
       </div>
     </div>
   );

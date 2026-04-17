@@ -56,11 +56,12 @@ export default function Login() {
     fontFamily:"'DM Sans',sans-serif", fontSize:15, color:"#1a1410",
     border:"1.5px solid rgba(201,168,76,0.25)", outline:"none",
     background:"rgba(255,255,255,0.92)", transition:"border-color 0.2s",
+    boxSizing:"border-box", maxWidth:"100%",
   };
 
   return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",
-      background:"linear-gradient(135deg,#1a1508 0%,#2a1e08 40%,#1a1508 100%)",
+      background:"linear-gradient(135deg,#1c1205 0%,#2d1e08 35%,#1c1205 100%)",
       fontFamily:"'DM Sans',sans-serif",padding:"20px",boxSizing:"border-box",overflowX:"hidden"}}>
 
       <style>{`
@@ -125,7 +126,7 @@ export default function Login() {
             <div style={{marginBottom:24}}>
               <label style={{display:"block",fontSize:12,fontWeight:600,
                 color:"#5a4a3a",marginBottom:7,letterSpacing:"0.06em"}}>PASSWORD</label>
-              <div style={{position:"relative",width:"100%",boxSizing:"border-box"}}>
+              <div style={{position:"relative",width:"100%",boxSizing:"border-box",overflow:"hidden"}}>
                 <input className="inp" name="password"
                   type={showPass?"text":"password"}
                   value={form.password} onChange={handle}
@@ -145,7 +146,7 @@ export default function Login() {
                         <line x1="1" y1="1" x2="23" y2="23"/>
                       </svg>
                     : /* eye */
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                         <circle cx="12" cy="12" r="3"/>
                       </svg>

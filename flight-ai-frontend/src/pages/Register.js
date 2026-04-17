@@ -87,7 +87,7 @@ export default function Register() {
 
   return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",
-      background:"linear-gradient(135deg,#1a1508 0%,#2a1e08 40%,#1a1508 100%)",
+      background:"linear-gradient(135deg,#1c1205 0%,#2d1e08 35%,#1c1205 100%)",
       fontFamily:"'DM Sans',sans-serif",padding:"20px"}}>
 
       <style>{`

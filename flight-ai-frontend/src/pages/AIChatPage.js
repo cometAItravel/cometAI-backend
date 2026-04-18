@@ -81,11 +81,24 @@ html,body{height:100%;overflow:hidden;background:#f8f4ec;}
 .send-btn:disabled{opacity:0.3;cursor:default;}
 textarea:focus{outline:none;}
 @media(max-width:768px){
-  .sidebar{width:0!important;padding:0!important;overflow:hidden!important;min-width:0!important;}
-  .sidebar.open{width:82vw!important;max-width:270px!important;position:fixed!important;left:0!important;top:0!important;height:100dvh!important;height:100vh!important;z-index:200!important;display:flex!important;flex-direction:column!important;padding:16px 12px!important;overflow-y:auto!important;overflow-x:hidden!important;background:#160f04!important;}
+  .sidebar{width:0!important;padding:0!important;overflow:hidden!important;min-width:0!important;flex-shrink:0!important;}
+  .sidebar.open{
+    width:min(82vw,270px)!important;
+    position:fixed!important;left:0!important;top:0!important;
+    height:100vh!important;height:100dvh!important;
+    z-index:300!important;
+    display:flex!important;flex-direction:column!important;
+    padding:16px 12px 80px!important;
+    overflow-y:auto!important;overflow-x:hidden!important;
+    background:#160f04!important;
+    box-shadow:4px 0 24px rgba(0,0,0,0.4)!important;
+  }
   .overlay{display:block!important;}
 }
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:190;}
+@media(min-width:769px){
+  .sidebar{display:flex!important;flex-direction:column!important;}
+}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:290;}
 @media(max-width:480px){
   .travel-card{padding:12px!important;}
   .travel-card .price{font-size:18px!important;}
@@ -654,7 +667,7 @@ export default function AIChatPage(){
   const [messages,setMessages] = useState([]);
   const [input,setInput]     = useState("");
   const [loading,setLoading] = useState(false);
-  const [sbOpen,setSbOpen]   = useState(window.innerWidth>768);
+  const [sbOpen,setSbOpen]   = useState(typeof window!=="undefined" && window.innerWidth>768);
   const bottomRef   = useRef(null);
   const inputRef    = useRef(null);
   const textareaRef = useRef(null);
@@ -947,10 +960,11 @@ export default function AIChatPage(){
           flexShrink:0,background:C.topBar,backdropFilter:"blur(12px)"}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <button onClick={()=>setSbOpen(s=>!s)}
-              style={{width:33,height:33,borderRadius:8,background:"rgba(255,255,255,0.04)",
-                border:`1px solid rgba(201,168,76,0.12)`,cursor:"pointer",
+              style={{width:36,height:36,borderRadius:8,background:"rgba(255,255,255,0.04)",
+                border:`1px solid rgba(201,168,76,0.15)`,cursor:"pointer",
                 display:"flex",alignItems:"center",justifyContent:"center",
-                color:C.textSec,transition:"all 0.15s"}}
+                color:C.textSec,transition:"all 0.15s",
+                WebkitTapHighlightColor:"transparent",touchAction:"manipulation"}}
               onMouseEnter={e=>{e.currentTarget.style.background="rgba(201,168,76,0.08)";e.currentTarget.style.color=C.gold;}}
               onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,255,255,0.04)";e.currentTarget.style.color=C.textSec;}}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

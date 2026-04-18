@@ -114,6 +114,11 @@ const SHARED_CSS = `
   @media(max-width:768px){
     .search-city-grid{grid-template-columns:1fr!important;}
     .search-date-grid{grid-template-columns:1fr 1fr!important;}
+    @media(max-width:520px){
+      .bus-row-grid{grid-template-columns:1fr!important;}
+      .flight-row-grid{grid-template-columns:1fr!important;}
+      .hotel-row-grid{grid-template-columns:1fr!important;}
+    }
     .results-card-bottom{flex-direction:column!important;gap:12px!important;}
     .nav-right-btns button span.btn-label{display:none!important;}
   }
@@ -1307,7 +1312,7 @@ function SearchPage(){
         </div>
 
         {/* Travel type tabs */}
-        <div style={{display:"flex",gap:0,background:"rgba(255,255,255,0.88)",backdropFilter:"blur(10px)",borderRadius:"16px 16px 0 0",border:"1px solid rgba(201,168,76,0.18)",borderBottom:"none",overflowX:"auto"}}>
+        <div style={{display:"flex",gap:0,background:"rgba(255,255,255,0.88)",backdropFilter:"blur(10px)",borderRadius:"16px 16px 0 0",border:"1px solid rgba(201,168,76,0.18)",borderBottom:"none",overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none"}}>
           {TRAVEL_TABS.map((tab,i)=>(
             <button key={tab.id} onClick={()=>{setTravelType(tab.id);setFlights([]);setBuses([]);setSearched(false);setValidErr("");setAiError("");}}
               style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"14px 18px",cursor:"pointer",border:"none",borderBottom:travelType===tab.id?`2.5px solid ${GOLD}`:"2.5px solid transparent",background:"transparent",color:travelType===tab.id?GOLD_DARK:"#666",fontFamily:"'DM Sans',sans-serif",fontSize:12,fontWeight:600,transition:"all 0.2s",whiteSpace:"nowrap",borderRadius:i===0?"16px 0 0 0":i===TRAVEL_TABS.length-1?"0 16px 0 0":"0"}}>
@@ -1441,7 +1446,7 @@ function SearchPage(){
                   <span style={{fontFamily:"'DM Sans',sans-serif",fontSize:13,color:GOLD_DARK,fontWeight:600}}>Or type: "bus bangalore to chennai kal"</span>
                   <span style={{marginLeft:"auto",fontFamily:"'Space Mono',monospace",fontSize:11,color:GOLD_DARK,fontWeight:700}}>AI →</span>
                 </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}}>
+                <div className="bus-row-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}}>
                   <div style={{...inp,borderColor:!date&&validErr?"#ef4444":"rgba(201,168,76,0.2)"}}>
                     <label style={lbl}>TRAVEL DATE{!date&&<span style={{color:"#ef4444"}}> *</span>}</label>
                     <input type="date" value={date} min={today} onChange={e=>{setDate(e.target.value);setValidErr("");}} style={{background:"transparent",border:"none",outline:"none",fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:600,color:"#1a1410",width:"100%",cursor:"pointer"}}/>

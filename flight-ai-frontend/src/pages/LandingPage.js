@@ -7,6 +7,17 @@ const G = `
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html{scroll-behavior:smooth;}
 body{font-family:'DM Sans',sans-serif;background:#fafaf8;color:#0a0a0a;overflow-x:hidden;}
+.nav-links{display:flex;gap:32px;}
+.nav-btns{display:flex;gap:8px;align-items:center;}
+@media(max-width:640px){
+  .nav-links{display:none!important;}
+  .nav-signin{display:none!important;}
+  .nav-started{padding:7px 14px!important;font-size:12px!important;}
+  .nav-ai{padding:7px 12px!important;font-size:12px!important;}
+}
+@media(max-width:380px){
+  .nav-ai{display:none!important;}
+}
 @keyframes blink{50%{opacity:0;}}
 @keyframes floatY{0%,100%{transform:translateY(0);}50%{transform:translateY(-12px);}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(30px);}to{opacity:1;transform:translateY(0);}}
@@ -400,7 +411,7 @@ export default function LandingPage() {
       <div style={{ opacity: splashDone ? 1 : 0, transition:"opacity 0.6s ease, background 1.5s ease", background:T.bg }}>
 
         {/* ══ NAVBAR ══ */}
-        <nav style={{ position:"fixed", top:0, left:0, right:0, zIndex:1000, height:68, padding:"0 5%",
+        <nav style={{ position:"fixed", top:0, left:0, right:0, zIndex:1000, height:64, padding:"0 clamp(12px,4%,5%)",
           display:"flex", alignItems:"center", justifyContent:"space-between",
           background: navScrolled ? "rgba(250,250,248,0.9)" : "transparent",
           backdropFilter: navScrolled ? "blur(24px)" : "none",
@@ -420,17 +431,17 @@ export default function LandingPage() {
                 onMouseEnter={e=>e.target.style.opacity=1} onMouseLeave={e=>e.target.style.opacity=0.6}>{l}</span>
             ))}
           </div>
-          <div style={{ display:"flex", gap:10 }}>
-            <button onClick={() => navigate("/login")}
-              style={{ padding:"9px 22px", borderRadius:12, fontSize:14, fontWeight:500, fontFamily:"'DM Sans',sans-serif", background:"transparent", color:T.text, border:"1.5px solid rgba(0,0,0,0.12)", cursor:"pointer", transition:"all 0.2s" }}>
+          <div className="nav-btns" style={{ display:"flex", gap:8, alignItems:"center" }}>
+            <button onClick={() => navigate("/login")} className="nav-signin"
+              style={{ padding:"8px 16px", borderRadius:10, fontSize:13, fontWeight:500, fontFamily:"'DM Sans',sans-serif", background:"transparent", color:T.text, border:"1.5px solid rgba(0,0,0,0.12)", cursor:"pointer", transition:"all 0.2s", whiteSpace:"nowrap" }}>
               Sign In
             </button>
-            <button onClick={()=>navigate(localStorage.getItem("token")?"/ai":"/login")}
-              style={{ padding:"10px 20px", borderRadius:12, fontSize:14, fontWeight:600, fontFamily:"'DM Sans',sans-serif", cursor:"pointer", background:"rgba(201,168,76,0.1)", border:"1.5px solid rgba(201,168,76,0.35)", color:"#8B6914" }}>
+            <button onClick={()=>navigate(localStorage.getItem("token")?"/ai":"/login")} className="nav-ai"
+              style={{ padding:"8px 14px", borderRadius:10, fontSize:13, fontWeight:600, fontFamily:"'DM Sans',sans-serif", cursor:"pointer", background:"rgba(201,168,76,0.1)", border:"1.5px solid rgba(201,168,76,0.35)", color:"#8B6914", whiteSpace:"nowrap" }}>
               🤖 AI Chat
             </button>
-            <button onClick={() => navigate("/register")} className="shine-btn"
-              style={{ padding:"9px 24px", borderRadius:12, fontSize:14, fontWeight:700, fontFamily:"'DM Sans',sans-serif", color:"#fff", border:"none", background:T.grad, boxShadow:`0 4px 20px ${T.accent}44` }}>
+            <button onClick={() => navigate("/register")} className="shine-btn nav-started"
+              style={{ padding:"8px 18px", borderRadius:10, fontSize:13, fontWeight:700, fontFamily:"'DM Sans',sans-serif", color:"#fff", border:"none", background:T.grad, boxShadow:`0 4px 20px ${T.accent}44`, whiteSpace:"nowrap" }}>
               Get Started
             </button>
           </div>

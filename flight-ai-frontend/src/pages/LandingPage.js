@@ -23,6 +23,10 @@ body{font-family:'DM Sans',sans-serif;background:#fafaf8;color:#0a0a0a;overflow-
 @keyframes fadeUp{from{opacity:0;transform:translateY(30px);}to{opacity:1;transform:translateY(0);}}
 @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
 @keyframes gradShift{0%,100%{background-position:0% 50%;}50%{background-position:100% 50%;}}
+@keyframes letterGlow{0%,100%{text-shadow:0 0 0 transparent;}50%{text-shadow:0 0 20px rgba(201,168,76,0.6),0 0 40px rgba(201,168,76,0.3);}}
+@keyframes bgPan{0%{background-position:0% 50%;}100%{background-position:200% 50%;}}
+@keyframes scaleIn{from{transform:scale(0.92);opacity:0;}to{transform:scale(1);opacity:1;}}
+@keyframes shimmerText{0%{background-position:200% center;}100%{background-position:-200% center;}}
 @keyframes zoomIn{from{transform:scale(1.08);opacity:0;}to{transform:scale(1);opacity:1;}}
 @keyframes slideUp{from{transform:translateY(100%);opacity:0;}to{transform:translateY(0);opacity:1;}}
 @keyframes glowPulse{0%,100%{box-shadow:0 0 20px rgba(108,99,255,0.2);}50%{box-shadow:0 0 40px rgba(108,99,255,0.5);}}
@@ -32,6 +36,10 @@ body{font-family:'DM Sans',sans-serif;background:#fafaf8;color:#0a0a0a;overflow-
 @keyframes splashFade{0%{opacity:1;}100%{opacity:0;}}
 ::-webkit-scrollbar{width:3px;}
 ::-webkit-scrollbar-thumb{background:linear-gradient(#c9a84c,#8B6914);border-radius:2px;}
+@keyframes goldShimmer{0%{background-position:200% center;}100%{background-position:-200% center;}}
+@keyframes slideUpFade{from{opacity:0;transform:translateY(40px);}to{opacity:1;transform:translateY(0);}}
+@keyframes revealLine{from{width:0;}to{width:100%;}}
+@keyframes pulseGold{0%,100%{box-shadow:0 0 0 0 rgba(201,168,76,0);}50%{box-shadow:0 0 0 8px rgba(201,168,76,0.15);}}
 .shine-btn{position:relative;overflow:hidden;cursor:pointer;transition:transform 0.2s,box-shadow 0.3s;}
 .shine-btn:hover{transform:translateY(-2px);}
 .shine-btn::after{content:'';position:absolute;inset:0;background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,0.25) 50%,transparent 70%);transform:translateX(-100%);transition:transform 0.5s;}
@@ -135,46 +143,98 @@ const GravityCanvas = ({ active }) => {
 
 /* ─── SPLASH SCREEN ─────────────────────────────────────────────────────────── */
 const Splash = ({ onDone }) => {
-  const [phase, setPhase] = useState(0); // 0=init 1=line 2=name 3=tagline 4=fading
-  const [chars, setChars] = useState([]);
+  const [phase, setPhase] = useState(0);
+  const [litIdx, setLitIdx] = useState(-1); // which char is highlighted
   const name = "ALVRYN";
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase(1), 300);
-    const t2 = setTimeout(() => setPhase(2), 700);
-    let i = 0;
-    const typeInterval = setInterval(() => {
-      if (i <= name.length) { setChars(name.slice(0, i).split("")); i++; }
-      else { clearInterval(typeInterval); }
-    }, 100);
-    const t3 = setTimeout(() => setPhase(3), 700 + name.length * 100 + 200);
-    const t4 = setTimeout(() => setPhase(4), 2200);
-    const t5 = setTimeout(() => onDone(), 2900);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); clearTimeout(t5); clearInterval(typeInterval); };
+    // Phase 0→1: top line
+    const t1 = setTimeout(() => setPhase(1), 200);
+    // Phase 1→2: icon appears
+    const t2 = setTimeout(() => setPhase(2), 600);
+    // Phase 2→3: name appears, then highlight each letter A→N
+    const t3 = setTimeout(() => setPhase(3), 1000);
+    // Light up letters one by one
+    let li = 0;
+    const highlightInterval = setInterval(() => {
+      setLitIdx(li);
+      li++;
+      if (li > name.length) clearInterval(highlightInterval);
+    }, 130);
+    const t4 = setTimeout(() => setPhase(4), 1000 + name.length * 130 + 300);
+    const t5 = setTimeout(() => setPhase(5), 2400); // fade out
+    const t6 = setTimeout(() => onDone(), 3100);
+    return () => {
+      [t1,t2,t3,t4,t5,t6].forEach(clearTimeout);
+      clearInterval(highlightInterval);
+    };
   }, [onDone]);
+
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:9999, background:"#fafaf8", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-      opacity: phase === 4 ? 0 : 1, transition:"opacity 0.7s cubic-bezier(0.4,0,0.2,1)", pointerEvents: phase === 4 ? "none" : "all" }}>
-      {/* Top line */}
-      <div style={{ width: phase >= 1 ? 80 : 0, height:1, background:"linear-gradient(90deg,transparent,#c9a84c,transparent)", transition:"width 0.6s ease", marginBottom:32 }}/>
-      {/* Icon */}
-      <div style={{ marginBottom:28, opacity: phase >= 2 ? 1 : 0, transform: phase >= 2 ? "scale(1)" : "scale(0.8)", transition:"all 0.5s cubic-bezier(0.34,1.56,0.64,1)" }}>
-        <AlvrynIcon size={52} animate/>
+    <div style={{ position:"fixed", inset:0, zIndex:9999,
+      background: phase >= 5 ? "#0a0a0a" : "#fafaf8",
+      display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+      opacity: phase === 5 ? 0 : 1,
+      transition:"opacity 0.7s ease, background 0.5s ease",
+      pointerEvents: phase >= 5 ? "none" : "all" }}>
+
+      {/* Top decorative line */}
+      <div style={{ width: phase >= 1 ? 100 : 0, height:1,
+        background:"linear-gradient(90deg,transparent,#c9a84c,transparent)",
+        transition:"width 0.8s cubic-bezier(0.4,0,0.2,1)", marginBottom:36 }}/>
+
+      {/* Alvryn icon — floats in */}
+      <div style={{ marginBottom:32,
+        opacity: phase >= 2 ? 1 : 0,
+        transform: phase >= 2 ? "scale(1) translateY(0)" : "scale(0.6) translateY(20px)",
+        transition:"all 0.7s cubic-bezier(0.34,1.56,0.64,1)" }}>
+        <AlvrynIcon size={56} animate/>
       </div>
-      {/* Name — each char drops in */}
-      <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, letterSpacing:"0.35em", fontSize:"clamp(32px,6vw,56px)", color:"#0a0a0a", display:"flex", gap:2 }}>
-        {chars.map((ch, i) => (
-          <span key={i} style={{ opacity: phase >= 2 ? 1 : 0, transform: phase >= 2 ? "translateY(0)" : "translateY(20px)",
-            transition:`all 0.4s ${i * 0.08}s cubic-bezier(0.34,1.56,0.64,1)`, display:"inline-block" }}>{ch}</span>
-        ))}
-        {phase >= 2 && chars.length < name.length && <span style={{ animation:"blink 0.6s step-end infinite", color:"#c9a84c" }}>|</span>}
+
+      {/* ALVRYN — each letter lights up gold one by one */}
+      <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300,
+        letterSpacing:"0.4em", fontSize:"clamp(36px,7vw,64px)",
+        display:"flex", gap:2,
+        opacity: phase >= 3 ? 1 : 0,
+        transform: phase >= 3 ? "translateY(0)" : "translateY(30px)",
+        transition:"all 0.6s cubic-bezier(0.34,1.56,0.64,1)" }}>
+        {name.split("").map((ch, i) => {
+          const isLit   = i <= litIdx;
+          const isActive = i === litIdx;
+          return (
+            <span key={i} style={{
+              display:"inline-block",
+              color: isLit ? "#c9a84c" : "#0a0a0a",
+              textShadow: isActive ? "0 0 30px rgba(201,168,76,0.8), 0 0 60px rgba(201,168,76,0.4)" : isLit ? "0 0 12px rgba(201,168,76,0.3)" : "none",
+              transform: isActive ? "translateY(-4px) scale(1.15)" : "translateY(0) scale(1)",
+              transition:"all 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+            }}>{ch}</span>
+          );
+        })}
       </div>
+
+      {/* Underline — grows left to right */}
+      <div style={{ position:"relative", marginTop:8, overflow:"hidden", width:"clamp(140px,20vw,220px)", height:1 }}>
+        <div style={{
+          position:"absolute", left:0, top:0, height:1,
+          background:"linear-gradient(90deg,transparent,#c9a84c,#f0d080,#c9a84c,transparent)",
+          width: litIdx >= 0 ? `${Math.min(100, (litIdx / name.length) * 100)}%` : "0%",
+          transition:"width 0.13s linear",
+        }}/>
+      </div>
+
       {/* Tagline */}
-      <div style={{ fontFamily:"'Space Mono',monospace", fontSize:"clamp(9px,1.2vw,11px)", color:"#aaa", letterSpacing:"0.4em", marginTop:16,
-        opacity: phase >= 3 ? 1 : 0, transform: phase >= 3 ? "translateY(0)" : "translateY(10px)", transition:"all 0.5s 0.1s ease" }}>
+      <div style={{ fontFamily:"'Space Mono',monospace", fontSize:"clamp(8px,1.2vw,10px)",
+        color:"#888", letterSpacing:"0.45em", marginTop:24,
+        opacity: phase >= 4 ? 1 : 0,
+        transform: phase >= 4 ? "translateY(0)" : "translateY(12px)",
+        transition:"all 0.6s 0.1s ease" }}>
         TRAVEL BEYOND BOUNDARIES
       </div>
+
       {/* Bottom line */}
-      <div style={{ width: phase >= 3 ? 80 : 0, height:1, background:"linear-gradient(90deg,transparent,#c9a84c,transparent)", transition:"width 0.6s 0.2s ease", marginTop:32 }}/>
+      <div style={{ width: phase >= 4 ? 100 : 0, height:1,
+        background:"linear-gradient(90deg,transparent,#c9a84c,transparent)",
+        transition:"width 0.8s 0.2s ease", marginTop:36 }}/>
     </div>
   );
 };
@@ -296,13 +356,24 @@ const useParallax = (speed=0.25) => {
 const GOLD_A  = "#c9a84c";
 const GOLD_D  = "#8B6914";
 const GOLD_G  = "linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)";
-const THEMES = [
-  { bg:"#faf8f4", accent:GOLD_A, grad:GOLD_G, text:"#1a1410" },
-  { bg:"#f5f0e8", accent:GOLD_D, grad:GOLD_G, text:"#1a1410" },
-  { bg:"#fdf8f0", accent:GOLD_A, grad:GOLD_G, text:"#1a1410" },
-  { bg:"#f8f4ec", accent:GOLD_D, grad:GOLD_G, text:"#1a1410" },
-  { bg:"#f5f2ea", accent:GOLD_A, grad:GOLD_G, text:"#1a1410" },
+// Light themes (default — gold cream)
+const THEMES_LIGHT = [
+  { bg:"#faf8f4", accent:GOLD_A, grad:GOLD_G, text:"#1a1410", sub:T.sub||"#5a4a3a" },
+  { bg:"#f5f0e8", accent:GOLD_D, grad:GOLD_G, text:"#1a1410", sub:T.sub||"#5a4a3a" },
+  { bg:"#fdf8f0", accent:GOLD_A, grad:GOLD_G, text:"#1a1410", sub:T.sub||"#5a4a3a" },
+  { bg:"#f8f4ec", accent:GOLD_D, grad:GOLD_G, text:"#1a1410", sub:T.sub||"#5a4a3a" },
+  { bg:"#f5f2ea", accent:GOLD_A, grad:GOLD_G, text:"#1a1410", sub:T.sub||"#5a4a3a" },
 ];
+// Dark themes (premium dark gold)
+const THEMES_DARK = [
+  { bg:"#0f0d08", accent:GOLD_A, grad:GOLD_G, text:"#f5ead5", sub:"#c9a84c" },
+  { bg:"#130f07", accent:GOLD_D, grad:GOLD_G, text:"#f5ead5", sub:"#c9a84c" },
+  { bg:"#0d0a05", accent:GOLD_A, grad:GOLD_G, text:"#f5ead5", sub:"#c9a84c" },
+  { bg:"#110e06", accent:GOLD_D, grad:GOLD_G, text:"#f5ead5", sub:"#c9a84c" },
+  { bg:"#0f0c06", accent:GOLD_A, grad:GOLD_G, text:"#f5ead5", sub:"#c9a84c" },
+];
+// Keep backwards compat
+const THEMES = THEMES_LIGHT;
 
 /* ─── FOOTER MODAL ──────────────────────────────────────────────────────────── */
 const FooterModal = ({ open, onClose, title, children }) => {
@@ -326,18 +397,20 @@ const FooterModal = ({ open, onClose, title, children }) => {
 export default function LandingPage() {
   const navigate = useNavigate();
   const [splashDone, setSplashDone] = useState(false);
-  const [heroReady, setHeroReady] = useState(false);
-  const [themeIdx, setThemeIdx] = useState(0);
+  const [heroReady, setHeroReady]   = useState(false);
+  const [themeIdx,  setThemeIdx]    = useState(0);
   const [navScrolled, setNavScrolled] = useState(false);
-  const [modal, setModal] = useState(null); // null | 'about' | 'terms' | 'privacy' | 'contact'
-  const T = THEMES[themeIdx];
+  const [modal, setModal]           = useState(null);
+  const [darkMode, setDarkMode]     = useState(false);
+  const ACTIVE_THEMES = darkMode ? THEMES_DARK : THEMES_LIGHT;
+  const T = ACTIVE_THEMES[themeIdx];
 
   const onSplashDone = useCallback(() => { setSplashDone(true); setTimeout(() => setHeroReady(true), 100); }, []);
 
   useEffect(() => {
     const fn = () => {
       setNavScrolled(window.scrollY > 50);
-      setThemeIdx(Math.min(Math.floor(window.scrollY / window.innerHeight), THEMES.length - 1));
+      setThemeIdx(Math.min(Math.floor(window.scrollY / window.innerHeight), 4));
     };
     window.addEventListener("scroll", fn, { passive:true });
     return () => window.removeEventListener("scroll", fn);
@@ -408,12 +481,14 @@ export default function LandingPage() {
       </FooterModal>
 
       {/* PAGE */}
-      <div style={{ opacity: splashDone ? 1 : 0, transition:"opacity 0.6s ease, background 1.5s ease", background:T.bg }}>
+      <div style={{ opacity: splashDone ? 1 : 0, transition:"opacity 0.6s ease, background 0.8s ease, color 0.8s ease",
+        transform: splashDone ? "translateY(0)" : "translateY(20px)",
+        background:T.bg, color:T.text, minHeight:"100vh" }}>
 
         {/* ══ NAVBAR ══ */}
         <nav style={{ position:"fixed", top:0, left:0, right:0, zIndex:1000, height:64, padding:"0 clamp(12px,4%,5%)",
           display:"flex", alignItems:"center", justifyContent:"space-between",
-          background: navScrolled ? "rgba(250,250,248,0.9)" : "transparent",
+          background: navScrolled ? (darkMode ? "rgba(15,12,5,0.95)" : "rgba(250,250,248,0.9)") : "transparent",
           backdropFilter: navScrolled ? "blur(24px)" : "none",
           borderBottom: navScrolled ? "1px solid rgba(0,0,0,0.06)" : "none",
           transition:"all 0.4s ease" }}>
@@ -432,6 +507,19 @@ export default function LandingPage() {
             ))}
           </div>
           <div className="nav-btns" style={{ display:"flex", gap:8, alignItems:"center" }}>
+            {/* Dark mode toggle */}
+            <button onClick={() => setDarkMode(d => !d)} title={darkMode ? "Switch to Light" : "Switch to Dark"}
+              style={{ width:38, height:22, borderRadius:11, position:"relative", cursor:"pointer", border:"none",
+                background: darkMode ? "linear-gradient(135deg,#c9a84c,#f0d080)" : "rgba(0,0,0,0.12)",
+                transition:"background 0.3s ease", flexShrink:0, WebkitTapHighlightColor:"transparent" }}>
+              <div style={{ position:"absolute", top:3, left: darkMode ? 19 : 3, width:16, height:16, borderRadius:"50%",
+                background: darkMode ? "#1a1508" : "#fff",
+                boxShadow:"0 2px 6px rgba(0,0,0,0.25)",
+                transition:"left 0.3s cubic-bezier(0.34,1.56,0.64,1)",
+                display:"flex", alignItems:"center", justifyContent:"center", fontSize:9 }}>
+                {darkMode ? "🌙" : "☀️"}
+              </div>
+            </button>
             <button onClick={() => navigate("/login")} className="nav-signin"
               style={{ padding:"8px 16px", borderRadius:10, fontSize:13, fontWeight:500, fontFamily:"'DM Sans',sans-serif", background:"transparent", color:T.text, border:"1.5px solid rgba(0,0,0,0.12)", cursor:"pointer", transition:"all 0.2s", whiteSpace:"nowrap" }}>
               Sign In
@@ -450,10 +538,20 @@ export default function LandingPage() {
         {/* ══════════════════════════════════
             HERO — IMMERSIVE ZOOM IN
         ══════════════════════════════════ */}
-        <section ref={heroRef} style={{ minHeight:"100vh", background:THEMES[0].bg, display:"flex", alignItems:"center", position:"relative", overflow:"hidden", padding:"0 5%",
+        <section ref={heroRef} style={{ minHeight:"100vh", background:T.bg, display:"flex", alignItems:"center", position:"relative", overflow:"hidden", padding:"0 5%",
           animation: splashDone ? "zoomIn 1s ease both" : "none" }}>
-          {/* Subtle radial glow */}
-          <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse at 55% 40%, rgba(108,99,255,0.07) 0%, transparent 65%), radial-gradient(ellipse at 20% 70%, rgba(0,194,255,0.05) 0%, transparent 55%)", pointerEvents:"none" }}/>
+          {/* Animated background gradient overlay */}
+          <div style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:0,
+            background: darkMode
+              ? "linear-gradient(135deg,rgba(201,168,76,0.03) 0%,transparent 50%,rgba(201,168,76,0.02) 100%)"
+              : "linear-gradient(135deg,rgba(201,168,76,0.04) 0%,transparent 50%,rgba(240,208,128,0.03) 100%)",
+            backgroundSize:"400% 400%", animation:"bgPan 12s ease infinite" }}/>
+          {/* Radial glow — dark mode aware */}
+          <div style={{ position:"absolute", inset:0,
+            background: darkMode
+              ? "radial-gradient(ellipse at 55% 40%, rgba(201,168,76,0.06) 0%, transparent 65%), radial-gradient(ellipse at 20% 70%, rgba(201,168,76,0.04) 0%, transparent 55%)"
+              : "radial-gradient(ellipse at 55% 40%, rgba(201,168,76,0.06) 0%, transparent 65%), radial-gradient(ellipse at 20% 70%, rgba(240,208,128,0.04) 0%, transparent 55%)",
+            pointerEvents:"none" }}/>
 
           <div style={{ position:"relative", zIndex:2, width:"100%", paddingTop:80, transform:`translateY(${heroOffset * -0.3}px)` }}>
             <div className="hero-grid" style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:48 }}>
@@ -523,8 +621,14 @@ export default function LandingPage() {
 
               {/* Search mockup — right */}
               <div className="mockup-box" style={{ flexShrink:0, animation:"floatY 6s ease-in-out infinite",
-                opacity: heroReady ? 1 : 0, transition:"opacity 0.8s 2.5s ease" }}>
-                <SearchMockup accent={T.accent}/>
+                opacity: heroReady ? 1 : 0, transition:"opacity 0.8s 2.5s ease", position:"relative" }}>
+                {/* Glowing backdrop */}
+                <div style={{ position:"absolute", inset:-20, borderRadius:32,
+                  background: darkMode ? "radial-gradient(ellipse,rgba(201,168,76,0.12),transparent 70%)" : "radial-gradient(ellipse,rgba(201,168,76,0.08),transparent 70%)",
+                  filter:"blur(20px)", zIndex:0 }}/>
+                <div style={{ position:"relative", zIndex:1 }}>
+                  <SearchMockup accent={T.accent}/>
+                </div>
               </div>
             </div>
           </div>
@@ -537,18 +641,84 @@ export default function LandingPage() {
         </section>
 
         {/* ══════════════════════════════════
+            TRAVEL VISUAL SHOWCASE
+        ══════════════════════════════════ */}
+        <section style={{ minHeight:"65vh", background:T.bg, display:"flex", alignItems:"center",
+          justifyContent:"center", padding:"80px 5%", transition:"background 0.8s ease" }}>
+          <div style={{ maxWidth:1100, width:"100%", display:"flex", flexDirection:"column", alignItems:"center", gap:48 }}>
+            <Reveal>
+              <div style={{ textAlign:"center" }}>
+                <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:T.accent, letterSpacing:"0.22em", marginBottom:16 }}>
+                  WHERE WILL YOU GO?
+                </div>
+                <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300,
+                  fontSize:"clamp(28px,4vw,54px)", color:T.text, lineHeight:1.2, marginBottom:16 }}>
+                  Every destination. Every budget.<br/>
+                  <span style={{ background:T.grad, WebkitBackgroundClip:"text", backgroundClip:"text", WebkitTextFillColor:"transparent" }}>
+                    One conversation.
+                  </span>
+                </div>
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, color:T.sub||"#5a4a3a",
+                  maxWidth:520, margin:"0 auto", lineHeight:1.7 }}>
+                  From Electronic City to New York, Goa, Dubai or Bali — Alvryn plans your complete
+                  door-to-door trip in seconds. No filters. No confusion.
+                </div>
+              </div>
+            </Reveal>
+
+            {/* Destination image grid */}
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:16, width:"100%" }}>
+              {[
+                { city:"Goa", img:"photo-1512343879784-a960bf40e7f2", tag:"🏖️ Beach" },
+                { city:"Dubai", img:"photo-1512453979798-5ea266f8880c", tag:"✈️ International" },
+                { city:"Manali", img:"photo-1626621341517-bbf3d9990a23", tag:"🏔️ Hills" },
+                { city:"Singapore", img:"photo-1525625293386-3f8f99389edd", tag:"🌇 City" },
+                { city:"Kerala", img:"photo-1602216056096-3b40cc0c9944", tag:"🌴 Backwaters" },
+                { city:"Jaipur", img:"photo-1477587458883-47145ed6d1f5", tag:"🏰 Heritage" },
+              ].map((d,i) => (
+                <Reveal key={d.city} delay={i*80}>
+                  <div style={{ borderRadius:18, overflow:"hidden", cursor:"pointer", position:"relative",
+                    boxShadow: darkMode ? "0 8px 32px rgba(0,0,0,0.4)" : "0 4px 20px rgba(0,0,0,0.1)",
+                    transition:"transform 0.3s cubic-bezier(0.34,1.56,0.64,1)",
+                    animation:`pulseGold ${3+i*0.4}s ease-in-out infinite` }}
+                    onMouseEnter={e=>e.currentTarget.style.transform="scale(1.04) translateY(-4px)"}
+                    onMouseLeave={e=>e.currentTarget.style.transform="scale(1) translateY(0)"}
+                    onClick={()=>{}}>
+                    <img
+                      src={`https://images.unsplash.com/${d.img}?auto=format&fit=crop&w=400&h=240&q=75`}
+                      alt={d.city}
+                      style={{ width:"100%", height:140, objectFit:"cover", display:"block" }}
+                      onError={e=>e.target.style.display="none"}
+                      loading="lazy"
+                    />
+                    <div style={{ padding:"10px 14px",
+                      background: darkMode ? "rgba(26,21,8,0.95)" : "rgba(255,255,255,0.97)",
+                      display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                      <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:600,
+                        fontSize:16, color:T.text }}>{d.city}</div>
+                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11,
+                        color:T.accent, fontWeight:600 }}>{d.tag}</div>
+                    </div>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════
             HOW IT WORKS
         ══════════════════════════════════ */}
-        <section id="how-it-works" ref={sec2Ref} style={{ minHeight:"100vh", background:THEMES[1].bg, position:"relative", overflow:"hidden", padding:"110px 5%", display:"flex", alignItems:"center", transition:"background 1.5s ease" }}>
+        <section id="how-it-works" ref={sec2Ref} style={{ minHeight:"100vh", background:T.bg, position:"relative", overflow:"hidden", padding:"110px 5%", display:"flex", alignItems:"center", transition:"background 1.5s ease" }}>
           <div style={{ position:"absolute", top:"50%", right:"-8%", width:500, height:500, borderRadius:"50%",
-            background:`radial-gradient(circle,${THEMES[1].accent}08,transparent 70%)`,
+            background:`radial-gradient(circle,${T.accent}08,transparent 70%)`,
             transform:`translateY(calc(-50% + ${sec2Offset}px))`, pointerEvents:"none", transition:"transform 0.1s linear" }}/>
           <div style={{ position:"relative", zIndex:2, width:"100%" }}>
             <Reveal>
-              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:THEMES[1].accent, letterSpacing:"0.22em", marginBottom:16 }}>HOW IT WORKS</div>
-              <BlurText text="Book like you text a friend." style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(30px,4.5vw,64px)", color:THEMES[1].text, marginBottom:10 }}/>
+              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:T.accent, letterSpacing:"0.22em", marginBottom:16 }}>HOW IT WORKS</div>
+              <BlurText text="Book like you text a friend." style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(30px,4.5vw,64px)", color:T.text, marginBottom:10 }}/>
               <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(30px,4.5vw,64px)", marginBottom:64,
-                background:THEMES[1].grad, WebkitBackgroundClip:"text", backgroundClip:"text", WebkitTextFillColor:"transparent" }}>
+                background:T.grad, WebkitBackgroundClip:"text", backgroundClip:"text", WebkitTextFillColor:"transparent" }}>
                 No learning curve.
               </div>
             </Reveal>
@@ -559,11 +729,11 @@ export default function LandingPage() {
                 { n:"03", icon:"✅", title:"Book in 60 Seconds", desc:"Enter name, pick your seat, confirm. Your ticket is in your inbox and WhatsApp instantly." },
               ].map((s, i) => (
                 <Reveal key={i} delay={i * 140}>
-                  <BorderGlowCard accentColor={THEMES[1].accent} style={{ borderRadius:22 }}>
-                    <TiltCard style={{ padding:"36px 28px", background:"#fff", borderRadius:22, boxShadow:"0 4px 24px rgba(0,0,0,0.05)", border:"1px solid rgba(0,0,0,0.04)", cursor:"default" }}>
+                  <BorderGlowCard accentColor={T.accent} style={{ borderRadius:22 }}>
+                    <TiltCard style={{ padding:"36px 28px", background:darkMode?"rgba(26,21,8,0.9)":"#fff", borderRadius:22, boxShadow:darkMode?"0 4px 24px rgba(0,0,0,0.3)":"0 4px 24px rgba(0,0,0,0.05)", border:darkMode?"1px solid rgba(201,168,76,0.12)":"1px solid rgba(0,0,0,0.04)", cursor:"default" }}>
                       <div style={{ fontSize:36, marginBottom:18 }}>{s.icon}</div>
-                      <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:600, fontSize:28, color:THEMES[1].accent, marginBottom:10 }}>{s.n}</div>
-                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontWeight:600, fontSize:18, color:THEMES[1].text, marginBottom:12 }}>{s.title}</div>
+                      <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:600, fontSize:28, color:T.accent, marginBottom:10 }}>{s.n}</div>
+                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontWeight:600, fontSize:18, color:T.text, marginBottom:12 }}>{s.title}</div>
                       <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#666", lineHeight:1.7 }}>{s.desc}</div>
                     </TiltCard>
                   </BorderGlowCard>
@@ -572,11 +742,11 @@ export default function LandingPage() {
             </div>
             <Reveal delay={380}>
               <div style={{ marginTop:44, padding:"16px 24px", borderRadius:14, display:"inline-flex", alignItems:"center", gap:14,
-                background:`${THEMES[1].accent}0C`, border:`1px solid ${THEMES[1].accent}20` }}>
+                background:`${T.accent}0C`, border:`1px solid ${T.accent}20` }}>
                 <span>🔐</span>
                 <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#555" }}>
                   Free account needed — takes 30 seconds.{" "}
-                  <span onClick={() => navigate("/register")} style={{ color:THEMES[1].accent, cursor:"pointer", fontWeight:600, textDecoration:"underline" }}>Sign up free →</span>
+                  <span onClick={() => navigate("/register")} style={{ color:T.accent, cursor:"pointer", fontWeight:600, textDecoration:"underline" }}>Sign up free →</span>
                 </span>
               </div>
             </Reveal>
@@ -586,14 +756,14 @@ export default function LandingPage() {
         {/* ══════════════════════════════════
             FEATURES
         ══════════════════════════════════ */}
-        <section id="features" style={{ minHeight:"100vh", background:THEMES[2].bg, position:"relative", overflow:"hidden", padding:"110px 5%", transition:"background 1.5s ease" }}>
-          <div style={{ position:"absolute", top:0, left:0, right:0, bottom:0, background:`radial-gradient(ellipse at 25% 60%,${THEMES[2].accent}06 0%,transparent 55%)`, pointerEvents:"none" }}/>
+        <section id="features" style={{ minHeight:"100vh", background:T.bg, position:"relative", overflow:"hidden", padding:"110px 5%", transition:"background 1.5s ease" }}>
+          <div style={{ position:"absolute", top:0, left:0, right:0, bottom:0, background:`radial-gradient(ellipse at 25% 60%,${T.accent}06 0%,transparent 55%)`, pointerEvents:"none" }}/>
           <div style={{ position:"relative", zIndex:2 }}>
             <Reveal style={{ textAlign:"center" }}>
-              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:THEMES[2].accent, letterSpacing:"0.22em", marginBottom:16 }}>FEATURES</div>
-              <BlurText text="Everything you need." style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,58px)", color:THEMES[2].text, marginBottom:10, display:"block" }}/>
+              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:T.accent, letterSpacing:"0.22em", marginBottom:16 }}>FEATURES</div>
+              <BlurText text="Everything you need." style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,58px)", color:T.text, marginBottom:10, display:"block" }}/>
               <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,58px)", marginBottom:70,
-                background:THEMES[2].grad, WebkitBackgroundClip:"text", backgroundClip:"text", WebkitTextFillColor:"transparent" }}>
+                background:T.grad, WebkitBackgroundClip:"text", backgroundClip:"text", WebkitTextFillColor:"transparent" }}>
                 Nothing you don't.
               </div>
             </Reveal>
@@ -617,10 +787,10 @@ export default function LandingPage() {
         {/* ══════════════════════════════════
             STATS
         ══════════════════════════════════ */}
-        <section style={{ minHeight:"45vh", background:THEMES[3].bg, position:"relative", overflow:"hidden", padding:"100px 5%", display:"flex", alignItems:"center", transition:"background 1.5s ease" }}>
+        <section style={{ minHeight:"45vh", background:T.bg, position:"relative", overflow:"hidden", padding:"100px 5%", display:"flex", alignItems:"center", transition:"background 1.5s ease" }}>
           <div style={{ position:"relative", zIndex:2, width:"100%", textAlign:"center" }}>
             <Reveal>
-              <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(26px,3.5vw,50px)", color:THEMES[3].text, marginBottom:60 }}>
+              <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(26px,3.5vw,50px)", color:T.text, marginBottom:60 }}>
                 Alvryn is growing fast 🚀
               </div>
             </Reveal>
@@ -632,9 +802,9 @@ export default function LandingPage() {
                 { val:60,    suf:"s", label:"Avg Search Time" },
               ].map((s, i) => (
                 <Reveal key={i} delay={i * 90}>
-                  <BorderGlowCard accentColor={THEMES[3].accent} style={{ borderRadius:20 }}>
+                  <BorderGlowCard accentColor={T.accent} style={{ borderRadius:20 }}>
                     <TiltCard style={{ padding:"38px 16px", background:"#fff", borderRadius:20, boxShadow:"0 4px 18px rgba(0,0,0,0.05)", cursor:"default" }}>
-                      <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:600, fontSize:48, color:THEMES[3].accent, lineHeight:1, animation:"counterUp 0.6s both" }}>
+                      <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:600, fontSize:48, color:T.accent, lineHeight:1, animation:"counterUp 0.6s both" }}>
                         <Counter end={s.val} suffix={s.suf}/>
                       </div>
                       <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#999", marginTop:8 }}>{s.label}</div>
@@ -649,13 +819,13 @@ export default function LandingPage() {
         {/* ══════════════════════════════════
             WHATSAPP
         ══════════════════════════════════ */}
-        <section style={{ minHeight:"70vh", background:THEMES[4].bg, position:"relative", overflow:"hidden", padding:"100px 5%", display:"flex", alignItems:"center", transition:"background 1.5s ease" }}>
+        <section style={{ minHeight:"70vh", background:T.bg, position:"relative", overflow:"hidden", padding:"100px 5%", display:"flex", alignItems:"center", transition:"background 1.5s ease" }}>
           <div className="wa-grid" style={{ position:"relative", zIndex:2, width:"100%", display:"grid", gridTemplateColumns:"1fr 1fr", gap:80, alignItems:"center" }}>
             <Reveal>
-              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:THEMES[4].accent, letterSpacing:"0.22em", marginBottom:18 }}>WHATSAPP NATIVE</div>
-              <BlurText text="Your entire trip." style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,54px)", color:THEMES[4].text, marginBottom:8, display:"block" }}/>
+              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:T.accent, letterSpacing:"0.22em", marginBottom:18 }}>WHATSAPP NATIVE</div>
+              <BlurText text="Your entire trip." style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,54px)", color:T.text, marginBottom:8, display:"block" }}/>
               <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,54px)", marginBottom:28,
-                background:THEMES[4].grad, WebkitBackgroundClip:"text", backgroundClip:"text", WebkitTextFillColor:"transparent" }}>
+                background:T.grad, WebkitBackgroundClip:"text", backgroundClip:"text", WebkitTextFillColor:"transparent" }}>
                 One chat thread.
               </div>
               <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, color:"#666", lineHeight:1.7, marginBottom:32 }}>
@@ -668,7 +838,7 @@ export default function LandingPage() {
               </div>
               <div>
                 <button onClick={goSearch} className="shine-btn"
-                  style={{ padding:"14px 34px", borderRadius:13, fontSize:15, fontWeight:600, fontFamily:"'DM Sans',sans-serif", color:"#fff", border:"none", cursor:"pointer", background:THEMES[4].grad, boxShadow:`0 8px 28px ${THEMES[4].accent}44` }}>
+                  style={{ padding:"14px 34px", borderRadius:13, fontSize:15, fontWeight:600, fontFamily:"'DM Sans',sans-serif", color:"#fff", border:"none", cursor:"pointer", background:T.grad, boxShadow:`0 8px 28px ${T.accent}44` }}>
                   Book Now ✈
                 </button>
               </div>
@@ -711,9 +881,9 @@ export default function LandingPage() {
         <section style={{ background:"#faf8f4", position:"relative", overflow:"hidden", padding:"100px 5%", transition:"background 1.5s ease" }}>
           <div style={{ position:"relative", zIndex:2, maxWidth:900, margin:"0 auto" }}>
             <Reveal style={{ textAlign:"center", marginBottom:60 }}>
-              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:THEMES[3].accent, letterSpacing:"0.22em", marginBottom:16 }}>THE PROCESS</div>
+              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:T.accent, letterSpacing:"0.22em", marginBottom:16 }}>THE PROCESS</div>
               <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", color:"#1a1410", lineHeight:1.05, marginBottom:10 }}>How Alvryn works</div>
-              <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", lineHeight:1.05, background:THEMES[3].grad, WebkitBackgroundClip:"text", backgroundClip:"text", WebkitTextFillColor:"transparent" }}>in three simple steps.</div>
+              <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", lineHeight:1.05, background:T.grad, WebkitBackgroundClip:"text", backgroundClip:"text", WebkitTextFillColor:"transparent" }}>in three simple steps.</div>
               <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, color:"#666", lineHeight:1.7, maxWidth:600, margin:"20px auto 0" }}>Alvryn is an AI-powered travel search engine. We find the best fares from our trusted partners and redirect you to book securely — no hidden fees, no markup.</p>
             </Reveal>
             <div className="how-grid" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:28 }}>
@@ -749,12 +919,12 @@ export default function LandingPage() {
 
 
         {/* ══ AI EXPERIENCE SECTION ══ */}
-        <section style={{ background:THEMES[1].bg, position:"relative", overflow:"hidden", padding:"100px 5%", transition:"background 1.5s ease" }}>
+        <section style={{ background:T.bg, position:"relative", overflow:"hidden", padding:"100px 5%", transition:"background 1.5s ease" }}>
           <div style={{ position:"relative", zIndex:2, maxWidth:960, margin:"0 auto" }}>
             <Reveal style={{ textAlign:"center", marginBottom:60 }}>
-              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:THEMES[1].accent, letterSpacing:"0.22em", marginBottom:16 }}>AI INTELLIGENCE</div>
-              <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", color:THEMES[1].text, lineHeight:1.05, marginBottom:10 }}>Not just search.</div>
-              <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", lineHeight:1.05, background:THEMES[1].grad, WebkitBackgroundClip:"text", backgroundClip:"text", WebkitTextFillColor:"transparent" }}>Smart travel decisions.</div>
+              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:T.accent, letterSpacing:"0.22em", marginBottom:16 }}>AI INTELLIGENCE</div>
+              <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", color:T.text, lineHeight:1.05, marginBottom:10 }}>Not just search.</div>
+              <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", lineHeight:1.05, background:T.grad, WebkitBackgroundClip:"text", backgroundClip:"text", WebkitTextFillColor:"transparent" }}>Smart travel decisions.</div>
               <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, color:"#666", lineHeight:1.7, maxWidth:580, margin:"20px auto 0" }}>
                 Alvryn doesn't just show options — it tells you which one to pick and why. Like having a travel expert in your pocket.
               </p>
@@ -803,8 +973,8 @@ export default function LandingPage() {
               </Reveal>
               <Reveal delay={180}>
                 <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
-                  <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:THEMES[1].accent, letterSpacing:"0.18em", marginBottom:4 }}>DECISION SHORTCUTS</div>
-                  <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(22px,3vw,36px)", color:THEMES[1].text, lineHeight:1.1, marginBottom:8 }}>Make decisions instantly.</div>
+                  <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:T.accent, letterSpacing:"0.18em", marginBottom:4 }}>DECISION SHORTCUTS</div>
+                  <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(22px,3vw,36px)", color:T.text, lineHeight:1.1, marginBottom:8 }}>Make decisions instantly.</div>
                   {[
                     { icon:"💰", label:"Cheapest", desc:"Show the lowest-cost option across all platforms for your route and date." },
                     { icon:"⚡", label:"Fastest",  desc:"Prioritise direct routes and early arrivals. No long layovers." },
@@ -825,12 +995,12 @@ export default function LandingPage() {
         </section>
 
         {/* ══ PLAN MY TRIP ══ */}
-        <section style={{ background:THEMES[2].bg, position:"relative", overflow:"hidden", padding:"100px 5%", transition:"background 1.5s ease" }}>
+        <section style={{ background:T.bg, position:"relative", overflow:"hidden", padding:"100px 5%", transition:"background 1.5s ease" }}>
           <div style={{ position:"relative", zIndex:2, maxWidth:900, margin:"0 auto" }}>
             <Reveal style={{ textAlign:"center", marginBottom:56 }}>
-              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:THEMES[2].accent, letterSpacing:"0.22em", marginBottom:16 }}>PLAN MY TRIP</div>
-              <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", color:THEMES[2].text, lineHeight:1.05, marginBottom:10 }}>Not sure where to go?</div>
-              <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", lineHeight:1.05, background:THEMES[2].grad, WebkitBackgroundClip:"text", backgroundClip:"text", WebkitTextFillColor:"transparent" }}>Let Alvryn plan it for you.</div>
+              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:T.accent, letterSpacing:"0.22em", marginBottom:16 }}>PLAN MY TRIP</div>
+              <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", color:T.text, lineHeight:1.05, marginBottom:10 }}>Not sure where to go?</div>
+              <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", lineHeight:1.05, background:T.grad, WebkitBackgroundClip:"text", backgroundClip:"text", WebkitTextFillColor:"transparent" }}>Let Alvryn plan it for you.</div>
               <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, color:"#666", lineHeight:1.7, maxWidth:520, margin:"20px auto 0" }}>
                 Just tell Alvryn your budget and days. Get a full trip plan — flight, bus, hotel and estimated costs — instantly.
               </p>
@@ -894,7 +1064,7 @@ export default function LandingPage() {
         <section style={{ background:"#faf8f4", position:"relative", overflow:"hidden", padding:"70px 5%", transition:"background 1.5s ease" }}>
           <div style={{ position:"relative", zIndex:2, maxWidth:860, margin:"0 auto", textAlign:"center" }}>
             <Reveal>
-              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:THEMES[0].accent, letterSpacing:"0.22em", marginBottom:16 }}>OUR PARTNERS</div>
+              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:T.accent, letterSpacing:"0.22em", marginBottom:16 }}>OUR PARTNERS</div>
               <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(22px,3.5vw,44px)", color:"#1a1410", marginBottom:10 }}>Book with trusted platforms.</div>
               <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, color:"#666", lineHeight:1.7, maxWidth:520, margin:"0 auto 40px" }}>
                 Alvryn helps you find the best options — bookings are completed securely on leading travel platforms.
@@ -923,9 +1093,9 @@ export default function LandingPage() {
         <section style={{ background:"#f5f3ef", position:"relative", overflow:"hidden", padding:"100px 5%", transition:"background 1.5s ease" }}>
           <div style={{ position:"relative", zIndex:2, maxWidth:960, margin:"0 auto" }}>
             <Reveal style={{ marginBottom:56 }}>
-              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:THEMES[0].accent, letterSpacing:"0.22em", marginBottom:16 }}>TRAVEL GUIDE</div>
+              <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:T.accent, letterSpacing:"0.22em", marginBottom:16 }}>TRAVEL GUIDE</div>
               <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", color:"#1a1410", lineHeight:1.05, marginBottom:10 }}>Tips, guides and</div>
-              <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", lineHeight:1.05, background:THEMES[0].grad, WebkitBackgroundClip:"text", backgroundClip:"text", WebkitTextFillColor:"transparent" }}>smarter travel.</div>
+              <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", lineHeight:1.05, background:T.grad, WebkitBackgroundClip:"text", backgroundClip:"text", WebkitTextFillColor:"transparent" }}>smarter travel.</div>
             </Reveal>
             <div className="feat-grid" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:22 }}>
               {[
@@ -964,7 +1134,7 @@ export default function LandingPage() {
         {/* ══════════════════════════════════
             FINAL CTA
         ══════════════════════════════════ */}
-        <section id="cta" style={{ minHeight:"60vh", background:THEMES[0].bg, position:"relative", overflow:"hidden", padding:"110px 5%", display:"flex", alignItems:"center", justifyContent:"center", textAlign:"center", transition:"background 1.5s ease" }}>
+        <section id="cta" style={{ minHeight:"60vh", background:T.bg, position:"relative", overflow:"hidden", padding:"110px 5%", display:"flex", alignItems:"center", justifyContent:"center", textAlign:"center", transition:"background 1.5s ease" }}>
           <div style={{ position:"relative", zIndex:2, maxWidth:640 }}>
             <Reveal>
               <div style={{ animation:"floatY 4s ease-in-out infinite", marginBottom:30 }}>
@@ -977,8 +1147,8 @@ export default function LandingPage() {
               <div className="cta-row" style={{ display:"flex", gap:14, justifyContent:"center", flexWrap:"wrap" }}>
                 <button onClick={() => navigate("/register")} className="shine-btn"
                   style={{ padding:"16px 44px", borderRadius:14, fontSize:16, fontWeight:600, fontFamily:"'DM Sans',sans-serif", color:"#fff", border:"none", cursor:"pointer",
-                    background:THEMES[0].grad, backgroundSize:"200% 200%", animation:"gradShift 3s ease infinite",
-                    boxShadow:`0 12px 48px ${THEMES[0].accent}44` }}>
+                    background:T.grad, backgroundSize:"200% 200%", animation:"gradShift 3s ease infinite",
+                    boxShadow:`0 12px 48px ${T.accent}44` }}>
                   Create Free Account ✈
                 </button>
                 <button onClick={() => navigate("/login")}
@@ -999,7 +1169,7 @@ export default function LandingPage() {
                 <AlvrynIcon size={34}/>
                 <div>
                   <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:600, fontSize:18, color:"#0a0a0a", letterSpacing:"0.1em" }}>ALVRYN</div>
-                  <div style={{ fontFamily:"'Space Mono',monospace", fontSize:7, color:THEMES[0].accent, letterSpacing:"0.2em" }}>TRAVEL BEYOND BOUNDARIES</div>
+                  <div style={{ fontFamily:"'Space Mono',monospace", fontSize:7, color:T.accent, letterSpacing:"0.2em" }}>TRAVEL BEYOND BOUNDARIES</div>
                 </div>
               </div>
               <div>
@@ -1014,7 +1184,7 @@ export default function LandingPage() {
                   {[["About Us","about"],["Terms & Conditions","terms"],["Privacy Policy","privacy"],["Contact","contact"]].map(([l,k]) => (
                     <span key={k} onClick={() => setModal(k)}
                       style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#555", cursor:"pointer", transition:"color 0.2s" }}
-                      onMouseEnter={e=>e.target.style.color=THEMES[0].accent}
+                      onMouseEnter={e=>e.target.style.color=T.accent}
                       onMouseLeave={e=>e.target.style.color="#555"}>
                       {l}
                     </span>
@@ -1027,7 +1197,7 @@ export default function LandingPage() {
                   {["Flights","Buses","WhatsApp Booking"].map(l => (
                     <span key={l} onClick={() => { if(localStorage.getItem("token")) navigate("/search"); else navigate("/login"); }}
                       style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#555", cursor:"pointer", transition:"color 0.2s" }}
-                      onMouseEnter={e=>e.target.style.color=THEMES[0].accent}
+                      onMouseEnter={e=>e.target.style.color=T.accent}
                       onMouseLeave={e=>e.target.style.color="#555"}>
                       {l}
                     </span>

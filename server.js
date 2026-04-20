@@ -677,7 +677,7 @@ app.post("/whatsapp", async (req, res) => {
     const resetWords = ["hi","hello","hey","start","restart","cancel","reset","stop","menu","back","help","hlo","heyyy","heyy","hai","halo"];
     if (resetWords.some(w => msg === w || msg.startsWith(w+" "))) {
       userSessions[phone] = { step:"idle" };
-      reply = `✈️ *Alvryn AI — Your Travel Assistant*\n\nHi! I can help you search flights, buses and hotels.\n\n*Search flights:*\n_"flights bangalore to mumbai tomorrow"_\n_"blr to del kal cheap"_\n\n*Search buses:*\n_"bus bangalore to chennai tomorrow"_\n\n*Search hotels:*\n_"hotel in goa"_\n_"hotels bangalore"_\n\n*Plan a trip:*\n_"2 day trip to goa under 5000"_\n_"where can i go for 3000"_\n\nType your route in any language — English, Hindi, Tamil, Telugu, Kannada!`;
+      reply = `✈️ *Alvryn AI — Your Travel Buddy!* 🌍\n\nHi! I'm smarter than I look 😄 Ask me ANYTHING about travel:\n\n*✈️ Flights:*\n_"flights bangalore to mumbai tomorrow"_\n\n*🚌 Buses:*\n_"bus bangalore to goa tonight"_\n\n*🏨 Hotels:*\n_"hotels in goa under 2000"_\n\n*🗺️ Trip planning:*\n_"plan 2 day goa trip under 5000"_\n\n*💬 Or just ask anything:*\n_"best time to visit dubai?"_\n_"visa for thailand?"_\n_"how to reach airport from electronic city?"_\n\nAny language — English, Hindi, Tamil, Telugu, Kannada! 🇮🇳`;
       const twiml = new twilio.twiml.MessagingResponse();
       twiml.message(reply);
       return res.type("text/xml").send(twiml.toString());
@@ -900,15 +900,26 @@ Or I can search now — just say *search bus* or *search flight*.`;
           await searchFlightsAndReply(session, from, to, targetDate, msg);
           reply = session.lastReply;
         }
-      } else {
-        // Not travel related or unclear
-        const offTopicKw = /weather|cricket|ipl|news|sports|movie|song|recipe|cook|politics|exam|job|career|love|relationship/i;
-        if (offTopicKw.test(msg)) {
-          reply = `🤖 I'm Alvryn AI — I specialise in travel!\n\nI can help you with:\n✈️ Flight searches\n🚌 Bus routes\n🏨 Hotels\n🗺️ Trip planning\n\nTry: _"flights bangalore to goa tomorrow"_ or _"where to go for 3000"_`;
         } else {
-          reply = `✈️ *Alvryn AI*\n\nSorry, I didn't understand that. Here's what I can help with:\n\n✈️ _"flights bangalore to mumbai tomorrow"_\n🚌 _"bus bangalore to chennai kal"_\n🏨 _"hotels in goa"_\n🗺️ _"trip under 5000"_\n\nType *help* for the full menu.`;
+          // Use KB + country data + Groq for unrecognized queries
+          const waCountryResp = getCountryResponse("india", rawMsg);
+          if (waCountryResp) {
+            reply = waCountryResp;
+          } else {
+            const waEasy = easyResponse(rawMsg);
+            if (waEasy && waEasy.text) {
+              reply = waEasy.text.replace(/\*\*/g,"*").slice(0, 600);
+            } else {
+              const offTopicKw = /weather|cricket|ipl|news|sports|movie|song|recipe|cook|politics|exam|job|career|love|relationship/i;
+              if (offTopicKw.test(msg)) {
+                reply = "🤖 I'm Alvryn AI — travel specialist! ✈️\nAsk me about flights, buses, hotels, trips or destinations!";
+              } else {
+                const groqWaReply = await callGroq(rawMsg, "You are Alvryn AI WhatsApp travel assistant. Reply SHORT (max 350 chars). Use *bold* for emphasis. Focus on travel: flights, hotels, visas, transport, destinations.");
+                reply = groqWaReply ? groqWaReply.slice(0, 600) : "I can help with flights, buses, hotels and trips! Type *help* for menu. 😊";
+              }
+            }
+          }
         }
-      }
     }
   } catch(e) {
     console.error("WhatsApp error:", e);
@@ -1777,6 +1788,23 @@ function easyResponse(msg) {
   }
 
 
+
+  // ── COUNTRY SELECTION ────────────────────────────────────────────────────
+  if (/my country|i am from|i'm from|i live in|i'm in|iam in|iam from|set.*country|change.*country/i.test(m)) {
+    const countries = Object.entries(COUNTRY_DATA).map(([k,v])=>`${v.flag} ${v.name}`).join(", ");
+    return {
+      text: `🌍 *Select your country for localized travel info!*
+
+I'll give you country-specific transport options, prices, apps and routes.
+
+Just say: *"I'm from [country]"* or *"I am in [country]"*
+
+Available: ${countries}`,
+      cards:[], cta:null,
+      quickReplies:["🇮🇳 India","🇺🇸 USA","🇬🇧 UK","🇯🇵 Japan","🇦🇺 Australia","🇩🇪 Germany","🇸🇬 Singapore"]
+    };
+  }
+
   return null; // let medium handle flight DB lookup
 }
 
@@ -2169,6 +2197,392 @@ app.post("/ai-chat", authenticateToken, async (req, res) => {
     }
   }
 });
+
+
+// ════════════════════════════════════════════════════════════════════════════
+//  COUNTRY CONTEXT SYSTEM — Localized Transport Intelligence
+// ════════════════════════════════════════════════════════════════════════════
+
+const COUNTRY_DATA = {
+  "india": {
+    name:"India", flag:"🇮🇳", currency:"INR", symbol:"₹", unit:"km",
+    drivesSide:"left", emergencies:{police:"100",ambulance:"108",fire:"101"},
+    languages:["English","Hindi","Tamil","Telugu","Kannada","Malayalam","Bengali"],
+    transportModes:["Auto-rickshaw","Ola/Uber cab","City bus","Metro","Local train","IRCTC train","Bus (KSRTC/MSRTC)","Bike taxi (Rapido)"],
+    rideApps:["Ola","Uber","Rapido","BluSmart","InDrive"],
+    airportToCityGuide:{
+      "bangalore":"🚌 Vayu Vajra bus ₹270 | 🚖 Ola/Uber ₹600–900 | ⏰ 1–2 hours",
+      "mumbai":"🚇 Metro Line 1 → cab | 🚖 Ola/Uber ₹300–700 | ⏰ 45–90 min",
+      "delhi":"🚇 Airport Express Metro ₹60–100 (fastest!) | 🚖 Cab ₹300–700 | ⏰ 30–60 min",
+      "chennai":"🚇 Airport Metro | 🚖 Ola/Uber ₹300–600 | ⏰ 30–60 min",
+      "hyderabad":"🚌 TSRTC bus ₹200 | 🚖 Ola/Uber ₹500–800 | ⏰ 45–75 min",
+      "default":"🚖 Ola/Uber most convenient | 🚌 City bus available | ⏰ 30–90 min depending on city",
+    },
+    typicalCabCost:"₹8–15 per km (Ola/Uber)",
+    tipping:"Not mandatory but ₹20–50 appreciated for cabs",
+    stored:{
+      "how to travel cheap":"🇮🇳 *Cheapest travel in India:*\n🚂 Train (book 60 days ahead!) — cheapest per km\n🚌 Overnight bus — saves hotel cost too!\n✈️ Flights — book 4–6 weeks ahead, Tue/Wed cheapest\n💡 Tip: IRCTC Sleeper class is often ₹150–400 for long routes!",
+      "best transport":"🇮🇳 *India transport guide:*\n🚂 Trains — cheapest, most comfortable for 200km+\n🚌 Buses — overnight sleepers save hotel cost\n🚇 Metro — Delhi/Bangalore/Mumbai (fast + cheap)\n🚖 Ola/Uber — most cities, ₹8–15/km\n🛺 Auto — short distances, negotiate or use meter\n🏍️ Rapido — bike taxi, cheapest for solo short trips",
+      "metro cities":"🇮🇳 *Metro systems in India:*\n🚇 Delhi Metro — largest, most extensive\n🚇 Namma Metro Bangalore — Purple + Green lines\n🚇 Mumbai Metro — multiple lines\n🚇 Chennai Metro\n🚇 Hyderabad Metro\n💡 All metros: ₹10–60 per trip. Smart card = 10% discount!",
+      "cab booking":"🇮🇳 *Book cabs in India:*\n📱 Ola — widest city coverage\n📱 Uber — reliable, good app\n📱 Rapido — bike taxi, cheapest\n📱 BluSmart — electric cabs in Delhi/Bangalore\n📱 InDrive — negotiate your own fare!\n💡 Ola/Uber: ₹8–15/km, auto: ₹10–20/km",
+    }
+  },
+  "usa": {
+    name:"United States", flag:"🇺🇸", currency:"USD", symbol:"$", unit:"miles",
+    drivesSide:"right", emergencies:{police:"911",ambulance:"911",fire:"911"},
+    languages:["English","Spanish"],
+    transportModes:["Uber/Lyft","NYC Subway","LA Metro","Chicago 'L'","BART (SF)","Greyhound bus","Amtrak train","Rental car"],
+    rideApps:["Uber","Lyft","Via","Waymo (limited)"],
+    airportToCityGuide:{
+      "new york":"🚇 AirTrain → Subway $8.25 | 🚖 Uber/Lyft $45–80 | ⏰ 45–75 min",
+      "los angeles":"🚌 FlyAway bus $9.75 | 🚖 Uber/Lyft $35–55 | 🚇 Metro Rail $1.75 | ⏰ 30–60 min",
+      "san francisco":"🚇 BART train $8–12 (fastest!) | 🚖 Uber $35–50 | ⏰ 30–45 min",
+      "chicago":"🚇 Blue Line 'L' $5 (fastest!) | 🚖 Uber $35–50 | ⏰ 45 min",
+      "default":"🚖 Uber/Lyft most convenient | 🚌 Check if city has airport shuttle | ⏰ 30–60 min",
+    },
+    typicalCabCost:"$2–3 per mile (Uber/Lyft) + surge pricing",
+    tipping:"15–20% expected for cabs and restaurants",
+    stored:{
+      "how to travel cheap":"🇺🇸 *Cheapest travel in USA:*\n🚌 Greyhound/FlixBus — cheapest intercity buses\n🚆 Amtrak — slower but scenic (book ahead)\n✈️ Budget airlines: Southwest, Spirit, Frontier\n💡 Renting a car is often cheapest for 2+ people!\n🚗 Gas ~$3.5–4.5/gallon, highways are free (mostly)",
+      "best transport":"🇺🇸 *USA transport guide:*\n🚖 Uber/Lyft — everywhere, $2–3/mile\n🚇 Subway — NYC (24/7!), Chicago, SF BART, DC Metro\n🚌 City bus — every city, $1.50–3/ride\n🚗 Rental car — best for suburbs/road trips\n✈️ Domestic flights — often cheapest for distances >500 miles\n🚆 Amtrak — beautiful but slow for most routes",
+      "nyc transport":"🗽 *Getting around New York City:*\n🚇 Subway — fastest! $2.90/ride or $34/week unlimited\n🚕 Yellow cab — $3 base + $2.50/mile\n🚖 Uber/Lyft — similar to cab\n🚲 Citi Bike — $4.50/ride or $19/month\n🚌 Bus — $2.90/ride (slower but scenic)\n💡 Get OMNY card — tap phone/card on subway!",
+      "cab booking":"🇺🇸 *Book rides in USA:*\n📱 Uber — everywhere\n📱 Lyft — everywhere (slightly cheaper sometimes)\n📱 Waymo — self-driving taxis in SF/Phoenix/LA!\n💡 Tip 15–20% or built into app\n⚠️ Surge pricing during peak hours!",
+    }
+  },
+  "japan": {
+    name:"Japan", flag:"🇯🇵", currency:"JPY", symbol:"¥", unit:"km",
+    drivesSide:"left", emergencies:{police:"110",ambulance:"119",fire:"119"},
+    languages:["Japanese"],
+    transportModes:["JR Train","Tokyo Metro","Shinkansen (bullet train)","City bus","Taxi","Bicycle"],
+    rideApps:["GO Taxi","S.RIDE","Uber (limited)","DiDi"],
+    airportToCityGuide:{
+      "tokyo":"🚆 Narita Express ¥3,070 | 🚌 Airport Limousine bus ¥1,200–3,100 | ✈️ Haneda Airport: Monorail ¥500 (much closer!)",
+      "osaka":"🚆 Haruka Express ¥2,850 from Kansai Airport | 🚌 Airport bus ~¥1,600",
+      "default":"🚆 Train is almost always best in Japan — fast, on-time, clean!",
+    },
+    typicalCabCost:"¥700 base + ¥100 per 237m (EXPENSIVE — use trains!)",
+    tipping:"NEVER tip in Japan — considered rude!",
+    stored:{
+      "how to travel cheap":"🇯🇵 *Cheapest travel in Japan:*\n🚆 IC Card (Suica/Pasmo) — reload and use on all trains/buses\n🚌 Highway buses — cheapest intercity (book at willer.co.jp)\n🚲 Bicycle rental — many cities have cheap rentals ¥500–1,000/day\n💡 JR Pass — for tourists, covers bullet trains! Buy before arriving\n⚠️ Taxis are very expensive — always take trains!",
+      "best transport":"🇯🇵 *Japan transport guide:*\n🚆 JR Trains — nationwide, incredibly on-time\n🚄 Shinkansen — bullet train, 320km/h!\n🚇 Tokyo Metro — 13 lines, covers everything\n🚌 City bus — useful where trains don't go\n🚲 Bicycle — cities are very cycling-friendly!\n🚕 Taxi — clean but very expensive (avoid!)",
+      "tokyo transport":"🗼 *Getting around Tokyo:*\n🚇 Tokyo Metro + JR Yamanote Line — covers everywhere\n💳 Get IC card (Suica/PASMO) at airport — tap in/out\n💰 ¥170–320 per subway ride\n🚌 Bus: ¥210 flat fare (Tokyo)\n🚲 Docomo bike share: ¥165/30 min\n💡 Google Maps works perfectly for Tokyo transport routing!",
+      "shinkansen":"🚄 *Shinkansen (Bullet Train) Guide:*\nTokyo → Osaka: ¥13,620, 2h30min!\nTokyo → Kyoto: ¥13,320, 2h20min\nBook at JR ticket machines or online\n💡 JR Pass for tourists covers all Shinkansen!",
+    }
+  },
+  "uk": {
+    name:"United Kingdom", flag:"🇬🇧", currency:"GBP", symbol:"£", unit:"miles",
+    drivesSide:"left", emergencies:{police:"999",ambulance:"999",fire:"999"},
+    languages:["English"],
+    transportModes:["London Underground (Tube)","National Rail","Bus","Uber","Black cab","Cycling"],
+    rideApps:["Uber","Bolt","FREE NOW","Addison Lee"],
+    airportToCityGuide:{
+      "london":"🚆 Heathrow Express £25 (15 min fastest!) | 🚇 Piccadilly Line Tube £5.60 | 🚖 Uber £45–70 | Gatwick: Thameslink/Southern train £10–20",
+      "manchester":"🚆 Manchester Metrolink tram £4 | 🚖 Taxi £20–25",
+      "default":"🚆 Train or bus from airport to city centre | 🚖 Uber/Bolt for short trips",
+    },
+    typicalCabCost:"£2.50–3 per mile (Uber/Bolt)",
+    tipping:"10–15% in restaurants, optional for cabs",
+    stored:{
+      "how to travel cheap":"🇬🇧 *Cheapest travel in UK:*\n🚌 National Express/Megabus — cheapest intercity!\n🚆 Book trains 12+ weeks ahead on thetrainline.com\n✈️ Ryanair/EasyJet for UK/Europe hops\n💡 Railcard (£30/year) = 1/3 off all train fares!\n🚌 Flixbus — cheap overnight options",
+      "best transport":"🇬🇧 *UK transport guide:*\n🚇 London Underground (Tube) — 11 lines, runs 5am-midnight\n🚌 Bus — red double-deckers in London, £1.75/ride\n🚆 National Rail — connects all cities\n🚖 Uber/Bolt — widespread, cheaper than black cabs\n🚲 Santander Cycles (London) — £1.65/30min\n💡 Oyster card in London = cheapest fares!",
+      "london transport":"🇬🇧 *Getting around London:*\n🚇 Tube — fastest, runs every 2–5 mins\n💳 Contactless card/phone — tap in/out (same as Oyster!)\n💰 £2.80 per tube journey (zones 1-2)\n🚌 Bus £1.75 flat fare (never pay more!)\n🚲 Santander Cycles — great for short hops!\n⚠️ Daily cap: £8.10 for zones 1-2",
+    }
+  },
+  "australia": {
+    name:"Australia", flag:"🇦🇺", currency:"AUD", symbol:"A$", unit:"km",
+    drivesSide:"left", emergencies:{police:"000",ambulance:"000",fire:"000"},
+    languages:["English"],
+    transportModes:["Uber","Bus","Train","Ferry","Tram (Melbourne)","Bicycle"],
+    rideApps:["Uber","Ola","DiDi","GoCatch"],
+    airportToCityGuide:{
+      "sydney":"🚆 Airport Train A$20 | 🚖 Uber A$35–55 | 🚌 Bus (limited routes)",
+      "melbourne":"🚆 SkyBus A$22 | 🚖 Uber A$40–60 | 🚋 Taxi ~A$50",
+      "brisbane":"🚆 Airtrain A$20 | 🚖 Uber A$35–50",
+      "default":"🚖 Uber is most convenient | 🚆 Airport train where available",
+    },
+    typicalCabCost:"A$2–2.50 per km (Uber/Ola)",
+    tipping:"Not expected, but rounding up appreciated",
+    stored:{
+      "how to travel cheap":"🇦🇺 *Cheapest travel in Australia:*\n✈️ Jetstar/Tigerair domestic flights (book ahead!)\n🚌 Greyhound Australia — intercity buses\n🚐 Campervan rental — popular budget option!\n💡 Distances are HUGE in Australia — flying is often worth it\n🚆 NSW TrainLink for NSW routes",
+      "best transport":"🇦🇺 *Australia transport guide:*\n🚖 Uber/Ola/DiDi — all major cities, A$2–2.50/km\n🚆 City trains — Sydney, Melbourne, Brisbane\n🚋 Melbourne Tram — free in CBD zone!\n🚌 City buses — good coverage\n🚂 Long-distance trains — The Ghan, Indian Pacific (scenic!)\n⚠️ Cars essential outside cities — distances are vast!",
+    }
+  },
+  "germany": {
+    name:"Germany", flag:"🇩🇪", currency:"EUR", symbol:"€", unit:"km",
+    drivesSide:"right", emergencies:{police:"110",ambulance:"112",fire:"112"},
+    languages:["German"],
+    transportModes:["U-Bahn (Metro)","S-Bahn (City train)","Tram","DB Train","Bus","Bicycle"],
+    rideApps:["Uber","FreeNow","MOIA","Bolt"],
+    airportToCityGuide:{
+      "frankfurt":"🚆 S-Bahn S8/S9 €5 (12 min!) | 🚖 Taxi €30–40",
+      "berlin":"🚆 S-Bahn or U-Bahn €3.50 (30 min) | 🚌 Airport Express bus €3",
+      "munich":"🚆 S-Bahn S1/S8 €13 | 🚖 Taxi €60–80",
+      "default":"🚆 Germany's public transport is excellent — always try train first!",
+    },
+    typicalCabCost:"€2–3 per km",
+    tipping:"Round up to nearest Euro or 5–10%",
+    stored:{
+      "how to travel cheap":"🇩🇪 *Cheapest travel in Germany:*\n🚆 Deutschlandticket €49/month — unlimited local/regional trains!\n🚌 FlixBus — cheapest intercity buses\n🚲 Bicycle — Germany is very cycling-friendly\n💡 DB Sparpreis tickets — book 3+ weeks ahead for cheap trains\n🛤️ Autobahn has NO speed limit — driving is fast but parking is expensive",
+      "best transport":"🇩🇪 *Germany transport guide:*\n🚆 DB (Deutsche Bahn) trains — excellent intercity network\n🚇 U-Bahn/S-Bahn — fast city metro systems\n🚋 Trams — Munich, Berlin, Dresden etc.\n🚲 Cycling — bike lanes everywhere!\n🚖 Uber/Bolt — available but expensive vs public transport",
+    }
+  },
+  "france": {
+    name:"France", flag:"🇫🇷", currency:"EUR", symbol:"€", unit:"km",
+    drivesSide:"right", emergencies:{police:"17",ambulance:"15",fire:"18"},
+    languages:["French"],
+    transportModes:["Paris Métro","RER trains","TGV (high-speed train)","Vélib' bikes","Bus","Uber"],
+    rideApps:["Uber","Bolt","G7 taxi","FreeNow"],
+    airportToCityGuide:{
+      "paris":"🚆 RER B €11.80 (Paris CDG, 35 min) | 🚌 Bus €12 | 🚖 Uber €35–55 | Orly: Orlyval + RER €12.10",
+      "nice":"🚆 Tram Line 2 €1.50 | 🚖 Taxi €30–40",
+      "default":"🚆 French trains (SNCF) are excellent — book at sncf-connect.com",
+    },
+    typicalCabCost:"€1.50–2 per km (G7/Uber)",
+    tipping:"Not required, leaving small change is polite",
+    stored:{
+      "how to travel cheap":"🇫🇷 *Cheapest travel in France:*\n🚆 TGV trains — book 3+ months ahead for €20–40 vs €100+\n🚌 FlixBus/BlaBlaBus — cheapest intercity option\n🛴 Electric scooters (Tier, Bird) — great for Paris\n💡 Navigo monthly pass €86 — unlimited Paris transport!\n✈️ IntraEurope: Transavia/EasyJet from Paris CDG",
+      "paris transport":"🗼 *Getting around Paris:*\n🚇 Paris Métro — 16 lines, runs until ~1am\n💳 Navigo Easy card — tap in/out, €1.73/ride\n🚲 Vélib' — Paris bikeshare, €3/day or €19/month\n🛴 Tier/Lime scooters — scan with app\n🚖 Uber/G7 — €1.80/km\n💡 Zones 1-5 day pass: €17.30 unlimited travel",
+    }
+  },
+  "canada": {
+    name:"Canada", flag:"🇨🇦", currency:"CAD", symbol:"C$", unit:"km",
+    drivesSide:"right", emergencies:{police:"911",ambulance:"911",fire:"911"},
+    languages:["English","French"],
+    transportModes:["Uber","City bus","Metro (Montreal/Toronto)","SkyTrain (Vancouver)","VIA Rail"],
+    rideApps:["Uber","Lyft","Evo"],
+    airportToCityGuide:{
+      "toronto":"🚇 TTC + UP Express C$12.35 | 🚖 Uber C$40–60",
+      "vancouver":"🚆 Canada Line SkyTrain C$4 (27 min!) | 🚖 Uber C$35–50",
+      "montreal":"🚇 STM bus 747 C$10 | 🚖 Uber C$35–50",
+      "default":"🚖 Uber most reliable | 🚆 Check if city has rapid transit to airport",
+    },
+    typicalCabCost:"C$2–3 per km (Uber)",
+    tipping:"15–20% expected",
+    stored:{
+      "best transport":"🇨🇦 *Canada transport guide:*\n🚖 Uber/Lyft — available in all major cities\n🚇 Toronto TTC, Vancouver SkyTrain, Montreal Metro\n🚌 City buses — affordable C$3–4/ride\n🚆 VIA Rail — scenic cross-Canada trains!\n🚗 Car rental — essential outside cities (Canada is HUGE)",
+    }
+  },
+  "south korea": {
+    name:"South Korea", flag:"🇰🇷", currency:"KRW", symbol:"₩", unit:"km",
+    drivesSide:"right", emergencies:{police:"112",ambulance:"119",fire:"119"},
+    languages:["Korean"],
+    transportModes:["Seoul Metro","KTX bullet train","City bus","Kakao Taxi","Bicycle"],
+    rideApps:["Kakao T","UT","Tada"],
+    airportToCityGuide:{
+      "seoul":"🚆 AREX Express ₩9,500 (43 min) | 🚇 All-stop AREX ₩4,150 (60 min) | 🚖 Taxi ₩60,000–80,000",
+      "default":"🚆 Korea's public transport is world-class — always try train first!",
+    },
+    typicalCabCost:"₩4,800 base + ₩100 per 131m",
+    tipping:"NOT customary in Korea",
+    stored:{
+      "how to travel cheap":"🇰🇷 *Cheapest travel in South Korea:*\n🚇 T-money card — load and use on all buses/metro ₩1,250–1,450/ride\n🚌 City buses — extensive and cheap\n🚆 KTX bullet train — book early for discounts\n🚌 Intercity express buses — cheaper than KTX\n💡 Korea's public transport is incredibly efficient!",
+      "seoul transport":"🇰🇷 *Getting around Seoul:*\n🚇 Seoul Metro — 9 lines, every 3–5 min\n💳 T-money card — ₩3,000 card + load\n💰 ₩1,250–1,450 per subway ride\n🚌 Bus ₩1,300 (T-money rate)\n🚖 Kakao Taxi — like Uber but better in Korea!\n💡 Subway runs midnight on weekends (extended hours!)",
+    }
+  },
+  "brazil": {
+    name:"Brazil", flag:"🇧🇷", currency:"BRL", symbol:"R$", unit:"km",
+    drivesSide:"right", emergencies:{police:"190",ambulance:"192",fire:"193"},
+    languages:["Portuguese"],
+    transportModes:["Uber","City bus","Metro (Sao Paulo/Rio)","VLT tram (Rio)","Mototaxi"],
+    rideApps:["Uber","99","InDriver"],
+    airportToCityGuide:{
+      "sao paulo":"🚇 CPTM Line 13 R$4.50 | 🚖 Uber R$60–100",
+      "rio de janeiro":"🚖 Uber R$60–90 | 🚌 Bus R$4 (slower)",
+      "default":"🚖 Uber or 99 most reliable | ⚠️ Avoid unlicensed taxis",
+    },
+    typicalCabCost:"R$2–3 per km (Uber)",
+    tipping:"10% service charge often included",
+    stored:{
+      "best transport":"🇧🇷 *Brazil transport guide:*\n🚖 Uber/99 — safest and most reliable option\n🚇 Metro — São Paulo (extensive!), Rio (limited)\n🚌 City buses — cheap R$4, but complex routes\n🚆 Intercity buses — comfortable, long-distance options\n⚠️ Always use Uber instead of street taxis in Brazil for safety",
+    }
+  },
+  "spain": {
+    name:"Spain", flag:"🇪🇸", currency:"EUR", symbol:"€", unit:"km",
+    drivesSide:"right", emergencies:{police:"112",ambulance:"112",fire:"112"},
+    languages:["Spanish","Catalan","Basque"],
+    transportModes:["Madrid Metro","Barcelona Metro","AVE (high-speed train)","Bus","Cabify/Uber"],
+    rideApps:["Uber","Cabify","Bolt"],
+    airportToCityGuide:{
+      "madrid":"🚇 Metro Line 8 €5 (30 min) | 🚖 Taxi flat rate €30",
+      "barcelona":"🚇 Aerobus €6.75 (30 min) | 🚇 Metro €5.15 | 🚖 Taxi €30–35",
+      "default":"🚇 Metro or Aerobus cheapest | 🚖 Cabify for comfort",
+    },
+    typicalCabCost:"€1.20–1.50 per km",
+    tipping:"5–10% at restaurants, rounding up for taxis",
+    stored:{
+      "best transport":"🇪🇸 *Spain transport guide:*\n🚇 Madrid Metro — 13 lines, excellent coverage\n🚇 Barcelona Metro — 12 lines + FGC regional\n🚆 AVE bullet train — Madrid→Barcelona in 2h30!\n🚌 City buses — good networks\n🚖 Uber/Cabify — available in major cities",
+    }
+  },
+  "italy": {
+    name:"Italy", flag:"🇮🇹", currency:"EUR", symbol:"€", unit:"km",
+    drivesSide:"right", emergencies:{police:"113",ambulance:"118",fire:"115"},
+    languages:["Italian"],
+    transportModes:["Metro (Rome/Milan)","Trenitalia/Italo trains","City bus","Tram","Uber (limited)"],
+    rideApps:["Uber (very limited)","itTaxi","Lyft (no)","MyTaxi"],
+    airportToCityGuide:{
+      "rome":"🚆 Leonardo Express €14 (35 min) | 🚖 Fixed taxi €48 (official!)",
+      "milan":"🚇 Malpensa Express €13 (60 min) | 🚖 Taxi ~€95",
+      "default":"🚆 Trains best for Italian cities | 🚖 Licensed white taxis (avoid unmarked!)",
+    },
+    typicalCabCost:"€1.50–2 per km",
+    tipping:"Round up to nearest €, not required",
+    stored:{
+      "best transport":"🇮🇹 *Italy transport guide:*\n🚆 Trenitalia/Italo — excellent fast trains between cities\n🚇 Rome Metro — 3 lines (limited coverage)\n🚇 Milan Metro — 5 lines (great coverage!)\n🚌 City buses — Rome/Florence use buses extensively\n⚠️ Uber very limited in Italy — use itTaxi or official white taxis\n💡 ZTL zones in historic cities — no cars allowed (don't drive in Rome centre!)",
+    }
+  },
+  "indonesia": {
+    name:"Indonesia", flag:"🇮🇩", currency:"IDR", symbol:"Rp", unit:"km",
+    drivesSide:"left", emergencies:{police:"110",ambulance:"119",fire:"113"},
+    languages:["Indonesian (Bahasa)","English (tourist areas)"],
+    transportModes:["Gojek","Grab","TransJakarta bus","MRT Jakarta","KRL Commuter","Ojek (bike taxi)"],
+    rideApps:["Gojek","Grab"],
+    airportToCityGuide:{
+      "jakarta":"🚆 Airport Train Rp70,000 (45 min) | 🚖 Grab/Gojek Rp120,000–200,000",
+      "bali":"🚖 Grab/Gojek Rp60,000–100,000 | 🏍️ Ojek Rp30,000–50,000",
+      "default":"📱 Download Gojek and Grab before arriving — essential apps!",
+    },
+    typicalCabCost:"Rp3,000–5,000 per km (Grab/Gojek)",
+    tipping:"Not required, Rp5,000–10,000 for good service",
+    stored:{
+      "best transport":"🇮🇩 *Indonesia transport guide:*\n📱 Gojek/Grab — essential apps, cheapest transport!\n🏍️ GoRide/GrabBike — bike taxi, fastest and cheapest\n🚗 GoCar/GrabCar — 4-wheeler, slightly more\n🚌 TransJakarta — Jakarta BRT, Rp3,500 flat!\n🚆 MRT Jakarta — new, clean, fast\n💡 Bali: rent a scooter Rp80,000–150,000/day (most popular!)",
+      "bali transport":"🇮🇩 *Getting around Bali:*\n🏍️ Scooter rental Rp80,000–150,000/day — most popular!\n📱 Grab/Gojek — reliable and cheap\n🚕 Metered taxi (Blue Bird) — trustworthy\n⚠️ Avoid non-metered taxis — always overcharge tourists\n💡 Bluebird taxi app is safest in Bali",
+    }
+  },
+  "china": {
+    name:"China", flag:"🇨🇳", currency:"CNY", symbol:"¥", unit:"km",
+    drivesSide:"right", emergencies:{police:"110",ambulance:"120",fire:"119"},
+    languages:["Mandarin Chinese"],
+    transportModes:["DiDi","City Metro","High-speed train (HSR)","City bus","Electric scooter"],
+    rideApps:["DiDi (only option for foreigners)"],
+    airportToCityGuide:{
+      "beijing":"🚆 Airport Express ¥25 (15–20 min) | 🚖 DiDi ¥100–150",
+      "shanghai":"🚄 Maglev ¥50 (8 min, fastest in world!) | 🚇 Metro Line 2 ¥7 | 🚖 DiDi ¥80–120",
+      "default":"🚆 Metro always cheapest | 🚖 DiDi most convenient (need Chinese phone or WeChat/Alipay)",
+    },
+    typicalCabCost:"¥3 base + ¥2–2.50/km (DiDi)",
+    tipping:"NOT customary in China",
+    stored:{
+      "best transport":"🇨🇳 *China transport guide:*\n🚄 High-Speed Rail (HSR) — world's largest network, 350km/h!\n🚇 City Metro — most major cities have excellent metro\n🚖 DiDi — China's Uber, essential app\n🚌 City buses — cheap but confusing\n⚠️ WeChat Pay or Alipay needed for most payments\n💡 Book HSR on 12306.cn or Trip.com",
+      "china travel tips":"🇨🇳 *Essential China travel tips:*\n📱 Download before arriving: DiDi, WeChat, Google Maps (offline!)\n🔒 VPN needed for Google/WhatsApp/Instagram\n💳 Most places are cashless — WeChat Pay/Alipay\n🈯 Learn a few Chinese phrases — English is limited outside tourist areas\n🚄 HSR trains are AMAZING — faster than flying city-to-city!",
+    }
+  },
+  "russia": {
+    name:"Russia", flag:"🇷🇺", currency:"RUB", symbol:"₽", unit:"km",
+    drivesSide:"right", emergencies:{police:"102",ambulance:"103",fire:"101"},
+    languages:["Russian"],
+    transportModes:["Moscow Metro","City bus","YandexGo taxi","Elektrichka commuter train","Long-distance train"],
+    rideApps:["Yandex Go","Citimobil"],
+    airportToCityGuide:{
+      "moscow":"🚆 Aeroexpress ₽500 (35 min) | 🚖 Yandex Go ₽1,200–2,000",
+      "default":"🚆 Aeroexpress trains available from major airports",
+    },
+    typicalCabCost:"₽30–50 per km (Yandex Go)",
+    tipping:"10% optional",
+    stored:{
+      "best transport":"🇷🇺 *Russia transport guide:*\n🚇 Moscow Metro — one of the most beautiful in the world!\n🚖 Yandex Go — Russia's ride app (like Uber)\n🚆 Long-distance trains — Trans-Siberian Railway!\n🚌 City buses ₽35–50/ride\n⚠️ For current travel advisories, check your country's foreign ministry",
+    }
+  }
+};
+
+// ── User country preferences (stored in memory + DB) ─────────────────────────
+const userCountries = new Map(); // userId → country key
+
+async function getUserCountry(userId) {
+  if (!userId) return "india"; // default
+  if (userCountries.has(String(userId))) return userCountries.get(String(userId));
+  try {
+    const prefs = await getUserPrefs(userId);
+    const c = prefs.country || "india";
+    userCountries.set(String(userId), c);
+    return c;
+  } catch { return "india"; }
+}
+
+async function setUserCountry(userId, countryKey) {
+  userCountries.set(String(userId), countryKey);
+  if (userId) await setUserPref(userId, "country", countryKey).catch(()=>{});
+}
+
+// ── Country-aware response builder ──────────────────────────────────────────
+function getCountryResponse(countryKey, query) {
+  const c = COUNTRY_DATA[countryKey] || COUNTRY_DATA["india"];
+  const m = query.toLowerCase();
+
+  // Check stored answers for this country
+  for (const [key, answer] of Object.entries(c.stored||{})) {
+    if (m.includes(key) || key.split(" ").some(w=>w.length>3&&m.includes(w))) {
+      return `${c.flag} ${answer}`;
+    }
+  }
+
+  // Airport to city
+  if (/airport.*city|city.*airport|how.*reach.*city|reach.*hotel.*airport|airport.*hotel/i.test(m)) {
+    const cityMatch = Object.keys(c.airportToCityGuide).find(city=>m.includes(city));
+    const guide = c.airportToCityGuide[cityMatch||"default"];
+    return `${c.flag} *Airport → City in ${c.name}:*
+
+${guide}
+
+💡 Currency: ${c.symbol} (${c.currency})`;
+  }
+
+  // Ride/cab booking
+  if (/cab|taxi|uber|ride|how.*get.*around|book.*ride/i.test(m)) {
+    const apps = c.rideApps.join(", ");
+    return `${c.flag} *Ride apps in ${c.name}:*
+📱 ${apps}
+💰 Typical cost: ${c.typicalCabCost}
+💡 Tipping: ${c.tipping}`;
+  }
+
+  // Emergency numbers
+  if (/emergency|police|ambulance|fire|help.*number|sos/i.test(m)) {
+    const e = c.emergencies;
+    return `${c.flag} *Emergency numbers in ${c.name}:*
+🚓 Police: ${e.police}
+🚑 Ambulance: ${e.ambulance}
+🚒 Fire: ${e.fire}`;
+  }
+
+  // Currency
+  if (/currency|money|pay|cash|card|atm/i.test(m)) {
+    return `${c.flag} *Money in ${c.name}:*
+💰 Currency: ${c.symbol} ${c.currency}
+💳 Cards widely accepted in cities
+🏧 ATMs available everywhere
+💡 Tipping: ${c.tipping}`;
+  }
+
+  // Transport overview
+  if (/how.*travel|get.*around|transport|public.*transit|commute/i.test(m)) {
+    const modes = c.transportModes.slice(0,5).join(", ");
+    return `${c.flag} *Transport in ${c.name}:*
+🚌 Options: ${modes}
+📱 Ride apps: ${c.rideApps.join(", ")}
+💰 Cab cost: ${c.typicalCabCost}`;
+  }
+
+  return null; // Let regular AI handle
+}
+
+// ── Set country endpoint ─────────────────────────────────────────────────────
+app.post("/set-country", authenticateToken, async (req, res) => {
+  try {
+    const { country } = req.body;
+    const key = country?.toLowerCase().replace(/[^a-z ]/g,"").trim();
+    if (!COUNTRY_DATA[key]) {
+      return res.status(400).json({ message:"Country not found", available:Object.keys(COUNTRY_DATA) });
+    }
+    await setUserCountry(req.user.id, key);
+    res.json({ ok:true, country:key, data:COUNTRY_DATA[key] });
+  } catch(e) { res.status(500).json({ message:"Error setting country" }); }
+});
+
+app.get("/countries", (req, res) => {
+  const list = Object.entries(COUNTRY_DATA).map(([k,v])=>({ key:k, name:v.name, flag:v.flag, currency:v.symbol }));
+  res.json(list);
+});
+
 
 // ── WAITLIST ─────────────────────────────────────────────────────────────────
 async function ensureWaitlistTable() {
@@ -2919,6 +3333,17 @@ app.post("/ai-chat-v2", authenticateToken, async (req, res) => {
     }
 
     // ── TIER 1: Knowledge base (instant, free) ───────────────────────────────
+    // Get user's country context
+    const userCountry = userId ? await getUserCountry(userId) : "india";
+    const cData = COUNTRY_DATA[userCountry] || COUNTRY_DATA["india"];
+
+    // Check country-specific response first
+    const countryResp = getCountryResponse(userCountry, message);
+    if (countryResp) {
+      logEvent("ai_country", message.slice(0,80), "ai_chat", userId).catch(()=>{});
+      return res.json({ text: countryResp, cards:[], cta:null, sessionId:sid });
+    }
+
     // Personal greeting for returning users
     const personalGreeting = userId ? buildPersonalGreeting(userName, prefs, message) : null;
     const easy = easyResponse(message);
@@ -2955,10 +3380,11 @@ Book a trip via Alvryn to unlock more. Here are options I found 👇`,
 
     // Choose Groq vs GPT based on query complexity
     const tier = classifyQuery(message);
+    const countryContext = cData ? `User is in/from ${cData.name} ${cData.flag}. Currency: ${cData.symbol} (${cData.currency}). Transport apps: ${cData.rideApps?.join(", ")||"Uber/taxi"}. Drive on ${cData.drivesSide} side.` : "";
     const aiText = await askAI(
       message,
       tier === "hard" ? "complex" : "simple",
-      `You are Alvryn AI. Travel assistant for India. Be friendly, SHORT responses (3-4 sentences), use emojis. User data: ${JSON.stringify({prefs: Object.keys(prefs).slice(0,5)})}`
+      `You are Alvryn AI. Travel assistant. Be friendly, SHORT (3-4 sentences), use emojis. ${countryContext} User data: ${JSON.stringify({prefs: Object.keys(prefs).slice(0,5)})}`
     );
 
     if (aiText) {

@@ -174,6 +174,105 @@ function PriceAlertButton({from,to,currentPrice}){
 
 const API = "https://cometai-backend.onrender.com";
 
+
+// ── COUNTRY SELECTOR ─────────────────────────────────────────────────────────
+const COUNTRIES = [
+  {key:"india",     flag:"🇮🇳", name:"India",       symbol:"₹"},
+  {key:"usa",       flag:"🇺🇸", name:"USA",          symbol:"$"},
+  {key:"uk",        flag:"🇬🇧", name:"UK",           symbol:"£"},
+  {key:"australia", flag:"🇦🇺", name:"Australia",    symbol:"A$"},
+  {key:"japan",     flag:"🇯🇵", name:"Japan",        symbol:"¥"},
+  {key:"germany",   flag:"🇩🇪", name:"Germany",      symbol:"€"},
+  {key:"france",    flag:"🇫🇷", name:"France",       symbol:"€"},
+  {key:"canada",    flag:"🇨🇦", name:"Canada",       symbol:"C$"},
+  {key:"south korea",flag:"🇰🇷",name:"South Korea",  symbol:"₩"},
+  {key:"brazil",    flag:"🇧🇷", name:"Brazil",       symbol:"R$"},
+  {key:"spain",     flag:"🇪🇸", name:"Spain",        symbol:"€"},
+  {key:"italy",     flag:"🇮🇹", name:"Italy",        symbol:"€"},
+  {key:"indonesia", flag:"🇮🇩", name:"Indonesia",    symbol:"Rp"},
+  {key:"china",     flag:"🇨🇳", name:"China",        symbol:"¥"},
+  {key:"russia",    flag:"🇷🇺", name:"Russia",       symbol:"₽"},
+];
+
+function CountrySelector({token, onSelect}){
+  const [open,setOpen]         = useState(false);
+  const [selected,setSelected] = useState("india");
+  const [saving,setSaving]     = useState(false);
+  const ref = useRef(null);
+
+  // Load saved country
+  useEffect(()=>{
+    const saved = localStorage.getItem("alvryn_country");
+    if(saved) setSelected(saved);
+  },[]);
+
+  // Close on outside click
+  useEffect(()=>{
+    if(!open) return;
+    const h=(e)=>{ if(ref.current&&!ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown",h);
+    document.addEventListener("touchstart",h);
+    return()=>{ document.removeEventListener("mousedown",h); document.removeEventListener("touchstart",h); };
+  },[open]);
+
+  const select = async(country)=>{
+    setSaving(true);
+    setSelected(country.key);
+    setOpen(false);
+    localStorage.setItem("alvryn_country", country.key);
+    if(token){
+      try{
+        await fetch(`${API}/set-country`,{
+          method:"POST",
+          headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},
+          body:JSON.stringify({country:country.key})
+        });
+      }catch{}
+    }
+    setSaving(false);
+    if(onSelect) onSelect(country);
+  };
+
+  const curr = COUNTRIES.find(c=>c.key===selected)||COUNTRIES[0];
+
+  return(
+    <div ref={ref} style={{position:"relative",zIndex:50}}>
+      <button onClick={()=>setOpen(o=>!o)}
+        style={{display:"flex",alignItems:"center",gap:5,padding:"5px 10px",borderRadius:100,
+          background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.25)",
+          cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:12,fontWeight:600,
+          color:"#8B6914",transition:"all 0.15s",WebkitTapHighlightColor:"transparent"}}
+        onMouseEnter={e=>e.currentTarget.style.background="rgba(201,168,76,0.2)"}
+        onMouseLeave={e=>e.currentTarget.style.background="rgba(201,168,76,0.1)"}>
+        <span style={{fontSize:15}}>{curr.flag}</span>
+        <span>{curr.name}</span>
+        <span style={{opacity:0.5,fontSize:10}}>{open?"▲":"▼"}</span>
+      </button>
+      {open&&(
+        <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,
+          background:"#fff",borderRadius:14,boxShadow:"0 8px 32px rgba(0,0,0,0.12)",
+          border:"1px solid rgba(201,168,76,0.2)",padding:"8px 0",minWidth:180,maxHeight:280,
+          overflowY:"auto",zIndex:200,animation:"fadeUp 0.2s both"}}>
+          {COUNTRIES.map(c=>(
+            <button key={c.key} onClick={()=>select(c)}
+              style={{display:"flex",width:"100%",alignItems:"center",gap:10,padding:"9px 14px",
+                background:selected===c.key?"rgba(201,168,76,0.1)":"transparent",
+                border:"none",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",
+                fontSize:13,color:"#1a1410",textAlign:"left",transition:"background 0.1s"}}
+              onMouseEnter={e=>e.currentTarget.style.background="rgba(201,168,76,0.08)"}
+              onMouseLeave={e=>e.currentTarget.style.background=selected===c.key?"rgba(201,168,76,0.1)":"transparent"}>
+              <span style={{fontSize:18}}>{c.flag}</span>
+              <span style={{flex:1}}>{c.name}</span>
+              <span style={{fontSize:11,color:"#8B6914",opacity:0.7}}>{c.symbol}</span>
+              {selected===c.key&&<span style={{color:"#c9a84c",fontSize:12}}>✓</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── FLIGHT CARD ─────────────────────────────────────────────────────────────────
 function FlightCard({f,i}){
   const LBL = {"Best Price":[C.greenD,"rgba(22,163,74,0.13)"],"Fastest":["#60a5fa","rgba(96,165,250,0.13)"],"Best Overall":[C.goldD,"rgba(201,168,76,0.2)"]};

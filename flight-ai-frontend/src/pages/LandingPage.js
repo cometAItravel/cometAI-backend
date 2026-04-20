@@ -358,11 +358,11 @@ const GOLD_D  = "#8B6914";
 const GOLD_G  = "linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)";
 // Light themes (default — gold cream)
 const THEMES_LIGHT = [
-  { bg:"#faf8f4", accent:GOLD_A, grad:GOLD_G, text:"#1a1410", sub:T.sub||"#5a4a3a" },
-  { bg:"#f5f0e8", accent:GOLD_D, grad:GOLD_G, text:"#1a1410", sub:T.sub||"#5a4a3a" },
-  { bg:"#fdf8f0", accent:GOLD_A, grad:GOLD_G, text:"#1a1410", sub:T.sub||"#5a4a3a" },
-  { bg:"#f8f4ec", accent:GOLD_D, grad:GOLD_G, text:"#1a1410", sub:T.sub||"#5a4a3a" },
-  { bg:"#f5f2ea", accent:GOLD_A, grad:GOLD_G, text:"#1a1410", sub:T.sub||"#5a4a3a" },
+  { bg:"#faf8f4", accent:GOLD_A, grad:GOLD_G, text:"#1a1410", sub:"#5a4a3a" },
+  { bg:"#f5f0e8", accent:GOLD_D, grad:GOLD_G, text:"#1a1410", sub:"#5a4a3a" },
+  { bg:"#fdf8f0", accent:GOLD_A, grad:GOLD_G, text:"#1a1410", sub:"#5a4a3a" },
+  { bg:"#f8f4ec", accent:GOLD_D, grad:GOLD_G, text:"#1a1410", sub:"#5a4a3a" },
+  { bg:"#f5f2ea", accent:GOLD_A, grad:GOLD_G, text:"#1a1410", sub:"#5a4a3a" },
 ];
 // Dark themes (premium dark gold)
 const THEMES_DARK = [
@@ -658,7 +658,7 @@ export default function LandingPage() {
                     One conversation.
                   </span>
                 </div>
-                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, color:T.sub||"#5a4a3a",
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, color:T.sub,
                   maxWidth:520, margin:"0 auto", lineHeight:1.7 }}>
                   From Electronic City to New York, Goa, Dubai or Bali — Alvryn plans your complete
                   door-to-door trip in seconds. No filters. No confusion.

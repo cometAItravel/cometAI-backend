@@ -4,28 +4,8 @@ import { useNavigate } from "react-router-dom";
 
 
 // ── palette ────────────────────────────────────────────────────────────────────
-// ── Alvryn Brand Colors — matches landing page and search page ───────────────
-const C = {
-  bg:        "#f8f4ec",      // warm cream — matches landing page
-  sbBg:      "#f0e8d4",      // sidebar slightly darker cream
-  sbBorder:  "rgba(201,168,76,0.25)",
-  gold:      "#c9a84c",      // Alvryn primary gold
-  goldD:     "#8B6914",      // dark gold for text
-  goldL:     "#f0d080",      // light gold highlight
-  green:     "#16a34a",      // success green (kept for badges)
-  greenD:    "#15803d",
-  greenMid:  "#22c55e",
-  cardBg:    "rgba(255,255,255,0.95)",   // white cards
-  cardBorder:"rgba(201,168,76,0.22)",    // gold border on cards
-  inputBg:   "rgba(255,255,255,0.9)",    // white input
-  textPri:   "#1a1410",                  // dark text — matches landing page
-  textSec:   "#5a4a3a",                  // medium dark
-  textMuted: "#a0896a",                  // muted gold-brown
-  grad:      "linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)",
-  gradGG:    "linear-gradient(135deg,#c9a84c 0%,#d4aa50 60%,#f0d080 100%)",
-  topBar:    "rgba(248,244,236,0.97)",   // cream top bar
-  msgBg:     "#f0e8d4",                  // message area bg
-};
+// C defined inside component below
+
 
 // ── IATA map (frontend for link building) ─────────────────────────────────────
 const IATA = {
@@ -61,7 +41,7 @@ function flink(from,to,ddmm,pax=1){
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600;700&family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;overflow:hidden;background:#f8f4ec;}
+html,body{height:100%;overflow:hidden;background:#f8f4ec;transition:background 0.5s ease;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
 @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
 @keyframes spin{to{transform:rotate(360deg);}}
@@ -83,15 +63,15 @@ textarea:focus{outline:none;}
 @media(max-width:768px){
   .sidebar{width:0!important;padding:0!important;overflow:hidden!important;min-width:0!important;flex-shrink:0!important;}
   .sidebar.open{
-    width:min(82vw,270px)!important;
+    width:min(82vw,272px)!important;min-width:0!important;
     position:fixed!important;left:0!important;top:0!important;
     height:100vh!important;height:100dvh!important;
     z-index:300!important;
     display:flex!important;flex-direction:column!important;
     padding:16px 12px 80px!important;
     overflow-y:auto!important;overflow-x:hidden!important;
-    background:#160f04!important;
     box-shadow:4px 0 24px rgba(0,0,0,0.4)!important;
+    visibility:visible!important;opacity:1!important;
   }
   .overlay{display:block!important;}
 }
@@ -220,6 +200,7 @@ function CountrySelector({token, onSelect}){
     setSelected(country.key);
     setOpen(false);
     localStorage.setItem("alvryn_country", country.key);
+    if(onSelect) onSelect(country); // triggers parent theme change
     if(token){
       try{
         await fetch(`${API}/set-country`,{
@@ -556,7 +537,7 @@ function UserMsg({m}){
     <div style={{display:"flex",justifyContent:"flex-end",marginBottom:20,animation:"fadeIn 0.2s both"}}>
       <div style={{maxWidth:"70%",padding:"12px 18px",
         borderRadius:"20px 20px 4px 20px",
-        background:C.grad,backgroundSize:"200% 200%",animation:"gradShift 4s ease infinite",
+        background:CT.userGrad||C.grad,backgroundSize:"200% 200%",animation:"gradShift 4s ease infinite",
         fontFamily:"'DM Sans',sans-serif",fontSize:15,color:"#1a1410",
         fontWeight:500,lineHeight:1.65,boxShadow:"0 4px 16px rgba(201,168,76,0.2)"}}>
         {m.content}
@@ -595,7 +576,7 @@ function EmptyState({onChip}){
         margin:"0 auto 20px",padding:"0 12px"}}>
         Flights · Buses · Hotels · Trains · Trip planning<br/>
         <span style={{fontSize:"clamp(11px,2.5vw,13px)",color:C.textMuted}}>
-          Any language. Any route. Typos? No problem. 😄
+          Any language. Any route. Typos? No problem. 😄 · 🌍 Select your country (top-right) for local prices
         </span>
       </p>
       {/* Chips — 2 per row on mobile, wrap on desktop */}
@@ -758,9 +739,46 @@ function smartChatTitle(firstMsg, messages) {
   return firstMsg.slice(0,36)+(firstMsg.length>36?"…":"");
 }
 
+
+// ── Country themes for AI chat ────────────────────────────────────────────────
+const COUNTRY_THEMES = {
+  india:       {bg:"#fdf6e8",accent:"#c9a84c",text:"#1a1410",nav:"rgba(248,244,236,0.97)",msgBg:"#f0e8d4",userGrad:"linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)"},
+  usa:         {bg:"#f0f4ff",accent:"#1d4ed8",text:"#0f172a",nav:"rgba(240,244,255,0.97)",msgBg:"#e8eeff",userGrad:"linear-gradient(135deg,#1d4ed8,#3b82f6,#1d4ed8)"},
+  uk:          {bg:"#f0f0ff",accent:"#1e40af",text:"#0f172a",nav:"rgba(240,240,255,0.97)",msgBg:"#e8e8ff",userGrad:"linear-gradient(135deg,#1e40af,#3b82f6,#1e40af)"},
+  japan:       {bg:"#fff5f5",accent:"#dc2626",text:"#0f172a",nav:"rgba(255,245,245,0.97)",msgBg:"#ffeeee",userGrad:"linear-gradient(135deg,#dc2626,#f87171,#dc2626)"},
+  australia:   {bg:"#fff8f0",accent:"#ea580c",text:"#1a1410",nav:"rgba(255,248,240,0.97)",msgBg:"#fff0e5",userGrad:"linear-gradient(135deg,#ea580c,#fb923c,#ea580c)"},
+  germany:     {bg:"#fffbf0",accent:"#ca8a04",text:"#1a1410",nav:"rgba(255,251,240,0.97)",msgBg:"#fef9e7",userGrad:"linear-gradient(135deg,#ca8a04,#fbbf24,#ca8a04)"},
+  france:      {bg:"#f0f8ff",accent:"#1d4ed8",text:"#0f172a",nav:"rgba(240,248,255,0.97)",msgBg:"#e8f4ff",userGrad:"linear-gradient(135deg,#1d4ed8,#60a5fa,#dc2626)"},
+  canada:      {bg:"#fff5f5",accent:"#dc2626",text:"#0f172a",nav:"rgba(255,245,245,0.97)",msgBg:"#ffeeee",userGrad:"linear-gradient(135deg,#dc2626,#f87171,#dc2626)"},
+  "south korea":{bg:"#f5f5ff",accent:"#1d4ed8",text:"#0f172a",nav:"rgba(245,245,255,0.97)",msgBg:"#eeeeff",userGrad:"linear-gradient(135deg,#1d4ed8,#dc2626,#1d4ed8)"},
+  brazil:      {bg:"#f0fff4",accent:"#16a34a",text:"#0f172a",nav:"rgba(240,255,244,0.97)",msgBg:"#e5ffee",userGrad:"linear-gradient(135deg,#16a34a,#4ade80,#16a34a)"},
+  spain:       {bg:"#fff8f0",accent:"#dc2626",text:"#1a1410",nav:"rgba(255,248,240,0.97)",msgBg:"#fff0e5",userGrad:"linear-gradient(135deg,#dc2626,#fbbf24,#dc2626)"},
+  italy:       {bg:"#f0fff4",accent:"#16a34a",text:"#0f172a",nav:"rgba(240,255,244,0.97)",msgBg:"#e5ffee",userGrad:"linear-gradient(135deg,#16a34a,#dc2626,#16a34a)"},
+  indonesia:   {bg:"#fff5f5",accent:"#dc2626",text:"#0f172a",nav:"rgba(255,245,245,0.97)",msgBg:"#ffeeee",userGrad:"linear-gradient(135deg,#dc2626,#f87171,#dc2626)"},
+  china:       {bg:"#fff8f0",accent:"#dc2626",text:"#0f172a",nav:"rgba(255,248,240,0.97)",msgBg:"#ffeeee",userGrad:"linear-gradient(135deg,#dc2626,#fbbf24,#dc2626)"},
+  russia:      {bg:"#f0f4ff",accent:"#1d4ed8",text:"#0f172a",nav:"rgba(240,244,255,0.97)",msgBg:"#e8eeff",userGrad:"linear-gradient(135deg,#1d4ed8,#dc2626,#1d4ed8)"},
+};
+
 export default function AIChatPage(){
   const navigate = useNavigate();
   const [chats,setChats]     = useState([]);
+  const [countryKey,setCountryKey] = useState(()=>localStorage.getItem("alvryn_country")||"india");
+  const CT = COUNTRY_THEMES[countryKey] || COUNTRY_THEMES.india;
+
+  // ── Brand Colors — reacts to country theme ────────────────────────────────
+  const C = {
+    bg:        CT.bg||"#f8f4ec",
+    sbBg:      CT.msgBg||"#f0e8d4",
+    topBar:    CT.nav||"rgba(248,244,236,0.97)",
+    textPri:   CT.text||"#1a1410",
+    textSec:   CT.text ? CT.text+"cc" : "rgba(26,20,10,0.75)",
+    textMuted: CT.text ? CT.text+"66" : "rgba(26,20,10,0.42)",
+    border:    CT.accent ? CT.accent+"33" : "rgba(201,168,76,0.2)",
+    gold:      CT.accent||"#c9a84c",
+    grad:      CT.userGrad||"linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)",
+    gradGG:    CT.userGrad||"linear-gradient(135deg,#c9a84c,#f0d080,#4ade80)",
+    gradSb:    CT.bg||"#f0e8d4",
+  };
   const [chatsLoaded,setChatsLoaded] = useState(false);
   const [activeId,setActiveId] = useState(null);
   const [messages,setMessages] = useState([]);
@@ -964,7 +982,7 @@ export default function AIChatPage(){
           display:"flex",flexDirection:"column",
           overflow:"hidden",transition:"width 0.22s ease",
           boxShadow:sbOpen?"4px 0 24px rgba(0,0,0,0.3)":"none"}}>
-        {sbOpen&&(
+        {(
           <div style={{display:"flex",flexDirection:"column",height:"100%",padding:"14px 10px"}}>
 
             {/* Logo */}
@@ -979,6 +997,9 @@ export default function AIChatPage(){
                   color:C.gold,letterSpacing:"0.2em"}}>AI TRAVEL</div>
               </div>
             </div>
+
+            {/* Country selector */}
+            <CountrySelector token={token} onSelect={(c)=>{ setCountryKey(c.key); }}/>
 
             {/* New Chat */}
             <button onClick={newChat}
@@ -1094,7 +1115,7 @@ export default function AIChatPage(){
         </div>
 
         {/* ── Messages ── */}
-        <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"clamp(10px,2vw,20px) clamp(8px,2vw,16px)",background:"#f0e8d4",minHeight:0}}>
+        <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"clamp(10px,2vw,20px) clamp(8px,2vw,16px)",background:CT.msgBg||"#f0e8d4",minHeight:0}}>
           <div style={{maxWidth:740,margin:"0 auto"}}>
             {empty&&<EmptyState onChip={send}/>}
             {messages.map(m=>(

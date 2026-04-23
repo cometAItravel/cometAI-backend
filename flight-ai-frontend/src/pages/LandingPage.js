@@ -27,6 +27,18 @@ body{font-family:'DM Sans',sans-serif;background:#fafaf8;color:#0a0a0a;overflow-
 @keyframes bgPan{0%{background-position:0% 50%;}100%{background-position:200% 50%;}}
 @keyframes scaleIn{from{transform:scale(0.92);opacity:0;}to{transform:scale(1);opacity:1;}}
 @keyframes shimmerText{0%{background-position:200% center;}100%{background-position:-200% center;}}
+@keyframes float3d{0%,100%{transform:translateY(0) rotateX(0deg) rotateY(0deg);}25%{transform:translateY(-8px) rotateX(2deg) rotateY(-1deg);}75%{transform:translateY(-4px) rotateX(-1deg) rotateY(2deg);}}
+@keyframes card3dHover{0%{transform:perspective(800px) rotateX(0deg) rotateY(0deg) scale3d(1,1,1);}100%{transform:perspective(800px) rotateX(-3deg) rotateY(5deg) scale3d(1.03,1.03,1.03);}}
+@keyframes depthPulse{0%,100%{box-shadow:0 8px 30px rgba(201,168,76,0.15),0 4px 12px rgba(0,0,0,0.08);}50%{box-shadow:0 20px 60px rgba(201,168,76,0.25),0 8px 24px rgba(0,0,0,0.12);}}
+@keyframes textReveal3d{from{opacity:0;transform:perspective(600px) rotateX(40deg) translateY(30px);filter:blur(4px);}to{opacity:1;transform:perspective(600px) rotateX(0deg) translateY(0);filter:blur(0);}}
+@keyframes tiltIn{from{opacity:0;transform:perspective(1000px) rotateY(-15deg) translateX(-30px);}to{opacity:1;transform:perspective(1000px) rotateY(0deg) translateX(0);}}
+@keyframes layerFloat{0%,100%{transform:translateY(0) translateZ(0);}50%{transform:translateY(-15px) translateZ(20px);}}
+.card-3d{transform-style:preserve-3d;perspective:1000px;transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1),box-shadow 0.4s ease;}
+.card-3d:hover{transform:perspective(800px) rotateX(-4deg) rotateY(6deg) scale3d(1.04,1.04,1.04) translateZ(10px);box-shadow:0 30px 80px rgba(201,168,76,0.2),0 10px 30px rgba(0,0,0,0.15)!important;}
+.card-3d-left:hover{transform:perspective(800px) rotateX(-4deg) rotateY(-6deg) scale3d(1.04,1.04,1.04) translateZ(10px);}
+.parallax-layer{will-change:transform;transform-style:preserve-3d;}
+.depth-shadow{box-shadow:0 20px 60px rgba(0,0,0,0.15),0 0 0 1px rgba(201,168,76,0.1);}
+.text-3d{text-shadow:0 2px 4px rgba(0,0,0,0.1),0 4px 8px rgba(0,0,0,0.06);}
 @keyframes zoomIn{from{transform:scale(1.08);opacity:0;}to{transform:scale(1);opacity:1;}}
 @keyframes slideUp{from{transform:translateY(100%);opacity:0;}to{transform:translateY(0);opacity:1;}}
 @keyframes glowPulse{0%,100%{box-shadow:0 0 20px rgba(108,99,255,0.2);}50%{box-shadow:0 0 40px rgba(108,99,255,0.5);}}
@@ -40,6 +52,16 @@ body{font-family:'DM Sans',sans-serif;background:#fafaf8;color:#0a0a0a;overflow-
 @keyframes slideUpFade{from{opacity:0;transform:translateY(40px);}to{opacity:1;transform:translateY(0);}}
 @keyframes revealLine{from{width:0;}to{width:100%;}}
 @keyframes pulseGold{0%,100%{box-shadow:0 0 0 0 rgba(201,168,76,0);}50%{box-shadow:0 0 0 8px rgba(201,168,76,0.15);}}
+/* 3D & depth effects */
+@keyframes float3d{0%,100%{transform:translateY(0) rotateX(0deg) rotateY(0deg);}25%{transform:translateY(-8px) rotateX(2deg) rotateY(-1deg);}50%{transform:translateY(-14px) rotateX(0deg) rotateY(2deg);}75%{transform:translateY(-6px) rotateX(-1deg) rotateY(-2deg);}}
+@keyframes depthPulse{0%,100%{transform:scale(1) translateZ(0);}50%{transform:scale(1.02) translateZ(20px);}}
+@keyframes morphBg{0%,100%{border-radius:60% 40% 30% 70%/60% 30% 70% 40%;}50%{border-radius:30% 60% 70% 40%/50% 60% 30% 60%;}}
+@keyframes tiltReveal{from{opacity:0;transform:perspective(800px) rotateX(15deg) translateY(40px);}to{opacity:1;transform:perspective(800px) rotateX(0deg) translateY(0);}}
+.card3d{transform-style:preserve-3d;transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1),box-shadow 0.4s ease;}
+.card3d:hover{transform:perspective(1000px) rotateX(-4deg) rotateY(4deg) translateY(-8px) scale(1.02);box-shadow:20px 28px 48px rgba(0,0,0,0.18),0 0 0 1px rgba(201,168,76,0.2)!important;}
+.depth-shadow{box-shadow:0 4px 6px rgba(0,0,0,0.05),0 10px 15px rgba(0,0,0,0.08),0 20px 30px rgba(0,0,0,0.06);}
+.reveal3d{animation:tiltReveal 0.8s cubic-bezier(0.34,1.56,0.64,1) both;}
+perspective-section{perspective:1200px;transform-style:preserve-3d;}
 .shine-btn{position:relative;overflow:hidden;cursor:pointer;transition:transform 0.2s,box-shadow 0.3s;}
 .shine-btn:hover{transform:translateY(-2px);}
 .shine-btn::after{content:'';position:absolute;inset:0;background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,0.25) 50%,transparent 70%);transform:translateX(-100%);transition:transform 0.5s;}
@@ -55,6 +77,8 @@ body{font-family:'DM Sans',sans-serif;background:#fafaf8;color:#0a0a0a;overflow-
   .wa-grid{grid-template-columns:1fr!important;}
   .cta-row{flex-direction:column!important;align-items:stretch!important;}
   .footer-grid{flex-direction:column!important;gap:20px!important;text-align:center!important;}
+/* Dark mode text fixes */
+[data-dark="true"] p,[data-dark="true"] span,[data-dark="true"] div{transition:color 0.5s ease,background 0.5s ease;}
 }
 `;
 
@@ -308,7 +332,7 @@ const BorderGlowCard = ({ children, style, accentColor = "#c9a84c" }) => {
 const TiltCard = ({ children, style }) => {
   const [t, setT] = useState({ rx:0, ry:0, s:1 });
   return (
-    <div className="tilt-card"
+    <div className="tilt-card card3d"
       onMouseMove={e => { const r=e.currentTarget.getBoundingClientRect(); setT({ rx:((e.clientY-r.top)/r.height-0.5)*-12, ry:((e.clientX-r.left)/r.width-0.5)*12, s:1.02 }); }}
       onMouseLeave={() => setT({ rx:0, ry:0, s:1 })}
       style={{ transform:`perspective(900px) rotateX(${t.rx}deg) rotateY(${t.ry}deg) scale(${t.s})`, ...style }}>
@@ -372,20 +396,18 @@ const THEMES_DARK = [
   { bg:"#110e06", accent:GOLD_D, grad:GOLD_G, text:"#f5ead5", sub:"#c9a84c" },
   { bg:"#0f0c06", accent:GOLD_A, grad:GOLD_G, text:"#f5ead5", sub:"#c9a84c" },
 ];
-// Keep backwards compat
-const THEMES = THEMES_LIGHT;
 
 /* ─── FOOTER MODAL ──────────────────────────────────────────────────────────── */
 const FooterModal = ({ open, onClose, title, children }) => {
   if (!open) return null;
   return (
     <div onClick={onClose} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:2000, display:"flex", alignItems:"flex-end", justifyContent:"center", backdropFilter:"blur(8px)", padding:"0 0 0 0" }}>
-      <div onClick={e=>e.stopPropagation()} style={{ width:"100%", maxWidth:640, background:"#fff", borderRadius:"24px 24px 0 0", padding:"40px 36px 48px", maxHeight:"80vh", overflowY:"auto", animation:"slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1)" }}>
+      <div onClick={e=>e.stopPropagation()} style={{ width:"100%", maxWidth:640, background:darkMode?"#1a1508":"#fff", borderRadius:"24px 24px 0 0", padding:"40px 36px 48px", maxHeight:"80vh", overflowY:"auto", animation:"slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1)" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:28 }}>
-          <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:600, fontSize:26, color:"#0a0a0a" }}>{title}</div>
-          <button onClick={onClose} style={{ width:36, height:36, borderRadius:"50%", background:"#f5f5f5", border:"none", cursor:"pointer", fontSize:18, display:"flex", alignItems:"center", justifyContent:"center", color:"#888" }}>×</button>
+          <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:600, fontSize:26, color:darkMode?"#f5ead5":"#0a0a0a" }}>{title}</div>
+          <button onClick={onClose} style={{ width:36, height:36, borderRadius:"50%", background:"#f5f5f5", border:"none", cursor:"pointer", fontSize:18, display:"flex", alignItems:"center", justifyContent:"center", color:darkMode?"#c9a84c":"#888" }}>×</button>
         </div>
-        <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, color:"#555", lineHeight:1.8 }}>{children}</div>
+        <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, color:darkMode?"#c8b890":"#555", lineHeight:1.8 }}>{children}</div>
       </div>
     </div>
   );
@@ -481,9 +503,11 @@ export default function LandingPage() {
       </FooterModal>
 
       {/* PAGE */}
-      <div style={{ opacity: splashDone ? 1 : 0, transition:"opacity 0.6s ease, background 0.8s ease, color 0.8s ease",
-        transform: splashDone ? "translateY(0)" : "translateY(20px)",
-        background:T.bg, color:T.text, minHeight:"100vh" }}>
+      <div data-dark={darkMode?"true":"false"}
+        style={{ opacity: splashDone ? 1 : 0,
+          transition:"opacity 0.6s ease, background 0.8s ease, color 0.8s ease",
+          transform: splashDone ? "translateY(0)" : "translateY(20px)",
+          background:T.bg, color:T.text, minHeight:"100vh" }}>
 
         {/* ══ NAVBAR ══ */}
         <nav style={{ position:"fixed", top:0, left:0, right:0, zIndex:1000, height:64, padding:"0 clamp(12px,4%,5%)",
@@ -540,12 +564,22 @@ export default function LandingPage() {
         ══════════════════════════════════ */}
         <section ref={heroRef} style={{ minHeight:"100vh", background:T.bg, display:"flex", alignItems:"center", position:"relative", overflow:"hidden", padding:"0 5%",
           animation: splashDone ? "zoomIn 1s ease both" : "none" }}>
-          {/* Animated background gradient overlay */}
+          {/* 3D Parallax depth layers */}
           <div style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:0,
             background: darkMode
               ? "linear-gradient(135deg,rgba(201,168,76,0.03) 0%,transparent 50%,rgba(201,168,76,0.02) 100%)"
               : "linear-gradient(135deg,rgba(201,168,76,0.04) 0%,transparent 50%,rgba(240,208,128,0.03) 100%)",
             backgroundSize:"400% 400%", animation:"bgPan 12s ease infinite" }}/>
+          {/* 3D floating orbs — depth effect */}
+          <div style={{ position:"absolute", width:"min(500px,80vw)", height:"min(500px,80vw)",
+            borderRadius:"50%", pointerEvents:"none", zIndex:0, filter:"blur(80px)",
+            background: darkMode ? "radial-gradient(circle,rgba(201,168,76,0.08),transparent 60%)" : "radial-gradient(circle,rgba(201,168,76,0.06),transparent 60%)",
+            top:"10%", right:"-10%", animation:"float3d 8s ease-in-out infinite",
+            transform:"translateZ(-50px)" }}/>
+          <div style={{ position:"absolute", width:"min(300px,60vw)", height:"min(300px,60vw)",
+            borderRadius:"50%", pointerEvents:"none", zIndex:0, filter:"blur(60px)",
+            background: darkMode ? "radial-gradient(circle,rgba(240,208,128,0.05),transparent 70%)" : "radial-gradient(circle,rgba(240,208,128,0.04),transparent 70%)",
+            bottom:"15%", left:"-5%", animation:"float3d 10s 2s ease-in-out infinite" }}/>
           {/* Radial glow — dark mode aware */}
           <div style={{ position:"absolute", inset:0,
             background: darkMode
@@ -579,7 +613,7 @@ export default function LandingPage() {
                 </div>
 
                 {/* Typewriter sub */}
-                <div style={{ fontSize:"clamp(16px,2vw,21px)", color:"#666", lineHeight:1.6, marginTop:24, marginBottom:48,
+                <div style={{ fontSize:"clamp(16px,2vw,21px)", color:darkMode?"rgba(245,234,213,0.65)":"#666", lineHeight:1.6, marginTop:24, marginBottom:48,
                   opacity: heroReady ? 1 : 0, transform: heroReady ? "translateY(0)" : "translateY(14px)", transition:"all 0.7s 1.8s ease" }}>
                   Flights, buses and hotels — all in one sentence.
                   <br/>No filters. No confusion. Just tell Alvryn what you want.{" "}
@@ -633,6 +667,13 @@ export default function LandingPage() {
             </div>
           </div>
 
+          {/* 3D floating depth orbs */}
+          <div style={{ position:"absolute", top:"20%", right:"5%", width:200, height:200, borderRadius:"50%",
+            background:darkMode?"radial-gradient(circle,rgba(201,168,76,0.06),transparent 70%)":"radial-gradient(circle,rgba(201,168,76,0.08),transparent 70%)",
+            animation:"layerFloat 8s ease-in-out infinite", pointerEvents:"none", filter:"blur(1px)" }}/>
+          <div style={{ position:"absolute", bottom:"30%", left:"3%", width:120, height:120, borderRadius:"50%",
+            background:darkMode?"radial-gradient(circle,rgba(240,208,128,0.05),transparent 70%)":"radial-gradient(circle,rgba(201,168,76,0.06),transparent 70%)",
+            animation:"layerFloat 6s ease-in-out infinite 2s", pointerEvents:"none", filter:"blur(2px)" }}/>
           {/* Scroll cue */}
           <div style={{ position:"absolute", bottom:36, left:"50%", transform:"translateX(-50%)", display:"flex", flexDirection:"column", alignItems:"center", gap:6, animation:"floatY 2s ease-in-out infinite" }}>
             <span style={{ fontFamily:"'Space Mono',monospace", fontSize:8, color:"#ccc", letterSpacing:"0.2em" }}>SCROLL</span>
@@ -677,12 +718,12 @@ export default function LandingPage() {
                 { city:"Jaipur", img:"photo-1477587458883-47145ed6d1f5", tag:"🏰 Heritage" },
               ].map((d,i) => (
                 <Reveal key={d.city} delay={i*80}>
-                  <div style={{ borderRadius:18, overflow:"hidden", cursor:"pointer", position:"relative",
-                    boxShadow: darkMode ? "0 8px 32px rgba(0,0,0,0.4)" : "0 4px 20px rgba(0,0,0,0.1)",
-                    transition:"transform 0.3s cubic-bezier(0.34,1.56,0.64,1)",
+                  <div className="card-3d" style={{ borderRadius:18, overflow:"hidden", cursor:"pointer", position:"relative",
+                    boxShadow: darkMode ? "0 20px 50px rgba(0,0,0,0.5),0 0 0 1px rgba(201,168,76,0.1)" : "0 10px 40px rgba(0,0,0,0.1),0 0 0 1px rgba(201,168,76,0.08)",
+                    transition:"all 0.4s cubic-bezier(0.34,1.56,0.64,1)",
                     animation:`pulseGold ${3+i*0.4}s ease-in-out infinite` }}
-                    onMouseEnter={e=>e.currentTarget.style.transform="scale(1.04) translateY(-4px)"}
-                    onMouseLeave={e=>e.currentTarget.style.transform="scale(1) translateY(0)"}
+                    onMouseEnter={e=>{e.currentTarget.style.transform="perspective(800px) rotateX(-4deg) rotateY(6deg) scale3d(1.05,1.05,1.05) translateZ(10px)";}}
+                    onMouseLeave={e=>{e.currentTarget.style.transform="none";}}
                     onClick={()=>{}}>
                     <img
                       src={`https://images.unsplash.com/${d.img}?auto=format&fit=crop&w=400&h=240&q=75`}
@@ -716,7 +757,7 @@ export default function LandingPage() {
           <div style={{ position:"relative", zIndex:2, width:"100%" }}>
             <Reveal>
               <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:T.accent, letterSpacing:"0.22em", marginBottom:16 }}>HOW IT WORKS</div>
-              <BlurText text="Book like you text a friend." style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(30px,4.5vw,64px)", color:T.text, marginBottom:10 }}/>
+              <BlurText text="Book like you text a friend." style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(30px,4.5vw,64px)", color:T.text, marginBottom:10, animation:"tiltReveal 0.8s ease both" }}/>
               <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(30px,4.5vw,64px)", marginBottom:64,
                 background:T.grad, WebkitBackgroundClip:"text", backgroundClip:"text", WebkitTextFillColor:"transparent" }}>
                 No learning curve.
@@ -730,11 +771,11 @@ export default function LandingPage() {
               ].map((s, i) => (
                 <Reveal key={i} delay={i * 140}>
                   <BorderGlowCard accentColor={T.accent} style={{ borderRadius:22 }}>
-                    <TiltCard style={{ padding:"36px 28px", background:darkMode?"rgba(26,21,8,0.9)":"#fff", borderRadius:22, boxShadow:darkMode?"0 4px 24px rgba(0,0,0,0.3)":"0 4px 24px rgba(0,0,0,0.05)", border:darkMode?"1px solid rgba(201,168,76,0.12)":"1px solid rgba(0,0,0,0.04)", cursor:"default" }}>
+                    <TiltCard style={{ padding:"36px 28px", background:darkMode?"rgba(22,17,5,0.92)":"rgba(255,255,255,0.97)", borderRadius:22, boxShadow:darkMode?"0 20px 60px rgba(0,0,0,0.35),0 0 0 1px rgba(201,168,76,0.15)":"0 20px 60px rgba(0,0,0,0.06)", border:darkMode?"1px solid rgba(201,168,76,0.18)":"1px solid rgba(0,0,0,0.04)", transformStyle:"preserve-3d", cursor:"default" }}>
                       <div style={{ fontSize:36, marginBottom:18 }}>{s.icon}</div>
-                      <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:600, fontSize:28, color:T.accent, marginBottom:10 }}>{s.n}</div>
+                      <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:600, fontSize:28, color:T.accent, marginBottom:10, textShadow:darkMode?"0 0 20px rgba(201,168,76,0.4)":"none" }}>{s.n}</div>
                       <div style={{ fontFamily:"'DM Sans',sans-serif", fontWeight:600, fontSize:18, color:T.text, marginBottom:12 }}>{s.title}</div>
-                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#666", lineHeight:1.7 }}>{s.desc}</div>
+                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:darkMode?"#b8a888":"#666", lineHeight:1.7 }}>{s.desc}</div>
                     </TiltCard>
                   </BorderGlowCard>
                 </Reveal>
@@ -774,7 +815,7 @@ export default function LandingPage() {
                     <TiltCard style={{ padding:"32px 26px", background:"#fff", borderRadius:22, boxShadow:"0 4px 18px rgba(0,0,0,0.04)", border:"1px solid rgba(0,0,0,0.04)", cursor:"default" }}>
                       <div style={{ fontSize:34, marginBottom:16 }}>{f.icon}</div>
                       <div style={{ fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:17, color:"#0a0a0a", marginBottom:10 }}>{f.title}</div>
-                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#666", lineHeight:1.65 }}>{f.desc}</div>
+                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:darkMode?"rgba(245,234,213,0.65)":"#666", lineHeight:1.65 }}>{f.desc}</div>
                       <div style={{ marginTop:20, height:2, borderRadius:2, width:"50%", background:`linear-gradient(90deg,${f.color},transparent)` }}/>
                     </TiltCard>
                   </BorderGlowCard>
@@ -828,7 +869,7 @@ export default function LandingPage() {
                 background:T.grad, WebkitBackgroundClip:"text", backgroundClip:"text", WebkitTextFillColor:"transparent" }}>
                 One chat thread.
               </div>
-              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, color:"#666", lineHeight:1.7, marginBottom:32 }}>
+              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, color:darkMode?"rgba(245,234,213,0.65)":"#666", lineHeight:1.7, marginBottom:32 }}>
                 Search flights and buses, pick seats, confirm — all inside WhatsApp. No app download required.
               </p>
               <div style={{ marginBottom:32, padding:"14px 20px", borderRadius:12, background:"rgba(0,0,0,0.03)", border:"1px solid rgba(0,0,0,0.07)", display:"inline-block" }}>
@@ -884,7 +925,7 @@ export default function LandingPage() {
               <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:T.accent, letterSpacing:"0.22em", marginBottom:16 }}>THE PROCESS</div>
               <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", color:"#1a1410", lineHeight:1.05, marginBottom:10 }}>How Alvryn works</div>
               <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", lineHeight:1.05, background:T.grad, WebkitBackgroundClip:"text", backgroundClip:"text", WebkitTextFillColor:"transparent" }}>in three simple steps.</div>
-              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, color:"#666", lineHeight:1.7, maxWidth:600, margin:"20px auto 0" }}>Alvryn is an AI-powered travel search engine. We find the best fares from our trusted partners and redirect you to book securely — no hidden fees, no markup.</p>
+              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, color:darkMode?"rgba(245,234,213,0.65)":"#666", lineHeight:1.7, maxWidth:600, margin:"20px auto 0" }}>Alvryn is an AI-powered travel search engine. We find the best fares from our trusted partners and redirect you to book securely — no hidden fees, no markup.</p>
             </Reveal>
             <div className="how-grid" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:28 }}>
               {[
@@ -899,7 +940,7 @@ export default function LandingPage() {
                     <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:700, fontSize:18, color:"#1a1410", marginBottom:12, lineHeight:1.3 }}>{s.title}</div>
                     <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#555", lineHeight:1.7, marginBottom:18 }}>{s.desc}</div>
                     <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                      {s.sub.map((point,j)=>(<div key={j} style={{ display:"flex", alignItems:"center", gap:10 }}><div style={{ width:6, height:6, borderRadius:"50%", background:"#c9a84c", flexShrink:0 }}/><span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#666" }}>{point}</span></div>))}
+                      {s.sub.map((point,j)=>(<div key={j} style={{ display:"flex", alignItems:"center", gap:10 }}><div style={{ width:6, height:6, borderRadius:"50%", background:"#c9a84c", flexShrink:0 }}/><span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:darkMode?"rgba(245,234,213,0.65)":"#666" }}>{point}</span></div>))}
                     </div>
                   </div>
                 </Reveal>
@@ -925,7 +966,7 @@ export default function LandingPage() {
               <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:T.accent, letterSpacing:"0.22em", marginBottom:16 }}>AI INTELLIGENCE</div>
               <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", color:T.text, lineHeight:1.05, marginBottom:10 }}>Not just search.</div>
               <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", lineHeight:1.05, background:T.grad, WebkitBackgroundClip:"text", backgroundClip:"text", WebkitTextFillColor:"transparent" }}>Smart travel decisions.</div>
-              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, color:"#666", lineHeight:1.7, maxWidth:580, margin:"20px auto 0" }}>
+              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, color:darkMode?"rgba(245,234,213,0.65)":"#666", lineHeight:1.7, maxWidth:580, margin:"20px auto 0" }}>
                 Alvryn doesn't just show options — it tells you which one to pick and why. Like having a travel expert in your pocket.
               </p>
             </Reveal>
@@ -984,7 +1025,7 @@ export default function LandingPage() {
                       <div style={{ fontSize:28, flexShrink:0 }}>{item.icon}</div>
                       <div>
                         <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:700, fontSize:18, color:"#1a1410", marginBottom:5 }}>{item.label}</div>
-                        <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"#666", lineHeight:1.6 }}>{item.desc}</div>
+                        <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:darkMode?"rgba(245,234,213,0.65)":"#666", lineHeight:1.6 }}>{item.desc}</div>
                       </div>
                     </div>
                   ))}
@@ -1001,7 +1042,7 @@ export default function LandingPage() {
               <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:T.accent, letterSpacing:"0.22em", marginBottom:16 }}>PLAN MY TRIP</div>
               <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", color:T.text, lineHeight:1.05, marginBottom:10 }}>Not sure where to go?</div>
               <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(28px,4vw,56px)", lineHeight:1.05, background:T.grad, WebkitBackgroundClip:"text", backgroundClip:"text", WebkitTextFillColor:"transparent" }}>Let Alvryn plan it for you.</div>
-              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, color:"#666", lineHeight:1.7, maxWidth:520, margin:"20px auto 0" }}>
+              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, color:darkMode?"rgba(245,234,213,0.65)":"#666", lineHeight:1.7, maxWidth:520, margin:"20px auto 0" }}>
                 Just tell Alvryn your budget and days. Get a full trip plan — flight, bus, hotel and estimated costs — instantly.
               </p>
             </Reveal>
@@ -1066,7 +1107,7 @@ export default function LandingPage() {
             <Reveal>
               <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:T.accent, letterSpacing:"0.22em", marginBottom:16 }}>OUR PARTNERS</div>
               <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(22px,3.5vw,44px)", color:"#1a1410", marginBottom:10 }}>Book with trusted platforms.</div>
-              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, color:"#666", lineHeight:1.7, maxWidth:520, margin:"0 auto 40px" }}>
+              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, color:darkMode?"rgba(245,234,213,0.65)":"#666", lineHeight:1.7, maxWidth:520, margin:"0 auto 40px" }}>
                 Alvryn helps you find the best options — bookings are completed securely on leading travel platforms.
               </p>
               <div style={{ display:"flex", gap:20, justifyContent:"center", flexWrap:"wrap", marginBottom:28 }}>
@@ -1078,7 +1119,7 @@ export default function LandingPage() {
                   <div key={p.name} style={{ padding:"20px 28px", background:p.color, borderRadius:16, border:"1px solid rgba(0,0,0,0.06)", minWidth:160, flex:1, maxWidth:220 }}>
                     <div style={{ fontSize:28, marginBottom:8 }}>{p.icon}</div>
                     <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:700, fontSize:18, color:"#1a1410", marginBottom:4 }}>{p.name}</div>
-                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:"#666" }}>{p.desc}</div>
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:darkMode?"rgba(245,234,213,0.65)":"#666" }}>{p.desc}</div>
                   </div>
                 ))}
               </div>
@@ -1141,7 +1182,7 @@ export default function LandingPage() {
                 <AlvrynIcon size={72} animate/>
               </div>
               <BlurText text="Start planning your next trip." style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:300, fontSize:"clamp(32px,5vw,66px)", color:"#1a1410", lineHeight:1.05, display:"block", marginBottom:24 }}/>
-              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:17, color:"#666", lineHeight:1.7, marginBottom:52 }}>
+              <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:17, color:darkMode?"rgba(245,234,213,0.65)":"#666", lineHeight:1.7, marginBottom:52 }}>
                 India's most intelligent travel booking platform. Best fares on flights and buses, instantly.
               </p>
               <div className="cta-row" style={{ display:"flex", gap:14, justifyContent:"center", flexWrap:"wrap" }}>

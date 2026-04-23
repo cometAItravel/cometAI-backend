@@ -1265,12 +1265,31 @@ function SearchPage(){
     {id:"train",  icon:"🚂", label:"Trains"},
     {id:"cab",    icon:"🚗", label:"Cabs",   cs:true},
   ];
+  // Tab-specific themes (like RedBus — each tab has its own color)
+  const TAB_THEMES = {
+    flight: { from:"#0c1445", to:"#0ea5e9", accent:"#38bdf8", text:"#fff", sub:"rgba(255,255,255,0.75)", emoji:"✈️",
+      bg:"linear-gradient(135deg,#0c1445 0%,#1e3a8a 45%,#0284c7 100%)",
+      headerBg:"linear-gradient(135deg,#0c1445,#1e3a8a)", tabCol:"#0284c7", activeLine:"#38bdf8" },
+    bus:    { from:"#052e16", to:"#16a34a", accent:"#4ade80", text:"#fff", sub:"rgba(255,255,255,0.75)", emoji:"🚌",
+      bg:"linear-gradient(135deg,#052e16 0%,#14532d 45%,#16a34a 100%)",
+      headerBg:"linear-gradient(135deg,#052e16,#166534)", tabCol:"#16a34a", activeLine:"#4ade80" },
+    hotel:  { from:"#450a0a", to:"#dc2626", accent:"#f87171", text:"#fff", sub:"rgba(255,255,255,0.75)", emoji:"🏨",
+      bg:"linear-gradient(135deg,#450a0a 0%,#991b1b 45%,#dc2626 100%)",
+      headerBg:"linear-gradient(135deg,#450a0a,#991b1b)", tabCol:"#dc2626", activeLine:"#f87171" },
+    train:  { from:"#2e1065", to:"#7c3aed", accent:"#a78bfa", text:"#fff", sub:"rgba(255,255,255,0.75)", emoji:"🚂",
+      bg:"linear-gradient(135deg,#2e1065 0%,#4c1d95 45%,#7c3aed 100%)",
+      headerBg:"linear-gradient(135deg,#2e1065,#4c1d95)", tabCol:"#7c3aed", activeLine:"#a78bfa" },
+    cab:    { from:"#78350f", to:"#c9a84c", accent:"#f0d080", text:"#fff", sub:"rgba(255,255,255,0.75)", emoji:"🚗",
+      bg:"linear-gradient(135deg,#78350f 0%,#92400e 45%,#c9a84c 100%)",
+      headerBg:"linear-gradient(135deg,#78350f,#92400e)", tabCol:"#c9a84c", activeLine:"#f0d080" },
+  };
+  const TT = TAB_THEMES[travelType] || TAB_THEMES.flight;
   const CS_DATA = {
     cab:{icon:"🚗",title:"Cab Booking",desc:"Airport transfers and intercity cabs — coming soon."},
   };
   const SPECIAL_FARES = [{id:"regular",label:"Regular"},{id:"student",label:"Student"},{id:"senior",label:"Senior Citizen"},{id:"armed",label:"Armed Forces"},{id:"doctor",label:"Doctor / Nurse"}];
 
-  const lbl  = {fontFamily:"'DM Sans',sans-serif",fontSize:11,fontWeight:700,color:"#5a4a3a",display:"block",marginBottom:6,letterSpacing:"0.1em"};
+  const lbl  = {fontFamily:"'DM Sans',sans-serif",fontSize:11,fontWeight:700,color:TT.from||"#5a4a3a",display:"block",marginBottom:6,letterSpacing:"0.1em"};
   const sText= {fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"#5a4a3a"};
   const inp  = {background:"#fafaf8",borderRadius:12,padding:"12px 14px",border:"1.5px solid rgba(201,168,76,0.2)",transition:"border-color 0.2s"};
 
@@ -1309,15 +1328,34 @@ function SearchPage(){
           <div style={{fontFamily:"'Space Mono',monospace",fontSize:10,color:GOLD_DARK,letterSpacing:"0.2em",marginBottom:8}}>SEARCH TRAVEL</div>
           <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:"clamp(22px,4vw,42px)",color:"#1a1410",marginBottom:4}}>Hey {user.name?.split(" ")[0]||"Traveller"} 👋</h1>
           <p style={{fontSize:15,color:"#4a3a2a",fontWeight:500}}>Where do you want to fly, ride or stay today?</p>
+          <div style={{display:"inline-flex",alignItems:"center",gap:8,marginTop:10,padding:"6px 14px",
+            borderRadius:100,background:TT.bg,backgroundSize:"200% 200%",animation:"gradShift 6s ease infinite",
+            boxShadow:`0 4px 12px ${TT.from}40`,transition:"background 0.5s cubic-bezier(0.4,0,0.2,1), box-shadow 0.5s ease"}}>
+            <span style={{fontSize:16}}>{TT.emoji}</span>
+            <span style={{fontFamily:"'DM Sans',sans-serif",fontSize:12,fontWeight:700,color:TT.text,letterSpacing:"0.06em"}}>
+              {travelType==="flight"?"Find Cheapest Flights":travelType==="bus"?"Search All Buses":travelType==="hotel"?"Discover Hotels":travelType==="train"?"Book Train Tickets":"Cab Booking"}
+            </span>
+          </div>
         </div>
 
-        {/* Travel type tabs */}
-        <div style={{display:"flex",gap:0,background:"rgba(255,255,255,0.88)",backdropFilter:"blur(10px)",borderRadius:"16px 16px 0 0",border:"1px solid rgba(201,168,76,0.18)",borderBottom:"none",overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none"}}>
+        {/* Travel type tabs — themed like RedBus */}
+        <div style={{display:"flex",gap:0,background:TT.bg,backgroundSize:"200% 200%",animation:"gradShift 8s ease infinite",
+              borderRadius:"16px 16px 0 0",overflowX:"auto",WebkitOverflowScrolling:"touch",
+              scrollbarWidth:"none",
+              transition:"background 0.5s cubic-bezier(0.4,0,0.2,1), box-shadow 0.5s ease",
+              boxShadow:`0 6px 28px ${TT.from}55`}}>
           {TRAVEL_TABS.map((tab,i)=>(
             <button key={tab.id} onClick={()=>{setTravelType(tab.id);setFlights([]);setBuses([]);setSearched(false);setValidErr("");setAiError("");}}
-              style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"14px 18px",cursor:"pointer",border:"none",borderBottom:travelType===tab.id?`2.5px solid ${GOLD}`:"2.5px solid transparent",background:"transparent",color:travelType===tab.id?GOLD_DARK:"#666",fontFamily:"'DM Sans',sans-serif",fontSize:12,fontWeight:600,transition:"all 0.2s",whiteSpace:"nowrap",borderRadius:i===0?"16px 0 0 0":i===TRAVEL_TABS.length-1?"0 16px 0 0":"0"}}>
-              <span style={{fontSize:20}}>{tab.icon}</span>{tab.label}
-              {tab.cs&&<span style={{fontSize:7,background:"rgba(201,168,76,0.15)",border:"1px solid rgba(201,168,76,0.35)",color:GOLD_DARK,padding:"1px 4px",borderRadius:5}}>SOON</span>}
+              style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"14px 18px",cursor:"pointer",border:"none",
+                borderBottom:travelType===tab.id?`3px solid ${TT.accent}`:"3px solid transparent",
+                background:travelType===tab.id?"rgba(255,255,255,0.15)":"transparent",
+                color:travelType===tab.id?TT.accent:TT.sub,
+                fontFamily:"'DM Sans',sans-serif",fontSize:12,fontWeight:700,transition:"all 0.3s ease",whiteSpace:"nowrap",
+                borderRadius:i===0?"16px 0 0 0":i===TRAVEL_TABS.length-1?"0 16px 0 0":"0",
+                backdropFilter:travelType===tab.id?"blur(10px)":"none"}}>
+              <span style={{fontSize:22,transition:"transform 0.3s",transform:travelType===tab.id?"scale(1.2)":"scale(1)"}}>{tab.icon}</span>
+              <span>{tab.label}</span>
+              {tab.cs&&<span style={{fontSize:7,background:"rgba(255,255,255,0.2)",color:TT.text,padding:"1px 4px",borderRadius:5}}>SOON</span>}
             </button>
           ))}
         </div>
@@ -1332,11 +1370,11 @@ function SearchPage(){
         )}
 
         {/* Train panel */}
-        {travelType==="train" && <TrainPanel/>}
+        {travelType==="train" && <TrainPanel accentColor={TT.from}/>}
 
         {/* Search panel — flight / bus / hotel */}
         {!CS_DATA[travelType] && travelType !== "train" && (
-          <div style={{background:"rgba(255,255,255,0.88)",backdropFilter:"blur(10px)",borderRadius:"0 0 20px 20px",padding:"22px 26px",boxShadow:"0 4px 20px rgba(0,0,0,0.05)",border:"1px solid rgba(201,168,76,0.15)",borderTop:"none",marginBottom:22}}>
+          <div style={{background:`linear-gradient(180deg,${TT.from}12 0%,rgba(255,255,255,0.98) 80px)`,backdropFilter:"blur(10px)",borderRadius:"0 0 20px 20px",padding:"22px 26px",boxShadow:`0 8px 32px ${TT.from}28`,border:`1px solid ${TT.from}30`,borderTop:"none",marginBottom:22,transition:"background 0.5s cubic-bezier(0.4,0,0.2,1), box-shadow 0.5s ease, border-color 0.5s ease"}}>
 
             {/* Mode toggle */}
             <div style={{display:"flex",gap:0,background:"rgba(201,168,76,0.08)",borderRadius:10,padding:3,marginBottom:18,width:"fit-content"}}>
@@ -1418,7 +1456,7 @@ function SearchPage(){
                   </div>
                 </div>
                 {validErr&&<div style={{padding:"10px 14px",borderRadius:10,background:"#FFF0F0",border:"1px solid #FFCDD2",fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"#cc2222",marginBottom:12,fontWeight:500}}>{validErr}</div>}
-                <button onClick={searchFlights} style={{width:"100%",padding:"15px",borderRadius:14,fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.08em",color:"#1a1410",border:"none",cursor:"pointer",background:GRAD,backgroundSize:"200% 200%",animation:"gradShift 4s ease infinite",boxShadow:`0 8px 28px rgba(201,168,76,0.44)`,transition:"transform 0.2s"}}
+                <button onClick={searchFlights} style={{width:"100%",padding:"15px",borderRadius:14,fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.08em",color:"#1a1410",border:"none",cursor:"pointer",background:TT.bg,backgroundSize:"200% 200%",animation:"gradShift 4s ease infinite",boxShadow:`0 8px 28px ${TT.from}44`,transition:"transform 0.2s"}}
                   onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
                   onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>Search Flights ✈</button>
               </>
@@ -1466,7 +1504,7 @@ function SearchPage(){
                   </div>
                 </div>
                 {validErr&&<div style={{padding:"10px 14px",borderRadius:10,background:"#FFF0F0",border:"1px solid #FFCDD2",fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"#cc2222",marginBottom:12,fontWeight:500}}>{validErr}</div>}
-                <button onClick={searchBuses} style={{width:"100%",padding:"15px",borderRadius:14,fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.08em",color:"#1a1410",border:"none",cursor:"pointer",background:GRAD,backgroundSize:"200% 200%",animation:"gradShift 4s ease infinite",boxShadow:`0 8px 28px rgba(201,168,76,0.44)`,transition:"transform 0.2s"}}
+                <button onClick={searchBuses} style={{width:"100%",padding:"15px",borderRadius:14,fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.08em",color:"#1a1410",border:"none",cursor:"pointer",background:TT.bg,backgroundSize:"200% 200%",animation:"gradShift 4s ease infinite",boxShadow:`0 8px 28px ${TT.from}44`,transition:"transform 0.2s"}}
                   onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
                   onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>Search Buses 🚌</button>
               </>
@@ -1499,7 +1537,7 @@ function SearchPage(){
                 </div>
                 {validErr&&<div style={{padding:"10px 14px",borderRadius:10,background:"#FFF0F0",border:"1px solid #FFCDD2",fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"#cc2222",marginBottom:12,fontWeight:500}}>{validErr}</div>}
                 <button onClick={()=>{setValidErr("");if(!date){setValidErr("Please select a check-in date");return;}openHotelLink(hotelCity);}}
-                  style={{width:"100%",padding:"15px",borderRadius:14,fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.08em",color:"#1a1410",border:"none",cursor:"pointer",background:GRAD,backgroundSize:"200% 200%",animation:"gradShift 4s ease infinite",boxShadow:`0 8px 28px rgba(201,168,76,0.44)`,transition:"transform 0.2s"}}
+                  style={{width:"100%",padding:"15px",borderRadius:14,fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.08em",color:"#1a1410",border:"none",cursor:"pointer",background:TT.bg,backgroundSize:"200% 200%",animation:"gradShift 4s ease infinite",boxShadow:`0 8px 28px ${TT.from}44`,transition:"transform 0.2s"}}
                   onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
                   onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>Search Hotels on Booking.com 🏨</button>
                 <div style={{textAlign:"center",marginTop:10,fontFamily:"'DM Sans',sans-serif",fontSize:12,color:"#888"}}>You'll be redirected to Booking.com — best prices guaranteed</div>
@@ -1533,7 +1571,7 @@ function SearchPage(){
                     style={{flex:1,background:"transparent",border:"none",outline:"none",fontFamily:"'DM Sans',sans-serif",fontSize:15,color:"#1a1410",padding:"12px 0"}}/>
                 </div>
                 {aiError&&<div style={{padding:"10px 14px",borderRadius:10,background:"#FFF0F0",border:"1px solid #FFCDD2",fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"#cc2222",marginBottom:8,fontWeight:500}}>{aiError}</div>}
-                <button onClick={searchAI} style={{width:"100%",padding:"15px",borderRadius:14,fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.08em",color:"#1a1410",border:"none",cursor:"pointer",background:GRAD,backgroundSize:"200% 200%",animation:"gradShift 4s ease infinite",boxShadow:`0 8px 28px rgba(201,168,76,0.44)`,transition:"transform 0.2s"}}
+                <button onClick={searchAI} style={{width:"100%",padding:"15px",borderRadius:14,fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.08em",color:"#1a1410",border:"none",cursor:"pointer",background:TT.bg,backgroundSize:"200% 200%",animation:"gradShift 4s ease infinite",boxShadow:`0 8px 28px ${TT.from}44`,transition:"transform 0.2s"}}
                   onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
                   onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>Search with AI 🤖</button>
               </div>

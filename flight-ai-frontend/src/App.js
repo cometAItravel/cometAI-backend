@@ -1289,9 +1289,9 @@ function SearchPage(){
   };
   const SPECIAL_FARES = [{id:"regular",label:"Regular"},{id:"student",label:"Student"},{id:"senior",label:"Senior Citizen"},{id:"armed",label:"Armed Forces"},{id:"doctor",label:"Doctor / Nurse"}];
 
-  const lbl  = {fontFamily:"'DM Sans',sans-serif",fontSize:11,fontWeight:700,color:TT.from||"#5a4a3a",display:"block",marginBottom:6,letterSpacing:"0.1em"};
+  const lbl  = {fontFamily:"'DM Sans',sans-serif",fontSize:11,fontWeight:700,color:TT.tabCol||TT.from||"#5a4a3a",display:"block",marginBottom:6,letterSpacing:"0.1em",transition:"color 0.5s ease"};
   const sText= {fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"#5a4a3a"};
-  const inp  = {background:"#fafaf8",borderRadius:12,padding:"12px 14px",border:"1.5px solid rgba(201,168,76,0.2)",transition:"border-color 0.2s"};
+  const inp  = {background:`${TT.from}06`||"#fafaf8",borderRadius:12,padding:"12px 14px",border:`1.5px solid ${TT.from}25`||"1.5px solid rgba(201,168,76,0.2)",transition:"background 0.5s ease, border-color 0.5s ease"};
 
   return (
     <div style={{minHeight:"100vh",background:"#faf8f4",position:"relative",overflowX:"hidden",fontFamily:"'DM Sans',sans-serif"}}>
@@ -1374,7 +1374,7 @@ function SearchPage(){
 
         {/* Search panel — flight / bus / hotel */}
         {!CS_DATA[travelType] && travelType !== "train" && (
-          <div style={{background:`linear-gradient(180deg,${TT.from}12 0%,rgba(255,255,255,0.98) 80px)`,backdropFilter:"blur(10px)",borderRadius:"0 0 20px 20px",padding:"22px 26px",boxShadow:`0 8px 32px ${TT.from}28`,border:`1px solid ${TT.from}30`,borderTop:"none",marginBottom:22,transition:"background 0.5s cubic-bezier(0.4,0,0.2,1), box-shadow 0.5s ease, border-color 0.5s ease"}}>
+          <div style={{background:`linear-gradient(180deg,${TT.from}22 0%,rgba(255,255,255,0.99) 90px)`,backdropFilter:"blur(10px)",borderRadius:"0 0 20px 20px",padding:"22px 26px",boxShadow:`0 8px 32px ${TT.from}28`,border:`1px solid ${TT.from}30`,borderTop:"none",marginBottom:22,transition:"background 0.5s cubic-bezier(0.4,0,0.2,1), box-shadow 0.5s ease, border-color 0.5s ease"}}>
 
             {/* Mode toggle */}
             <div style={{display:"flex",gap:0,background:"rgba(201,168,76,0.08)",borderRadius:10,padding:3,marginBottom:18,width:"fit-content"}}>
@@ -1456,7 +1456,7 @@ function SearchPage(){
                   </div>
                 </div>
                 {validErr&&<div style={{padding:"10px 14px",borderRadius:10,background:"#FFF0F0",border:"1px solid #FFCDD2",fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"#cc2222",marginBottom:12,fontWeight:500}}>{validErr}</div>}
-                <button onClick={searchFlights} style={{width:"100%",padding:"15px",borderRadius:14,fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.08em",color:"#1a1410",border:"none",cursor:"pointer",background:TT.bg,backgroundSize:"200% 200%",animation:"gradShift 4s ease infinite",boxShadow:`0 8px 28px ${TT.from}44`,transition:"transform 0.2s"}}
+                <button onClick={searchFlights} style={{width:"100%",padding:"15px",borderRadius:14,fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.08em",color:"#1a1410",border:"none",cursor:"pointer",background:TT.bg,backgroundSize:"200% 200%",animation:"gradShift 4s ease infinite",boxShadow:`0 8px 28px ${TT.from}55`,transition:"transform 0.2s, background 0.5s ease, box-shadow 0.5s ease"}}
                   onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
                   onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>Search Flights ✈</button>
               </>
@@ -1504,7 +1504,7 @@ function SearchPage(){
                   </div>
                 </div>
                 {validErr&&<div style={{padding:"10px 14px",borderRadius:10,background:"#FFF0F0",border:"1px solid #FFCDD2",fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"#cc2222",marginBottom:12,fontWeight:500}}>{validErr}</div>}
-                <button onClick={searchBuses} style={{width:"100%",padding:"15px",borderRadius:14,fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.08em",color:"#1a1410",border:"none",cursor:"pointer",background:TT.bg,backgroundSize:"200% 200%",animation:"gradShift 4s ease infinite",boxShadow:`0 8px 28px ${TT.from}44`,transition:"transform 0.2s"}}
+                <button onClick={searchBuses} style={{width:"100%",padding:"15px",borderRadius:14,fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.08em",color:"#1a1410",border:"none",cursor:"pointer",background:TT.bg,backgroundSize:"200% 200%",animation:"gradShift 4s ease infinite",boxShadow:`0 8px 28px ${TT.from}55`,transition:"transform 0.2s, background 0.5s ease, box-shadow 0.5s ease"}}
                   onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
                   onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>Search Buses 🚌</button>
               </>
@@ -1537,7 +1537,7 @@ function SearchPage(){
                 </div>
                 {validErr&&<div style={{padding:"10px 14px",borderRadius:10,background:"#FFF0F0",border:"1px solid #FFCDD2",fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"#cc2222",marginBottom:12,fontWeight:500}}>{validErr}</div>}
                 <button onClick={()=>{setValidErr("");if(!date){setValidErr("Please select a check-in date");return;}openHotelLink(hotelCity);}}
-                  style={{width:"100%",padding:"15px",borderRadius:14,fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.08em",color:"#1a1410",border:"none",cursor:"pointer",background:TT.bg,backgroundSize:"200% 200%",animation:"gradShift 4s ease infinite",boxShadow:`0 8px 28px ${TT.from}44`,transition:"transform 0.2s"}}
+                  style={{width:"100%",padding:"15px",borderRadius:14,fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.08em",color:"#1a1410",border:"none",cursor:"pointer",background:TT.bg,backgroundSize:"200% 200%",animation:"gradShift 4s ease infinite",boxShadow:`0 8px 28px ${TT.from}55`,transition:"transform 0.2s, background 0.5s ease, box-shadow 0.5s ease"}}
                   onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
                   onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>Search Hotels on Booking.com 🏨</button>
                 <div style={{textAlign:"center",marginTop:10,fontFamily:"'DM Sans',sans-serif",fontSize:12,color:"#888"}}>You'll be redirected to Booking.com — best prices guaranteed</div>
@@ -1571,7 +1571,7 @@ function SearchPage(){
                     style={{flex:1,background:"transparent",border:"none",outline:"none",fontFamily:"'DM Sans',sans-serif",fontSize:15,color:"#1a1410",padding:"12px 0"}}/>
                 </div>
                 {aiError&&<div style={{padding:"10px 14px",borderRadius:10,background:"#FFF0F0",border:"1px solid #FFCDD2",fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"#cc2222",marginBottom:8,fontWeight:500}}>{aiError}</div>}
-                <button onClick={searchAI} style={{width:"100%",padding:"15px",borderRadius:14,fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.08em",color:"#1a1410",border:"none",cursor:"pointer",background:TT.bg,backgroundSize:"200% 200%",animation:"gradShift 4s ease infinite",boxShadow:`0 8px 28px ${TT.from}44`,transition:"transform 0.2s"}}
+                <button onClick={searchAI} style={{width:"100%",padding:"15px",borderRadius:14,fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.08em",color:"#1a1410",border:"none",cursor:"pointer",background:TT.bg,backgroundSize:"200% 200%",animation:"gradShift 4s ease infinite",boxShadow:`0 8px 28px ${TT.from}55`,transition:"transform 0.2s, background 0.5s ease, box-shadow 0.5s ease"}}
                   onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
                   onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>Search with AI 🤖</button>
               </div>

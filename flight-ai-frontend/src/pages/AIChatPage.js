@@ -1027,10 +1027,10 @@ export default function AIChatPage() {
             {/* HOME / SEARCH ICON */}
             <button onClick={() => navigate("/search")}
               title="Go to Flight Search"
-              style={{ width:38, height:38, borderRadius:10, background:`${T.accent}15`,
+              style={{               width:38, height:38, borderRadius:10, background:`${T.accent}15`,
                 border:`2px solid ${T.border}`, cursor:"pointer",
                 display:"flex", alignItems:"center", justifyContent:"center",
-                fontSize:18, flexShrink:0 }}>
+                fontSize:18, flexShrink:0, lineHeight:1 }}>
               🔍
             </button>
 

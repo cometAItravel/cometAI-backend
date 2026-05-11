@@ -1,420 +1,503 @@
-/* eslint-disable no-unused-vars */
+/* eslint-disable no-unused-vars, react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
+const API = "https://cometai-backend.onrender.com";
 
-// ── palette ────────────────────────────────────────────────────────────────────
-// C defined inside component below
-
-
-// ── IATA map (frontend for link building) ─────────────────────────────────────
+// ── IATA MAP ──────────────────────────────────────────────────────────────────
 const IATA = {
-  "bangalore":"BLR","bengaluru":"BLR","mumbai":"BOM","bombay":"BOM",
-  "delhi":"DEL","new delhi":"DEL","chennai":"MAA","madras":"MAA",
-  "hyderabad":"HYD","kolkata":"CCU","goa":"GOI","pune":"PNQ",
-  "kochi":"COK","cochin":"COK","ahmedabad":"AMD","jaipur":"JAI",
-  "lucknow":"LKO","varanasi":"VNS","banaras":"VNS","trivandrum":"TRV",
-  "trivandram":"TRV","thiruvananthapuram":"TRV","coimbatore":"CBE",
-  "madurai":"IXM","mangalore":"IXE","mysore":"MYQ","visakhapatnam":"VTZ",
-  "vizag":"VTZ","ranchi":"IXR","bhopal":"BHO","nagpur":"NAG",
-  "chandigarh":"IXC","guwahati":"GAU","bhubaneswar":"BBI",
-  "tirupati":"TIR","leh":"IXL","amritsar":"ATQ","udaipur":"UDR",
-  "jodhpur":"JDH","agra":"AGR","patna":"PAT","dehradun":"DED",
-  "shimla":"SLV","indore":"IDR",
-  "dubai":"DXB","singapore":"SIN","bangkok":"BKK","london":"LHR",
-  "new york":"JFK","kuala lumpur":"KUL","colombo":"CMB",
-  "paris":"CDG","tokyo":"NRT","sydney":"SYD","doha":"DOH",
-  "abu dhabi":"AUH","istanbul":"IST","bali":"DPS","maldives":"MLE",
+  "bangalore":"BLR","bengaluru":"BLR","mumbai":"BOM","delhi":"DEL","chennai":"MAA",
+  "hyderabad":"HYD","kolkata":"CCU","goa":"GOI","pune":"PNQ","kochi":"COK",
+  "ahmedabad":"AMD","jaipur":"JAI","lucknow":"LKO","varanasi":"VNS","trivandrum":"TRV",
+  "coimbatore":"CBE","madurai":"IXM","mangalore":"IXE","mysore":"MYQ",
+  "visakhapatnam":"VTZ","varkala":"TRV","alleppey":"COK","munnar":"COK",
+  "dubai":"DXB","singapore":"SIN","bangkok":"BKK","london":"LHR","new york":"JFK",
+  "tokyo":"NRT","paris":"CDG","sydney":"SYD","bali":"DPS","kuala lumpur":"KUL",
+  "colombo":"CMB","kathmandu":"KTM","doha":"DOH","abu dhabi":"AUH","muscat":"MCT",
+  "istanbul":"IST","rome":"FCO","barcelona":"BCN","amsterdam":"AMS","zurich":"ZRH",
 };
-const INDIA = new Set(["BLR","BOM","DEL","MAA","HYD","CCU","GOI","PNQ","COK","AMD","JAI",
-  "LKO","VNS","PAT","IXC","GAU","BBI","CBE","IXM","IXE","MYQ","TRV","VTZ","VGA","IXR",
-  "BHO","SXR","IXJ","HBX","IXG","TIR","IXL","IXZ","NAG","IDR","RPR","DED","SLV","ATQ","UDR"]);
+const INDIA_IATA = new Set(["BLR","BOM","DEL","MAA","HYD","CCU","GOI","PNQ","COK","AMD",
+  "JAI","LKO","VNS","TRV","CBE","IXM","IXE","MYQ","VTZ","IXL","IXZ","NAG"]);
 
-function flink(from,to,ddmm,pax=1){
-  const fc=IATA[from?.toLowerCase()]||from?.slice(0,3).toUpperCase()||"BLR";
-  const tc=IATA[to?.toLowerCase()]||to?.slice(0,3).toUpperCase()||"BOM";
-  const base=(INDIA.has(fc)&&INDIA.has(tc))?"https://www.aviasales.in":"https://www.aviasales.com";
-  return `${base}/search/${fc}${ddmm||""}${tc}${pax}?marker=714667&sub_id=alvryn_ai`;
-}
-
-// ── CSS ─────────────────────────────────────────────────────────────────────────
-const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600;700&family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap');
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;overflow:hidden;background:#f8f4ec;transition:background 0.5s ease;}
-@keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
-@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
-@keyframes spin{to{transform:rotate(360deg);}}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
-@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-7px);}}
-@keyframes shimmer{0%{background-position:-200% 0;}100%{background-position:200% 0;}}
-@keyframes gradShift{0%,100%{background-position:0% 50%;}50%{background-position:100% 50%;}}
-@keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(201,168,76,0);}50%{box-shadow:0 0 18px 2px rgba(201,168,76,0.13);}}
-::-webkit-scrollbar{width:3px;}
-::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.4);border-radius:3px;}
-.sb-btn:hover{background:rgba(201,168,76,0.15)!important;color:#8B6914!important;}
-.sb-item:hover{background:rgba(201,168,76,0.07)!important;}
-.chip:hover{background:rgba(201,168,76,0.2)!important;border-color:rgba(201,168,76,0.55)!important;color:#1a1410!important;transform:translateY(-1px);}
-.travel-card{transition:all 0.18s ease;}
-.travel-card:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(201,168,76,0.25),0 0 0 1px rgba(201,168,76,0.3)!important;border-color:rgba(201,168,76,0.45)!important;background:#fff!important;}
-.send-btn:hover:not(:disabled){transform:scale(1.08);}
-.send-btn:disabled{opacity:0.3;cursor:default;}
-textarea:focus{outline:none;}
-@media(max-width:768px){
-  .sidebar{width:0!important;padding:0!important;overflow:hidden!important;min-width:0!important;flex-shrink:0!important;}
-  .sidebar.open{
-    width:min(82vw,272px)!important;min-width:0!important;
-    position:fixed!important;left:0!important;top:0!important;
-    height:100vh!important;height:100dvh!important;
-    z-index:300!important;
-    display:flex!important;flex-direction:column!important;
-    padding:16px 12px 80px!important;
-    overflow-y:auto!important;overflow-x:hidden!important;
-    box-shadow:4px 0 24px rgba(0,0,0,0.4)!important;
-    visibility:visible!important;opacity:1!important;
-  }
-  .overlay{display:block!important;}
-}
-@media(min-width:769px){
-  .sidebar{display:flex!important;flex-direction:column!important;}
-}
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:290;}
-@media(max-width:480px){
-  .travel-card{padding:12px!important;}
-  .travel-card .price{font-size:18px!important;}
-}
-`;
-
-// ── LOGO ────────────────────────────────────────────────────────────────────────
-function Logo({size=34}){
-  return(
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
-      <defs>
-        <linearGradient id="lg1" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#c9a84c"/><stop offset="55%" stopColor="#f0d080"/><stop offset="100%" stopColor="#4ade80"/>
-        </linearGradient>
-      </defs>
-      <circle cx="32" cy="32" r="30" stroke="url(#lg1)" strokeWidth="1.5" fill="none"/>
-      <path d="M20 46L28 18L36 46" stroke="url(#lg1)" strokeWidth="2.4" strokeLinecap="round" fill="none"/>
-      <path d="M23 37L34 37" stroke="url(#lg1)" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M27 46L35 18L43 46" stroke="url(#lg1)" strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.4"/>
-    </svg>
-  );
+function flink(from, to, ddmm = "", pax = 1) {
+  const fc = IATA[from?.toLowerCase()] || from?.slice(0,3).toUpperCase() || "BLR";
+  const tc = IATA[to?.toLowerCase()]   || to?.slice(0,3).toUpperCase()   || "BOM";
+  const base = (INDIA_IATA.has(fc) && INDIA_IATA.has(tc))
+    ? "https://www.aviasales.in" : "https://www.aviasales.com";
+  return `${base}/search/${fc}${ddmm}${tc}${pax}?marker=714667&sub_id=alvryn_ai`;
 }
 
-// ── TYPING INDICATOR ────────────────────────────────────────────────────────────
-function Typing(){
-  return(
-    <div style={{display:"flex",alignItems:"center",gap:5,padding:"12px 16px",
-      background:"rgba(255,255,255,0.95)",
-      borderRadius:"18px 18px 18px 4px",border:"1px solid rgba(201,168,76,0.2)",
-      width:"fit-content",backdropFilter:"blur(8px)"}}>
-      {[0,1,2].map(i=>(
-        <div key={i} style={{width:8,height:8,borderRadius:"50%",
-          background:i===1?C_STATIC.green:C_STATIC.gold,
-          animation:`pulse 1.3s ${i*0.22}s ease-in-out infinite`}}/>
-      ))}
+// ── THEMES ────────────────────────────────────────────────────────────────────
+const THEMES = {
+  gold: {
+    name:"⭐ Alvryn Gold", bg:"#fdf8ee", msgArea:"#f5edda",
+    sidebar:"#2a1f0a", navBg:"rgba(253,248,238,0.97)",
+    userBubble:"#c9a84c", userText:"#1a1410",
+    aiBubble:"#fffdf5", aiText:"#1a1410",
+    border:"#c9a84c", inputBg:"#fffdf5", inputText:"#1a1410",
+    chipBg:"rgba(201,168,76,0.12)", chipBorder:"#c9a84c", chipText:"#8B6914",
+    sbText:"#f0e6d0", sbSubText:"#c9a060", sbBorder:"rgba(201,168,76,0.3)",
+    accent:"#c9a84c", accentDark:"#8B6914",
+    sendBtn:"linear-gradient(135deg,#c9a84c,#f0d080)", sendIcon:"#1a1410",
+    globeColor:"#c9a84c", globeGlow:"rgba(201,168,76,0.4)", inkColor:"#8B6914",
+  },
+  avengers: {
+    name:"🌌 Avengers", bg:"#0d1220", msgArea:"#0a0e1a",
+    sidebar:"#060a14", navBg:"rgba(13,18,32,0.97)",
+    userBubble:"#8b0000", userText:"#fff",
+    aiBubble:"#141d2e", aiText:"#e0e8ff",
+    border:"#4a90d9", inputBg:"#141d2e", inputText:"#e0e8ff",
+    chipBg:"rgba(74,144,217,0.15)", chipBorder:"#4a90d9", chipText:"#7eb8f7",
+    sbText:"#c8d8ff", sbSubText:"#6080b0", sbBorder:"rgba(74,144,217,0.3)",
+    accent:"#4a90d9", accentDark:"#2a60a9",
+    sendBtn:"linear-gradient(135deg,#8b0000,#cc2200)", sendIcon:"#fff",
+    globeColor:"#4a90d9", globeGlow:"rgba(74,144,217,0.5)", inkColor:"#7eb8f7",
+  },
+  f1: {
+    name:"🏎️ F1 Racing", bg:"#141414", msgArea:"#0f0f0f",
+    sidebar:"#0a0a0a", navBg:"rgba(20,20,20,0.97)",
+    userBubble:"#cc0000", userText:"#fff",
+    aiBubble:"#1e1e1e", aiText:"#f0f0f0",
+    border:"#cc0000", inputBg:"#1e1e1e", inputText:"#f0f0f0",
+    chipBg:"rgba(204,0,0,0.12)", chipBorder:"#cc0000", chipText:"#ff6666",
+    sbText:"#f0f0f0", sbSubText:"#888", sbBorder:"rgba(204,0,0,0.3)",
+    accent:"#cc0000", accentDark:"#990000",
+    sendBtn:"linear-gradient(135deg,#cc0000,#ff4444)", sendIcon:"#fff",
+    globeColor:"#cc0000", globeGlow:"rgba(204,0,0,0.5)", inkColor:"#ff6666",
+  },
+  wwe: {
+    name:"🤼 WWE", bg:"#111", msgArea:"#0a0a0a",
+    sidebar:"#050505", navBg:"rgba(17,17,17,0.97)",
+    userBubble:"#c9a84c", userText:"#0a0a0a",
+    aiBubble:"#1c1c1c", aiText:"#ffd700",
+    border:"#c9a84c", inputBg:"#1c1c1c", inputText:"#ffd700",
+    chipBg:"rgba(201,168,76,0.12)", chipBorder:"#c9a84c", chipText:"#ffd700",
+    sbText:"#ffd700", sbSubText:"#aa8800", sbBorder:"rgba(201,168,76,0.3)",
+    accent:"#c9a84c", accentDark:"#8B6914",
+    sendBtn:"linear-gradient(135deg,#c9a84c,#ffd700)", sendIcon:"#0a0a0a",
+    globeColor:"#ffd700", globeGlow:"rgba(255,215,0,0.5)", inkColor:"#ffd700",
+  },
+  cricket: {
+    name:"🏏 Cricket", bg:"#f0fff4", msgArea:"#e8f5e9",
+    sidebar:"#1b4332", navBg:"rgba(240,255,244,0.97)",
+    userBubble:"#2d6a4f", userText:"#fff",
+    aiBubble:"#fff", aiText:"#1b4332",
+    border:"#2d6a4f", inputBg:"#fff", inputText:"#1b4332",
+    chipBg:"rgba(45,106,79,0.1)", chipBorder:"#2d6a4f", chipText:"#2d6a4f",
+    sbText:"#d8f3dc", sbSubText:"#74c69d", sbBorder:"rgba(45,106,79,0.3)",
+    accent:"#2d6a4f", accentDark:"#1b4332",
+    sendBtn:"linear-gradient(135deg,#2d6a4f,#52b788)", sendIcon:"#fff",
+    globeColor:"#2d6a4f", globeGlow:"rgba(45,106,79,0.4)", inkColor:"#1b4332",
+  },
+  football: {
+    name:"⚽ Football", bg:"#f0fff4", msgArea:"#e8f5e8",
+    sidebar:"#003d00", navBg:"rgba(240,255,244,0.97)",
+    userBubble:"#006400", userText:"#fff",
+    aiBubble:"#fff", aiText:"#003d00",
+    border:"#006400", inputBg:"#fff", inputText:"#003d00",
+    chipBg:"rgba(0,100,0,0.08)", chipBorder:"#006400", chipText:"#006400",
+    sbText:"#ccffcc", sbSubText:"#66cc66", sbBorder:"rgba(0,100,0,0.3)",
+    accent:"#006400", accentDark:"#003d00",
+    sendBtn:"linear-gradient(135deg,#006400,#228b22)", sendIcon:"#fff",
+    globeColor:"#228b22", globeGlow:"rgba(34,139,34,0.4)", inkColor:"#006400",
+  },
+  sakura: {
+    name:"🌸 Sakura", bg:"#fff0f5", msgArea:"#ffe8f0",
+    sidebar:"#4a0020", navBg:"rgba(255,240,245,0.97)",
+    userBubble:"#e91e8c", userText:"#fff",
+    aiBubble:"#fff5f8", aiText:"#4a0020",
+    border:"#e91e8c", inputBg:"#fff5f8", inputText:"#4a0020",
+    chipBg:"rgba(233,30,140,0.08)", chipBorder:"#e91e8c", chipText:"#c0006a",
+    sbText:"#ffd0e8", sbSubText:"#cc88aa", sbBorder:"rgba(233,30,140,0.3)",
+    accent:"#e91e8c", accentDark:"#c0006a",
+    sendBtn:"linear-gradient(135deg,#e91e8c,#ff6bb5)", sendIcon:"#fff",
+    globeColor:"#e91e8c", globeGlow:"rgba(233,30,140,0.4)", inkColor:"#c0006a",
+  },
+  nature: {
+    name:"🌿 Nature", bg:"#f4f9f0", msgArea:"#eaf4e4",
+    sidebar:"#1a3d1a", navBg:"rgba(244,249,240,0.97)",
+    userBubble:"#4a7c3f", userText:"#fff",
+    aiBubble:"#fff", aiText:"#1a3d1a",
+    border:"#4a7c3f", inputBg:"#fff", inputText:"#1a3d1a",
+    chipBg:"rgba(74,124,63,0.1)", chipBorder:"#4a7c3f", chipText:"#4a7c3f",
+    sbText:"#d4edcc", sbSubText:"#88bb77", sbBorder:"rgba(74,124,63,0.3)",
+    accent:"#4a7c3f", accentDark:"#2d5a24",
+    sendBtn:"linear-gradient(135deg,#4a7c3f,#7abf66)", sendIcon:"#fff",
+    globeColor:"#4a7c3f", globeGlow:"rgba(74,124,63,0.4)", inkColor:"#2d5a24",
+  },
+  sunset: {
+    name:"🌅 Sunset", bg:"#fff8f0", msgArea:"#fff0e5",
+    sidebar:"#3d1a00", navBg:"rgba(255,248,240,0.97)",
+    userBubble:"#e65c00", userText:"#fff",
+    aiBubble:"#fff5ee", aiText:"#3d1a00",
+    border:"#e65c00", inputBg:"#fff5ee", inputText:"#3d1a00",
+    chipBg:"rgba(230,92,0,0.1)", chipBorder:"#e65c00", chipText:"#b34700",
+    sbText:"#ffd4b0", sbSubText:"#cc7744", sbBorder:"rgba(230,92,0,0.3)",
+    accent:"#e65c00", accentDark:"#b34700",
+    sendBtn:"linear-gradient(135deg,#e65c00,#ff8c42)", sendIcon:"#fff",
+    globeColor:"#e65c00", globeGlow:"rgba(230,92,0,0.5)", inkColor:"#b34700",
+  },
+  royalblue: {
+    name:"👑 Royal Blue", bg:"#f0f4ff", msgArea:"#e8eeff",
+    sidebar:"#0a1a5c", navBg:"rgba(240,244,255,0.97)",
+    userBubble:"#1a3acc", userText:"#fff",
+    aiBubble:"#fff", aiText:"#0a1a5c",
+    border:"#1a3acc", inputBg:"#fff", inputText:"#0a1a5c",
+    chipBg:"rgba(26,58,204,0.08)", chipBorder:"#1a3acc", chipText:"#1a3acc",
+    sbText:"#c8d8ff", sbSubText:"#7090cc", sbBorder:"rgba(26,58,204,0.3)",
+    accent:"#1a3acc", accentDark:"#0a1a8c",
+    sendBtn:"linear-gradient(135deg,#1a3acc,#4466ff)", sendIcon:"#fff",
+    globeColor:"#4466ff", globeGlow:"rgba(68,102,255,0.5)", inkColor:"#1a3acc",
+  },
+  galaxy: {
+    name:"🌌 Galaxy", bg:"#080c1a", msgArea:"#0c1222",
+    sidebar:"#05080f", navBg:"rgba(8,12,26,0.97)",
+    userBubble:"#6c00ff", userText:"#fff",
+    aiBubble:"#10182e", aiText:"#c8b4ff",
+    border:"#6c00ff", inputBg:"#10182e", inputText:"#c8b4ff",
+    chipBg:"rgba(108,0,255,0.15)", chipBorder:"#6c00ff", chipText:"#aa88ff",
+    sbText:"#c8b4ff", sbSubText:"#7755cc", sbBorder:"rgba(108,0,255,0.3)",
+    accent:"#8844ff", accentDark:"#4a00bb",
+    sendBtn:"linear-gradient(135deg,#6c00ff,#aa44ff)", sendIcon:"#fff",
+    globeColor:"#aa44ff", globeGlow:"rgba(170,68,255,0.5)", inkColor:"#aa88ff",
+  },
+  rosegold: {
+    name:"🌹 Rose Gold", bg:"#fff5f5", msgArea:"#ffecec",
+    sidebar:"#4a1520", navBg:"rgba(255,245,245,0.97)",
+    userBubble:"#c0496a", userText:"#fff",
+    aiBubble:"#fff8f8", aiText:"#4a1520",
+    border:"#c0496a", inputBg:"#fff8f8", inputText:"#4a1520",
+    chipBg:"rgba(192,73,106,0.08)", chipBorder:"#c0496a", chipText:"#8a2a42",
+    sbText:"#ffd0d8", sbSubText:"#cc8899", sbBorder:"rgba(192,73,106,0.3)",
+    accent:"#c0496a", accentDark:"#8a2a42",
+    sendBtn:"linear-gradient(135deg,#c0496a,#e87a9a)", sendIcon:"#fff",
+    globeColor:"#c0496a", globeGlow:"rgba(192,73,106,0.4)", inkColor:"#8a2a42",
+  },
+};
+
+// ── SOUND EFFECTS ─────────────────────────────────────────────────────────────
+function playSound(type) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    if (type === "send") {
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      osc.start(); osc.stop(ctx.currentTime + 0.15);
+    } else if (type === "receive") {
+      osc.frequency.setValueAtTime(600, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.05);
+      osc.frequency.exponentialRampToValueAtTime(750, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+      osc.start(); osc.stop(ctx.currentTime + 0.2);
+    }
+  } catch {}
+}
+
+// ── GLOBE CITIES ──────────────────────────────────────────────────────────────
+const GLOBE_CITIES = [
+  { name:"Paris",     x:48, y:30, label:"🗼" },
+  { name:"Dubai",     x:59, y:42, label:"🏙" },
+  { name:"Singapore", x:73, y:56, label:"🦁" },
+  { name:"New York",  x:22, y:36, label:"🗽" },
+  { name:"Tokyo",     x:81, y:34, label:"⛩" },
+  { name:"Bangalore", x:62, y:52, label:"🇮🇳" },
+  { name:"London",    x:44, y:27, label:"🎡" },
+  { name:"Sydney",    x:82, y:72, label:"🦘" },
+  { name:"Mumbai",    x:60, y:48, label:"🌊" },
+  { name:"Bangkok",   x:72, y:50, label:"🛕" },
+];
+
+// ── HOLOGRAPHIC GLOBE ─────────────────────────────────────────────────────────
+function HolographicGlobe({ themeKey, query }) {
+  const T = THEMES[themeKey];
+  const [tick, setTick] = useState(0);
+  const [activeCities, setActiveCities] = useState([]);
+  const rafRef = useRef(null);
+  const lastTickRef = useRef(0);
+
+  useEffect(() => {
+    let running = true;
+    const animate = (ts) => {
+      if (!running) return;
+      if (ts - lastTickRef.current > 60) {
+        lastTickRef.current = ts;
+        setTick(t => t + 1);
+      }
+      rafRef.current = requestAnimationFrame(animate);
+    };
+    rafRef.current = requestAnimationFrame(animate);
+    return () => { running = false; cancelAnimationFrame(rafRef.current); };
+  }, []);
+
+  useEffect(() => {
+    if (!query) { setActiveCities([]); return; }
+    const q = query.toLowerCase();
+    const matched = GLOBE_CITIES.filter(c =>
+      q.includes(c.name.toLowerCase()) ||
+      (q.includes("europe") && ["Paris","London"].includes(c.name)) ||
+      (q.includes("honeymoon") && ["Paris","Singapore","Bangkok"].includes(c.name)) ||
+      (q.includes("india") && ["Bangalore","Mumbai"].includes(c.name)) ||
+      (q.includes("asia") && ["Singapore","Bangkok","Tokyo"].includes(c.name)) ||
+      (q.includes("middle east") && ["Dubai"].includes(c.name))
+    ).map(c => c.name);
+    setActiveCities(matched.length ? matched : GLOBE_CITIES.slice(0,3).map(c => c.name));
+  }, [query]);
+
+  const SZ = 180, cx = SZ/2, cy = SZ/2, r = 72;
+  const meridians = Array.from({length:8}, (_,i) => {
+    const angle = (i/8)*180 + tick*0.3;
+    const rad = (angle*Math.PI)/180;
+    return { x1: cx+r*Math.cos(rad), y1: cy-r, x2: cx-r*Math.cos(rad), y2: cy+r, op: 0.12+0.08*Math.abs(Math.cos(rad)) };
+  });
+  const parallels = Array.from({length:5}, (_,i) => {
+    const y = cy - r + (i+1)*(r*2/6);
+    const rr = Math.sqrt(Math.max(0, r*r-(y-cy)*(y-cy)));
+    return { cy: y, rx: rr, ry: rr*0.3 };
+  });
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"12px 8px" }}>
+      <svg width={SZ} height={SZ} viewBox={`0 0 ${SZ} ${SZ}`}
+        style={{ filter:`drop-shadow(0 0 18px ${T.globeGlow})` }}>
+        <defs>
+          <radialGradient id="gGrad" cx="40%" cy="35%">
+            <stop offset="0%" stopColor={T.globeColor} stopOpacity="0.25"/>
+            <stop offset="100%" stopColor={T.globeColor} stopOpacity="0.03"/>
+          </radialGradient>
+          <clipPath id="gClip"><circle cx={cx} cy={cy} r={r}/></clipPath>
+        </defs>
+        <circle cx={cx} cy={cy} r={r+14} fill={T.globeColor} fillOpacity="0.05"/>
+        <circle cx={cx} cy={cy} r={r} fill="url(#gGrad)" stroke={T.globeColor} strokeWidth="1" strokeOpacity="0.35"/>
+        <g clipPath="url(#gClip)">
+          {meridians.map((m,i) => (
+            <line key={i} x1={m.x1} y1={m.y1} x2={m.x2} y2={m.y2}
+              stroke={T.globeColor} strokeWidth="0.5" strokeOpacity={m.op}/>
+          ))}
+          {parallels.map((p,i) => (
+            <ellipse key={i} cx={cx} cy={p.cy} rx={p.rx} ry={p.ry}
+              fill="none" stroke={T.globeColor} strokeWidth="0.5" strokeOpacity="0.18"/>
+          ))}
+        </g>
+        {activeCities.length >= 2 && activeCities.slice(0,3).map((cn, i) => {
+          const c1 = GLOBE_CITIES.find(c => c.name === cn);
+          const c2 = GLOBE_CITIES.find(c => c.name === activeCities[(i+1)%activeCities.length]);
+          if (!c1||!c2) return null;
+          const x1=(c1.x/100)*SZ, y1=(c1.y/100)*SZ, x2=(c2.x/100)*SZ, y2=(c2.y/100)*SZ;
+          return (
+            <path key={i} d={`M ${x1} ${y1} Q ${(x1+x2)/2} ${Math.min(y1,y2)-28} ${x2} ${y2}`}
+              fill="none" stroke={T.globeColor} strokeWidth="1.2"
+              strokeOpacity="0.65" strokeDasharray="5 4"
+              strokeDashoffset={-(tick*0.7)%36}/>
+          );
+        })}
+        {GLOBE_CITIES.map((city, i) => {
+          const px=(city.x/100)*SZ, py=(city.y/100)*SZ;
+          const isActive = activeCities.includes(city.name);
+          const pulse = isActive ? 0.5+0.5*Math.sin(tick*0.08+i) : 0;
+          return (
+            <g key={city.name}>
+              {isActive && <circle cx={px} cy={py} r={7+pulse*4} fill={T.globeColor} fillOpacity={0.14*pulse}/>}
+              <circle cx={px} cy={py} r={isActive?3.5:2} fill={T.globeColor} fillOpacity={isActive?0.9:0.35}/>
+              {isActive && <text x={px+5} y={py-5} fontSize="9" fill={T.globeColor} fillOpacity="0.9">{city.label}</text>}
+            </g>
+          );
+        })}
+        <circle cx={cx-r*0.28} cy={cy-r*0.28} r={r*0.12} fill="white" fillOpacity="0.06"/>
+      </svg>
+      <div style={{ fontFamily:"'Caveat',cursive", fontSize:13, color:T.globeColor,
+        marginTop:6, animation:"globePulse 1.4s ease-in-out infinite" }}>
+        {activeCities.length > 0
+          ? `✈ ${activeCities.slice(0,2).join(" → ")} ...`
+          : "🌍 Searching the world..."}
+      </div>
     </div>
   );
 }
 
+// ── SHIMMER WORD REVEAL ───────────────────────────────────────────────────────
+function ShimmerText({ text, themeKey, onDone }) {
+  const T = THEMES[themeKey];
+  const [visibleCount, setVisibleCount] = useState(0);
+  const onDoneRef = useRef(onDone);
+  useEffect(() => { onDoneRef.current = onDone; });
 
-// ── Price Alert Button ────────────────────────────────────────────────────────
-function PriceAlertButton({from,to,currentPrice}){
-  const [set,setSet]=useState(false);
-  const [loading,setLoading]=useState(false);
-  const token=localStorage.getItem("token");
+  useEffect(() => {
+    setVisibleCount(0);
+    const wordCount = text ? text.split(" ").length : 0;
+    if (!wordCount) { if (onDoneRef.current) onDoneRef.current(); return; }
+    let i = 0;
+    const iv = setInterval(() => {
+      i++;
+      setVisibleCount(i);
+      if (i >= wordCount) { clearInterval(iv); if (onDoneRef.current) onDoneRef.current(); }
+    }, 55);
+    return () => clearInterval(iv);
+  }, [text]);
 
-  const setAlert=async()=>{
-    if(!token){alert("Please sign in to set price alerts");return;}
+  const words = text ? text.split(" ") : [];
+  return (
+    <span style={{ whiteSpace:"pre-wrap", lineHeight:1.8 }}>
+      {words.map((word, i) => (
+        <span key={i} style={{
+          display:"inline-block", marginRight:"0.28em",
+          opacity: i < visibleCount ? 1 : 0,
+          transform: i < visibleCount ? "translateY(0) scale(1)" : "translateY(7px) scale(0.92)",
+          transition:"opacity 0.28s ease, transform 0.28s ease",
+          color: i === visibleCount-1 ? T.accent : T.aiText,
+          textShadow: i === visibleCount-1 ? `0 0 10px ${T.globeGlow}` : "none",
+          fontWeight: i === visibleCount-1 ? 700 : 400,
+        }}>
+          {word}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+// ── PRICE ALERT BUTTON ────────────────────────────────────────────────────────
+function PriceAlertBtn({ from, to, currentPrice, T }) {
+  const [done, setDone] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const token = localStorage.getItem("token");
+  const click = async () => {
+    if (!token) { alert("Please sign in to set price alerts"); return; }
     setLoading(true);
-    try{
-      await fetch(`${API}/price-alert`,{
+    try {
+      await fetch(`${API}/price-alert`, {
         method:"POST",
-        headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},
-        body:JSON.stringify({from_city:from,to_city:to,current_price:currentPrice,target_price:currentPrice?Math.round(currentPrice*0.85):null})
+        headers:{"Content-Type":"application/json", Authorization:`Bearer ${token}`},
+        body: JSON.stringify({ from_city:from, to_city:to, current_price:currentPrice }),
       });
-      setSet(true);
-    }catch{}
+      setDone(true);
+    } catch {}
     setLoading(false);
   };
-
-  if(set)return <div style={{fontSize:11,color:"#16a34a",fontFamily:"'DM Sans',sans-serif"}}>🔔 Alert set! We'll notify you when prices drop.</div>;
-  return(
-    <button onClick={setAlert} disabled={loading}
-      style={{padding:"6px 14px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",
-        background:"rgba(201,168,76,0.08)",border:"1px solid rgba(201,168,76,0.25)",
-        color:"#8B6914",fontFamily:"'DM Sans',sans-serif",transition:"all 0.15s"}}
-      onMouseEnter={e=>e.currentTarget.style.background="rgba(201,168,76,0.15)"}
-      onMouseLeave={e=>e.currentTarget.style.background="rgba(201,168,76,0.08)"}>
-      🔔 {loading?"Setting...":"Track Price"}
+  if (done) return <div style={{fontSize:11,color:"#16a34a",fontFamily:"'Caveat',cursive"}}>🔔 Alert set!</div>;
+  return (
+    <button onClick={click} disabled={loading}
+      style={{ padding:"5px 12px", borderRadius:8, fontSize:12, fontWeight:600,
+        cursor:"pointer", background:"transparent", border:`2px solid ${T.border}`,
+        color:T.accent, fontFamily:"'Caveat',cursive" }}>
+      🔔 {loading ? "..." : "Track Price"}
     </button>
   );
 }
 
-const API = "https://cometai-backend.onrender.com";
-
-
-// ── COUNTRY SELECTOR ─────────────────────────────────────────────────────────
-const COUNTRIES = [
-  {key:"india",     flag:"🇮🇳", name:"India",       symbol:"₹"},
-  {key:"usa",       flag:"🇺🇸", name:"USA",          symbol:"$"},
-  {key:"uk",        flag:"🇬🇧", name:"UK",           symbol:"£"},
-  {key:"australia", flag:"🇦🇺", name:"Australia",    symbol:"A$"},
-  {key:"japan",     flag:"🇯🇵", name:"Japan",        symbol:"¥"},
-  {key:"germany",   flag:"🇩🇪", name:"Germany",      symbol:"€"},
-  {key:"france",    flag:"🇫🇷", name:"France",       symbol:"€"},
-  {key:"canada",    flag:"🇨🇦", name:"Canada",       symbol:"C$"},
-  {key:"south korea",flag:"🇰🇷",name:"South Korea",  symbol:"₩"},
-  {key:"brazil",    flag:"🇧🇷", name:"Brazil",       symbol:"R$"},
-  {key:"spain",     flag:"🇪🇸", name:"Spain",        symbol:"€"},
-  {key:"italy",     flag:"🇮🇹", name:"Italy",        symbol:"€"},
-  {key:"indonesia", flag:"🇮🇩", name:"Indonesia",    symbol:"Rp"},
-  {key:"china",     flag:"🇨🇳", name:"China",        symbol:"¥"},
-  {key:"russia",    flag:"🇷🇺", name:"Russia",       symbol:"₽"},
-];
-
-function CountrySelector({token, onSelect}){
-  const [open,setOpen]         = useState(false);
-  const [selected,setSelected] = useState("india");
-  const [saving,setSaving]     = useState(false);
-  const ref = useRef(null);
-
-  // Load saved country
-  useEffect(()=>{
-    const saved = localStorage.getItem("alvryn_country");
-    if(saved) setSelected(saved);
-  },[]);
-
-  // Close on outside click
-  useEffect(()=>{
-    if(!open) return;
-    const h=(e)=>{ if(ref.current&&!ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener("mousedown",h);
-    document.addEventListener("touchstart",h);
-    return()=>{ document.removeEventListener("mousedown",h); document.removeEventListener("touchstart",h); };
-  },[open]);
-
-  const select = async(country)=>{
-    setSaving(true);
-    setSelected(country.key);
-    setOpen(false);
-    localStorage.setItem("alvryn_country", country.key);
-    if(onSelect) onSelect(country); // triggers parent theme change
-    if(token){
-      try{
-        await fetch(`${API}/set-country`,{
-          method:"POST",
-          headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},
-          body:JSON.stringify({country:country.key})
-        });
-      }catch{}
-    }
-    setSaving(false);
-    if(onSelect) onSelect(country);
+// ── TRAVEL CARDS ──────────────────────────────────────────────────────────────
+function cardBase(T) {
+  return {
+    background:T.aiBubble, border:`2px solid ${T.border}`,
+    borderRadius:"16px 16px 16px 4px", padding:"14px 16px",
+    marginBottom:10, cursor:"pointer", boxShadow:`3px 3px 0 ${T.border}`,
+    transition:"transform 0.15s, box-shadow 0.15s", fontFamily:"'Caveat',cursive",
   };
-
-  const curr = COUNTRIES.find(c=>c.key===selected)||COUNTRIES[0];
-
-  return(
-    <div ref={ref} style={{position:"relative",zIndex:50}}>
-      <button onClick={()=>setOpen(o=>!o)}
-        style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:100,
-          background:`${C_STATIC.gold}18`,border:`1px solid ${C_STATIC.gold}40`,
-          cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:12,fontWeight:600,
-          color:C_STATIC.gold,transition:"all 0.3s ease",WebkitTapHighlightColor:"transparent",
-          boxShadow:`0 2px 8px ${C_STATIC.gold}20`}}
-        onMouseEnter={e=>e.currentTarget.style.background="rgba(201,168,76,0.2)"}
-        onMouseLeave={e=>e.currentTarget.style.background="rgba(201,168,76,0.1)"}>
-        <span style={{fontSize:15}}>{curr.flag}</span>
-        <span>{curr.name}</span>
-        <span style={{opacity:0.5,fontSize:10}}>{open?"▲":"▼"}</span>
-      </button>
-      {open&&(
-        <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,
-          background:"#fff",borderRadius:14,boxShadow:"0 8px 32px rgba(0,0,0,0.12)",
-          border:"1px solid rgba(201,168,76,0.2)",padding:"8px 0",minWidth:180,maxHeight:280,
-          overflowY:"auto",zIndex:200,animation:"fadeUp 0.2s both"}}>
-          {COUNTRIES.map(c=>(
-            <button key={c.key} onClick={()=>select(c)}
-              style={{display:"flex",width:"100%",alignItems:"center",gap:10,padding:"9px 14px",
-                background:selected===c.key?"rgba(201,168,76,0.1)":"transparent",
-                border:"none",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",
-                fontSize:13,color:"#1a1410",textAlign:"left",transition:"background 0.1s"}}
-              onMouseEnter={e=>e.currentTarget.style.background="rgba(201,168,76,0.08)"}
-              onMouseLeave={e=>e.currentTarget.style.background=selected===c.key?"rgba(201,168,76,0.1)":"transparent"}>
-              <span style={{fontSize:18}}>{c.flag}</span>
-              <span style={{flex:1}}>{c.name}</span>
-              <span style={{fontSize:11,color:"#8B6914",opacity:0.7}}>{c.symbol}</span>
-              {selected===c.key&&<span style={{color:"#c9a84c",fontSize:12}}>✓</span>}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
+const hoverIn  = (e, T) => { e.currentTarget.style.transform="translate(-2px,-2px)"; e.currentTarget.style.boxShadow=`5px 5px 0 ${T.border}`; };
+const hoverOut = (e, T) => { e.currentTarget.style.transform="translate(0,0)";       e.currentTarget.style.boxShadow=`3px 3px 0 ${T.border}`; };
 
-// ── FLIGHT CARD ─────────────────────────────────────────────────────────────────
-function FlightCard({f,i}){
-  const LBL = {"Best Price":[C_STATIC.greenD,"rgba(22,163,74,0.13)"],"Fastest":["#60a5fa","rgba(96,165,250,0.13)"],"Best Overall":[C_STATIC.goldD,"rgba(201,168,76,0.2)"]};
-  const [lc,lb] = LBL[f.label]||[C_STATIC.gold,"rgba(201,168,76,0.1)"];
-  return(
-    <div className="travel-card" onClick={()=>window.open(f.link,"_blank","noopener")}
-      style={{background:C_STATIC.cardBg,borderRadius:16,padding:"16px 18px",
-        border:"1px solid rgba(201,168,76,0.2)",cursor:"pointer",
-        boxShadow:"0 4px 20px rgba(0,0,0,0.2)",marginBottom:10,
-        animation:`fadeUp 0.3s ${i*75}ms both`}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <div style={{width:36,height:36,borderRadius:10,
-            background:"linear-gradient(135deg,rgba(201,168,76,0.18),rgba(74,222,128,0.1))",
-            border:`1px solid rgba(201,168,76,0.2)`,
-            display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>✈️</div>
-          <div>
-            <div style={{fontFamily:"'DM Sans',sans-serif",fontWeight:600,fontSize:14,color:C_STATIC.textPri}}>{f.airline||"Multiple Airlines"}</div>
-            {f.insight&&<div style={{fontSize:11,color:C_STATIC.textMuted,marginTop:2}}>💡 {f.insight}</div>}
-          </div>
-        </div>
-        {f.label&&<span style={{padding:"4px 11px",borderRadius:100,fontSize:10,
-          fontFamily:"'Space Mono',monospace",fontWeight:700,color:lc,background:lb,
-          border:`1px solid ${lc}33`}}>{f.label}</span>}
-      </div>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-        <div style={{textAlign:"center",minWidth:60}}>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:26,color:C_STATIC.textPri,lineHeight:1}}>{f.departure||"—"}</div>
-          <div style={{fontFamily:"'Space Mono',monospace",fontSize:10,color:C_STATIC.textMuted,marginTop:3}}>{f.fromCode}</div>
-        </div>
-        <div style={{flex:1,textAlign:"center",padding:"0 14px"}}>
-          <div style={{fontSize:11,color:C_STATIC.textMuted,marginBottom:4}}>{f.duration||"Direct"}</div>
-          <div style={{height:1,background:`linear-gradient(90deg,transparent,${C_STATIC.gold},${C_STATIC.green},transparent)`,position:"relative"}}>
-            <span style={{position:"absolute",top:-9,left:"50%",transform:"translateX(-50%)",fontSize:14,color:C_STATIC.gold}}>✈</span>
-          </div>
-          <div style={{fontSize:10,color:C_STATIC.greenD,marginTop:4,fontWeight:600}}>DIRECT</div>
-        </div>
-        <div style={{textAlign:"center",minWidth:60}}>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:26,color:C_STATIC.textPri,lineHeight:1}}>{f.arrival||"—"}</div>
-          <div style={{fontFamily:"'Space Mono',monospace",fontSize:10,color:C_STATIC.textMuted,marginTop:3}}>{f.toCode}</div>
-        </div>
-      </div>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
-        paddingTop:12,borderTop:`1px solid rgba(201,168,76,0.1)`}}>
-        <div>
-          <div style={{fontFamily:"'Space Mono',monospace",fontSize:9,color:C_STATIC.textMuted,marginBottom:3,letterSpacing:"0.1em"}}>APPROX FROM</div>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:24,color:C_STATIC.gold,lineHeight:1}}>
-            {f.price?`₹${f.price.toLocaleString()}`:"Live rates"}
-          </div>
-          {f.price&&<div style={{fontSize:10,color:C_STATIC.textMuted,marginTop:2}}>–₹{Math.round(f.price*1.22).toLocaleString()} · may vary</div>}
-        </div>
-        <div style={{display:"flex",flexDirection:"column",gap:7,alignItems:"flex-end"}}>
-          <div style={{padding:"10px 20px",borderRadius:12,
-            background:C_STATIC.grad,backgroundSize:"200% 200%",animation:"gradShift 3s ease infinite",
-            fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:14,color:"#1a1410",
-            letterSpacing:"0.04em",cursor:"pointer",boxShadow:"0 4px 14px rgba(201,168,76,0.28)"}}>
-            Compare & Book Best Price →
-          </div>
-          {f.from&&f.to&&(
-            <PriceAlertButton from={f.from} to={f.to} currentPrice={f.price}/>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── BUS CARD ────────────────────────────────────────────────────────────────────
-function BusCard({b,i}){
-  return(
-    <div className="travel-card" onClick={()=>window.open(b.link,"_blank","noopener")}
-      style={{background:C_STATIC.cardBg,borderRadius:16,padding:"16px 18px",
-        border:"1px solid rgba(34,197,94,0.15)",cursor:"pointer",
-        boxShadow:"0 4px 20px rgba(0,0,0,0.2)",marginBottom:10,
-        animation:`fadeUp 0.3s ${i*75}ms both`}}>
+function FlightCard({ f, themeKey }) {
+  const T = THEMES[themeKey];
+  return (
+    <div onClick={() => window.open(f.link,"_blank","noopener")}
+      style={cardBase(T)} onMouseEnter={e=>hoverIn(e,T)} onMouseLeave={e=>hoverOut(e,T)}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <div style={{width:36,height:36,borderRadius:10,background:"rgba(34,197,94,0.12)",
-            border:"1px solid rgba(34,197,94,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>🚌</div>
-          <div>
-            <div style={{fontFamily:"'DM Sans',sans-serif",fontWeight:600,fontSize:14,color:C_STATIC.textPri}}>{b.operator}</div>
-            <div style={{fontSize:11,color:C_STATIC.textMuted,marginTop:2}}>{b.type}</div>
-          </div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:20}}>✈️</span>
+          <span style={{fontSize:15,color:T.aiText,fontWeight:700}}>{f.airline||"Multiple Airlines"}</span>
         </div>
-        {b.label&&<span style={{padding:"4px 11px",borderRadius:100,fontSize:10,
-          fontFamily:"'Space Mono',monospace",fontWeight:700,color:C_STATIC.greenD,
-          background:"rgba(22,163,74,0.13)",border:"1px solid rgba(22,163,74,0.25)"}}>{b.label}</span>}
+        {f.label && <span style={{padding:"3px 10px",borderRadius:20,fontSize:12,border:`1.5px solid ${T.accent}`,color:T.accent}}>{f.label}</span>}
       </div>
-      {b.insight&&<div style={{fontSize:12,color:"rgba(201,168,76,0.75)",marginBottom:10,
-        padding:"7px 11px",borderRadius:9,background:"rgba(201,168,76,0.06)",
-        border:"1px solid rgba(201,168,76,0.1)"}}>💡 {b.insight}</div>}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
         <div style={{textAlign:"center"}}>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:22,color:"#fff"}}>{b.departure}</div>
-          <div style={{fontSize:11,color:C_STATIC.textMuted,marginTop:2}}>{b.from}</div>
+          <div style={{fontSize:22,fontWeight:700,color:T.aiText}}>{f.departure||"—"}</div>
+          <div style={{fontSize:12,color:T.accent,opacity:0.85}}>{f.fromCode}</div>
         </div>
-        <div style={{flex:1,textAlign:"center",padding:"0 12px"}}>
-          <div style={{fontSize:11,color:C_STATIC.textMuted,marginBottom:4}}>{b.duration||"Direct"}</div>
-          <div style={{height:1,background:"linear-gradient(90deg,transparent,rgba(34,197,94,0.5),transparent)",position:"relative"}}>
-            <span style={{position:"absolute",top:-9,left:"50%",transform:"translateX(-50%)",fontSize:14}}>🚌</span>
+        <div style={{flex:1,textAlign:"center",padding:"0 10px"}}>
+          <div style={{fontSize:11,color:T.aiText,opacity:0.6}}>{f.duration||"Direct"}</div>
+          <div style={{height:2,background:`linear-gradient(90deg,transparent,${T.accent},transparent)`,margin:"4px 0",position:"relative"}}>
+            <span style={{position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",fontSize:13}}>✈</span>
           </div>
-          <div style={{fontSize:10,color:C_STATIC.greenD,marginTop:4,fontWeight:600}}>DIRECT</div>
+          <div style={{fontSize:10,color:T.accent}}>DIRECT</div>
         </div>
         <div style={{textAlign:"center"}}>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:22,color:"#fff"}}>{b.arrival}</div>
-          <div style={{fontSize:11,color:C_STATIC.textMuted,marginTop:2}}>{b.to}</div>
+          <div style={{fontSize:22,fontWeight:700,color:T.aiText}}>{f.arrival||"—"}</div>
+          <div style={{fontSize:12,color:T.accent,opacity:0.85}}>{f.toCode}</div>
         </div>
       </div>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
-        paddingTop:12,borderTop:"1px solid rgba(34,197,94,0.1)"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",paddingTop:10,borderTop:`1.5px dashed ${T.border}`}}>
         <div>
-          <div style={{fontFamily:"'Space Mono',monospace",fontSize:9,color:C_STATIC.textMuted,marginBottom:3,letterSpacing:"0.1em"}}>APPROX FROM</div>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:22,color:C_STATIC.greenD}}>₹{b.price?.toLocaleString()||"—"}</div>
+          <div style={{fontSize:11,color:T.aiText,opacity:0.5}}>APPROX FROM</div>
+          <div style={{fontSize:22,fontWeight:700,color:T.accent}}>{f.price?`₹${f.price.toLocaleString()}`:"Live rates"}</div>
         </div>
-        <div style={{padding:"10px 20px",borderRadius:12,
-          background:"linear-gradient(135deg,rgba(22,163,74,0.2),rgba(74,222,128,0.15))",
-          border:"1px solid rgba(34,197,94,0.3)",
-          fontFamily:"'DM Sans',sans-serif",fontWeight:600,fontSize:13,color:C_STATIC.greenMid,cursor:"pointer"}}>
-          View on RedBus →
+        <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
+          <div style={{padding:"8px 16px",borderRadius:10,background:T.accent,border:`2px solid ${T.accentDark}`,color:T.userText,fontSize:13,fontWeight:700,boxShadow:`2px 2px 0 ${T.accentDark}`}}>
+            Book Best Price →
+          </div>
+          {f.from && f.to && <PriceAlertBtn from={f.from} to={f.to} currentPrice={f.price} T={T}/>}
+        </div>
+      </div>
+      {f.insight && <div style={{marginTop:8,padding:"6px 10px",borderRadius:8,border:`1px dashed ${T.border}`,fontSize:13,color:T.aiText,opacity:0.8}}>💡 {f.insight}</div>}
+    </div>
+  );
+}
+
+function BusCard({ b, themeKey }) {
+  const T = THEMES[themeKey];
+  return (
+    <div onClick={() => window.open(b.link,"_blank","noopener")}
+      style={cardBase(T)} onMouseEnter={e=>hoverIn(e,T)} onMouseLeave={e=>hoverOut(e,T)}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:20}}>🚌</span>
+          <span style={{fontSize:15,color:T.aiText,fontWeight:700}}>{b.operator}</span>
+        </div>
+        <span style={{fontSize:13,color:T.aiText,opacity:0.7}}>{b.type}</span>
+      </div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+        <div style={{textAlign:"center"}}>
+          <div style={{fontSize:20,fontWeight:700,color:T.aiText}}>{b.departure}</div>
+          <div style={{fontSize:12,color:T.accent}}>{b.from}</div>
+        </div>
+        <div style={{flex:1,textAlign:"center"}}>
+          <div style={{fontSize:11,color:T.aiText,opacity:0.6}}>{b.duration||"Direct"}</div>
+          <div style={{height:2,background:`linear-gradient(90deg,transparent,${T.accent},transparent)`,margin:"4px 0"}}/>
+        </div>
+        <div style={{textAlign:"center"}}>
+          <div style={{fontSize:20,fontWeight:700,color:T.aiText}}>{b.arrival}</div>
+          <div style={{fontSize:12,color:T.accent}}>{b.to}</div>
+        </div>
+      </div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:10,borderTop:`1.5px dashed ${T.border}`}}>
+        <div style={{fontSize:20,fontWeight:700,color:T.accent}}>₹{b.price?.toLocaleString()||"—"}</div>
+        <div style={{padding:"8px 16px",borderRadius:10,background:T.accent,border:`2px solid ${T.accentDark}`,color:T.userText,fontSize:13,fontWeight:700,boxShadow:`2px 2px 0 ${T.accentDark}`}}>
+          View on Partner →
         </div>
       </div>
     </div>
   );
 }
 
-// ── HOTEL CARD ──────────────────────────────────────────────────────────────────
-function HotelCard({h,i}){
-  return(
-    <div className="travel-card" onClick={()=>window.open(h.link,"_blank","noopener")}
-      style={{background:C_STATIC.cardBg,borderRadius:16,padding:"16px 18px",
-        border:"1px solid rgba(251,146,60,0.15)",cursor:"pointer",
-        boxShadow:"0 4px 20px rgba(0,0,0,0.2)",marginBottom:10,
-        animation:`fadeUp 0.3s ${i*75}ms both`}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <div style={{width:36,height:36,borderRadius:10,background:"rgba(251,146,60,0.1)",
-            border:"1px solid rgba(251,146,60,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>🏨</div>
-          <div>
-            <div style={{fontFamily:"'DM Sans',sans-serif",fontWeight:600,fontSize:14,color:C_STATIC.textPri}}>Hotels in {h.city}</div>
-            <div style={{display:"flex",gap:1,marginTop:3,alignItems:"center"}}>
-              {"★★★★".split("").map((_,j)=><span key={j} style={{color:C_STATIC.gold,fontSize:12}}>★</span>)}
-              <span style={{fontSize:11,color:C_STATIC.textMuted,marginLeft:5}}>& above</span>
-            </div>
-          </div>
-        </div>
-        {h.label&&<span style={{padding:"4px 11px",borderRadius:100,fontSize:10,
-          fontFamily:"'Space Mono',monospace",fontWeight:700,color:"#fb923c",
-          background:"rgba(251,146,60,0.12)",border:"1px solid rgba(251,146,60,0.25)"}}>{h.label}</span>}
+function HotelCard({ h, themeKey }) {
+  const T = THEMES[themeKey];
+  return (
+    <div onClick={() => window.open(h.link,"_blank","noopener")}
+      style={cardBase(T)} onMouseEnter={e=>hoverIn(e,T)} onMouseLeave={e=>hoverOut(e,T)}>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+        <span style={{fontSize:20}}>🏨</span>
+        <span style={{fontSize:15,color:T.aiText,fontWeight:700}}>Hotels in {h.city}</span>
+        {h.label && <span style={{padding:"3px 8px",borderRadius:20,fontSize:11,border:`1.5px solid ${T.accent}`,color:T.accent}}>{h.label}</span>}
       </div>
-      {h.insight&&<div style={{fontSize:12,color:"rgba(201,168,76,0.75)",marginBottom:10,
-        padding:"7px 11px",borderRadius:9,background:"rgba(201,168,76,0.06)"}}>💡 {h.insight}</div>}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
-        paddingTop:12,borderTop:"1px solid rgba(251,146,60,0.1)"}}>
-        <div>
-          <div style={{fontFamily:"'Space Mono',monospace",fontSize:9,color:C_STATIC.textMuted,marginBottom:3,letterSpacing:"0.1em"}}>APPROX PER NIGHT</div>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:22,color:"#fb923c"}}>₹{h.priceRange}</div>
-        </div>
-        <div style={{padding:"10px 20px",borderRadius:12,
-          background:"rgba(251,146,60,0.12)",border:"1px solid rgba(251,146,60,0.28)",
-          fontFamily:"'DM Sans',sans-serif",fontWeight:600,fontSize:13,color:"#fb923c",cursor:"pointer"}}>
+      {h.insight && <div style={{fontSize:13,color:T.aiText,opacity:0.7,marginBottom:8}}>💡 {h.insight}</div>}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:10,borderTop:`1.5px dashed ${T.border}`}}>
+        <div style={{fontSize:20,fontWeight:700,color:T.accent}}>₹{h.priceRange}/night</div>
+        <div style={{padding:"8px 16px",borderRadius:10,background:T.accent,border:`2px solid ${T.accentDark}`,color:T.userText,fontSize:13,fontWeight:700,boxShadow:`2px 2px 0 ${T.accentDark}`}}>
           View Hotels →
         </div>
       </div>
@@ -422,36 +505,20 @@ function HotelCard({h,i}){
   );
 }
 
-// ── TRAIN CARD ──────────────────────────────────────────────────────────────────
-function TrainCard({t,i}){
-  return(
-    <div className="travel-card" onClick={()=>window.open(t.link,"_blank","noopener")}
-      style={{background:C_STATIC.cardBg,borderRadius:16,padding:"16px 18px",
-        border:"1px solid rgba(139,92,246,0.18)",cursor:"pointer",
-        boxShadow:"0 4px 20px rgba(0,0,0,0.2)",marginBottom:10,
-        animation:`fadeUp 0.3s ${i*75}ms both`}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <div style={{width:36,height:36,borderRadius:10,background:"rgba(139,92,246,0.12)",
-            border:"1px solid rgba(139,92,246,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>🚂</div>
-          <div>
-            <div style={{fontFamily:"'DM Sans',sans-serif",fontWeight:600,fontSize:14,color:C_STATIC.textPri}}>{t.from} → {t.to}</div>
-            <div style={{fontSize:11,color:C_STATIC.textMuted,marginTop:2}}>Indian Railways · IRCTC</div>
-          </div>
-        </div>
-        {t.label&&<span style={{padding:"4px 11px",borderRadius:100,fontSize:10,
-          fontFamily:"'Space Mono',monospace",fontWeight:700,color:"#a78bfa",
-          background:"rgba(139,92,246,0.13)",border:"1px solid rgba(139,92,246,0.25)"}}>{t.label}</span>}
+function TrainCard({ t, themeKey }) {
+  const T = THEMES[themeKey];
+  return (
+    <div onClick={() => window.open(t.link,"_blank","noopener")}
+      style={cardBase(T)} onMouseEnter={e=>hoverIn(e,T)} onMouseLeave={e=>hoverOut(e,T)}>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+        <span style={{fontSize:20}}>🚂</span>
+        <span style={{fontSize:15,color:T.aiText,fontWeight:700}}>{t.from} → {t.to}</span>
+        {t.label && <span style={{padding:"3px 8px",borderRadius:20,fontSize:11,border:`1.5px solid ${T.accent}`,color:T.accent}}>{t.label}</span>}
       </div>
-      {t.insight&&<div style={{fontSize:12,color:"rgba(201,168,76,0.75)",marginBottom:10,
-        padding:"7px 11px",borderRadius:9,background:"rgba(201,168,76,0.06)"}}>💡 {t.insight}</div>}
-      {t.date&&<div style={{fontSize:12,color:"rgba(139,92,246,0.85)",marginBottom:10,
-        padding:"7px 11px",borderRadius:9,background:"rgba(139,92,246,0.07)",
-        border:"1px solid rgba(139,92,246,0.15)"}}>📅 Date pre-filled: {t.date}</div>}
-      <div style={{display:"flex",justifyContent:"flex-end",paddingTop:12,borderTop:"1px solid rgba(139,92,246,0.1)"}}>
-        <div style={{padding:"10px 20px",borderRadius:12,
-          background:"rgba(139,92,246,0.12)",border:"1px solid rgba(139,92,246,0.28)",
-          fontFamily:"'DM Sans',sans-serif",fontWeight:600,fontSize:13,color:"#a78bfa",cursor:"pointer"}}>
+      {t.insight && <div style={{fontSize:13,color:T.aiText,opacity:0.7,marginBottom:6}}>💡 {t.insight}</div>}
+      {t.date && <div style={{fontSize:13,color:T.accent,marginBottom:6}}>📅 {t.date}</div>}
+      <div style={{display:"flex",justifyContent:"flex-end",paddingTop:8,borderTop:`1.5px dashed ${T.border}`}}>
+        <div style={{padding:"8px 16px",borderRadius:10,background:T.accent,border:`2px solid ${T.accentDark}`,color:T.userText,fontSize:13,fontWeight:700,boxShadow:`2px 2px 0 ${T.accentDark}`}}>
           Search on IRCTC →
         </div>
       </div>
@@ -459,140 +526,90 @@ function TrainCard({t,i}){
   );
 }
 
-// ── INFO / TEXT CARD (for local transport answers etc) ──────────────────────────
-function InfoCard({text,i}){
-  return(
-    <div style={{background:"rgba(201,168,76,0.06)",borderRadius:14,padding:"14px 16px",
-      border:"1px solid rgba(201,168,76,0.15)",marginBottom:10,
-      animation:`fadeUp 0.3s ${(i||0)*75}ms both`}}>
-      <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:14,color:C_STATIC.textPri,lineHeight:1.7,whiteSpace:"pre-wrap"}}>
-        {text}
+// ── SIDEBAR CHAT ITEM ─────────────────────────────────────────────────────────
+function SidebarChatItem({ chat, isActive, onLoad, onRename, onDelete, T }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [val, setVal] = useState(chat.title);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) setMenuOpen(false); };
+    document.addEventListener("mousedown", h);
+    document.addEventListener("touchstart", h);
+    return () => { document.removeEventListener("mousedown", h); document.removeEventListener("touchstart", h); };
+  }, [menuOpen]);
+
+  return (
+    <div style={{position:"relative",marginBottom:3}}>
+      <div onClick={() => { if (!menuOpen && !renaming) onLoad(); }}
+        style={{
+          padding:"9px 10px", borderRadius:10, cursor:"pointer",
+          background: isActive ? `${T.accent}20` : "transparent",
+          border: isActive ? `2px solid ${T.accent}` : "2px solid transparent",
+          display:"flex", alignItems:"center", gap:6,
+          fontFamily:"'Caveat',cursive",
+        }}>
+        <div style={{flex:1,minWidth:0}}>
+          {renaming ? (
+            <input value={val} autoFocus
+              onChange={e => setVal(e.target.value)}
+              onBlur={() => { onRename(chat.id, val.trim()||chat.title); setRenaming(false); }}
+              onKeyDown={e => { if(e.key==="Enter"){onRename(chat.id,val.trim()||chat.title);setRenaming(false);} if(e.key==="Escape")setRenaming(false); }}
+              onClick={e => e.stopPropagation()}
+              style={{ width:"100%", background:"rgba(255,255,255,0.15)", border:`1px solid ${T.accent}`,
+                borderRadius:5, padding:"2px 6px", fontSize:13, color:T.sbText,
+                outline:"none", fontFamily:"'Caveat',cursive" }}/>
+          ) : (
+            <>
+              <div style={{fontSize:13,color:T.sbText,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{chat.title}</div>
+              <div style={{fontSize:10,color:T.sbSubText,marginTop:1}}>
+                {new Date(chat.time).toLocaleDateString("en-IN",{day:"numeric",month:"short"})}
+              </div>
+            </>
+          )}
+        </div>
+        <button onClick={e => {e.stopPropagation();setMenuOpen(s=>!s);}}
+          style={{width:24,height:24,borderRadius:5,background:"transparent",border:"none",
+            cursor:"pointer",color:T.sbSubText,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center"}}>⋯</button>
       </div>
+      {menuOpen && (
+        <div ref={ref} onClick={e=>e.stopPropagation()}
+          style={{position:"absolute",right:0,top:34,zIndex:100,
+            background:T.aiBubble,borderRadius:10,padding:"4px 0",
+            boxShadow:`3px 3px 0 ${T.border}`,border:`2px solid ${T.border}`,
+            minWidth:130,fontFamily:"'Caveat',cursive"}}>
+          <button onClick={()=>{setRenaming(true);setMenuOpen(false);}}
+            style={{display:"block",width:"100%",padding:"9px 14px",textAlign:"left",
+              background:"none",border:"none",cursor:"pointer",fontSize:14,color:T.aiText}}>✏️ Rename</button>
+          <button onClick={()=>{onDelete(chat.id);setMenuOpen(false);}}
+            style={{display:"block",width:"100%",padding:"9px 14px",textAlign:"left",
+              background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#ef4444"}}>🗑️ Delete</button>
+        </div>
+      )}
     </div>
   );
 }
 
-// ── AI MESSAGE BUBBLE ────────────────────────────────────────────────────────────
-function AiMsg({m}){
-  return(
-    <div style={{display:"flex",gap:12,marginBottom:24,animation:"fadeUp 0.25s both"}}>
-      {/* Avatar */}
-      <div style={{flexShrink:0,width:34,height:34,borderRadius:"50%",
-        background:C_STATIC.grad,
-        border:`1.5px solid rgba(201,168,76,0.35)`,
-        display:"flex",alignItems:"center",justifyContent:"center",marginTop:2}}>
-        <Logo size={22}/>
-      </div>
-      <div style={{flex:1,minWidth:0}}>
-        {/* Destination image */}
-        {m.image&&(
-          <div style={{marginBottom:14,borderRadius:12,overflow:"hidden",boxShadow:"0 4px 16px rgba(0,0,0,0.08)"}}>
-            <img src={m.image.url} alt={m.image.caption||"destination"}
-              style={{width:"100%",height:160,objectFit:"cover",display:"block"}}
-              onError={e=>{e.target.parentElement.style.display="none";}}/>
-            {m.image.caption&&<div style={{background:"rgba(201,168,76,0.06)",padding:"6px 10px",
-              fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#8B6914",fontStyle:"italic"}}>
-              📷 {m.image.caption}
-            </div>}
-          </div>
-        )}
-        {/* Text */}
-        {m.text&&(
-          <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:15,color:C_STATIC.textPri,
-            lineHeight:1.8,marginBottom:m.cards?.length?16:0,whiteSpace:"pre-wrap"}}>
-            {m.text}
-          </div>
-        )}
-        {/* Cards */}
-        {m.cards?.filter(c=>c.type==="flight").map((c,i)=><FlightCard key={i} f={c} i={i}/>)}
-        {m.cards?.filter(c=>c.type==="bus").map((c,i)=><BusCard key={i} b={c} i={i}/>)}
-        {m.cards?.filter(c=>c.type==="hotel").map((c,i)=><HotelCard key={i} h={c} i={i}/>)}
-        {m.cards?.filter(c=>c.type==="train").map((c,i)=><TrainCard key={i} t={c} i={i}/>)}
-        {/* Disclaimer */}
-        {m.cards?.length>0&&(
-          <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"rgba(26,20,10,0.42)",marginTop:6}}>
-            Prices shown are approximate and may vary. Tap any card to check live availability.
-          </div>
-        )}
-        {/* CTA nudge */}
-        {m.cta&&(
-          <div style={{marginTop:14,padding:"10px 14px",borderRadius:10,
-            background:"linear-gradient(135deg,rgba(201,168,76,0.1),rgba(201,168,76,0.05))",
-            border:"1px solid rgba(201,168,76,0.25)",
-            fontFamily:"'DM Sans',sans-serif",fontSize:13,color:`rgba(201,168,76,0.88)`,fontStyle:"italic"}}>
-            {m.cta}
-          </div>
-        )}
-        {(m.sectionNum||m.totalSections)&&<SectionProgress current={m.sectionNum} total={m.totalSections}/>}
-        {m.quickReplies?.length>0&&<QuickReplies replies={m.quickReplies} onSend={m._onSend} showInput={m.showTextInput}/>}
-        {m.showMindMap&&m.tripSummary&&<TripMindMap tripSummary={m.tripSummary}/>}
-        {m.tripSummary&&<ShareTripCard tripSummary={m.tripSummary}/>}
-      </div>
-    </div>
-  );
-}
-
-// ── USER MESSAGE BUBBLE ──────────────────────────────────────────────────────────
-function UserMsg({m}){
-  return(
-    <div style={{display:"flex",justifyContent:"flex-end",marginBottom:20,animation:"fadeIn 0.2s both"}}>
-      <div style={{maxWidth:"70%",padding:"12px 18px",
-        borderRadius:"20px 20px 4px 20px",
-        background:"linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)",backgroundSize:"200% 200%",animation:"gradShift 4s ease infinite",
-        fontFamily:"'DM Sans',sans-serif",fontSize:15,color:"#1a1410",
-        fontWeight:500,lineHeight:1.65,boxShadow:"0 4px 16px rgba(201,168,76,0.2)"}}>
-        {m.content}
-      </div>
-    </div>
-  );
-}
-
-// ── EMPTY STATE ──────────────────────────────────────────────────────────────────
-function EmptyState({onChip}){
-  const chips=[
-    "✈️ Cheapest flight Bangalore to Delhi tomorrow",
-    "🚌 Bus Chennai to Hyderabad tonight",
-    "🏨 Hotels in Goa under ₹2000 per night",
-    "🚂 Train Delhi to Mumbai this weekend",
-    "🗺️ Plan a 2-day trip under ₹5000 from Bangalore",
-    "⚡ Fastest way from Bangalore to Mumbai",
-    "🌍 Flights to Dubai next month under ₹15000",
-    "🏖️ Best time to visit Goa — flights + hotels",
-  ];
-  return(
-    <div style={{textAlign:"center",paddingTop:"clamp(16px,4vh,48px)",
-      paddingBottom:"clamp(12px,3vh,32px)",animation:"fadeUp 0.5s both"}}>
-      <div style={{animation:"float 4s ease-in-out infinite",display:"inline-block",marginBottom:16}}>
-        <Logo size={52}/>
-      </div>
-      <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:300,
-        fontSize:"clamp(22px,5vw,52px)",color:"#fff",marginBottom:8,lineHeight:1.1,
-        background:"linear-gradient(135deg,#c9a84c,#f0d080,#4ade80)",backgroundClip:"text",WebkitBackgroundClip:"text",
-        WebkitTextFillColor:"transparent",backgroundSize:"200% 200%",
-        animation:"gradShift 4s ease infinite",padding:"0 8px"}}>
-        Where do you want to go?
-      </h1>
-      <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:"clamp(13px,3vw,16px)",
-        color:"rgba(26,20,10,0.75)",marginBottom:20,lineHeight:1.65,maxWidth:460,
-        margin:"0 auto 20px",padding:"0 12px"}}>
-        Flights · Buses · Hotels · Trains · Trip planning<br/>
-        <span style={{fontSize:"clamp(11px,2.5vw,13px)",color:"rgba(26,20,10,0.42)"}}>
-          Any language. Any route. Typos? No problem. 😄 · 🌍 Select your country (top-right) for local prices
-        </span>
-      </p>
-      {/* Chips — 2 per row on mobile, wrap on desktop */}
-      <div style={{display:"grid",
-        gridTemplateColumns:"repeat(auto-fit,minmax(clamp(140px,40vw,260px),1fr))",
-        gap:"clamp(7px,2vw,10px)",maxWidth:660,margin:"0 auto",padding:"0 12px"}}>
-        {chips.map((s,i)=>(
-          <button key={i} className="chip" onClick={()=>onChip(s)}
-            style={{padding:"clamp(8px,2vw,11px) clamp(10px,3vw,16px)",
-              borderRadius:100,fontSize:"clamp(11px,2.8vw,13px)",cursor:"pointer",
-              background:"rgba(201,168,76,0.08)",border:"1px solid rgba(201,168,76,0.25)",
-              color:"rgba(26,20,10,0.75)",transition:"all 0.18s",fontFamily:"'DM Sans',sans-serif",
-              fontWeight:500,textAlign:"center",lineHeight:1.4,
-              animation:`fadeUp 0.35s ${i*45}ms both`,whiteSpace:"normal"}}>
-            {s}
+// ── THEME PICKER ──────────────────────────────────────────────────────────────
+function ThemePicker({ current, onSelect, T }) {
+  return (
+    <div style={{padding:"8px 4px"}}>
+      <div style={{fontSize:11,color:T.sbSubText,letterSpacing:"0.1em",marginBottom:8,fontFamily:"'Caveat',cursive"}}>🎨 SELECT THEME</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
+        {Object.entries(THEMES).map(([key, theme]) => (
+          <button key={key} onClick={()=>onSelect(key)}
+            style={{
+              display:"flex",alignItems:"center",gap:6,padding:"8px 10px",
+              borderRadius:10,cursor:"pointer",
+              border: current===key ? `2px solid ${T.accent}` : `2px solid ${T.sbBorder}`,
+              background: current===key ? `${T.accent}20` : "rgba(255,255,255,0.05)",
+              color:T.sbText, fontFamily:"'Caveat',cursive", fontSize:12, textAlign:"left",
+            }}>
+            <div style={{width:14,height:14,borderRadius:"50%",background:theme.accent,flexShrink:0,border:"1px solid rgba(255,255,255,0.2)"}}/>
+            <span style={{flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{theme.name}</span>
+            {current===key && <span style={{color:T.accent,fontSize:11}}>✓</span>}
           </button>
         ))}
       </div>
@@ -600,771 +617,676 @@ function EmptyState({onChip}){
   );
 }
 
-// ── MAIN ─────────────────────────────────────────────────────────────────────────
-
-
-
-// ── Chat sidebar item with 3-dot menu ────────────────────────────────────────
-function ChatSidebarItem({chat,isActive,onLoad,onRename,onDelete}){
-  const [menuOpen,setMenuOpen]=useState(false);
-  const [renaming,setRenaming]=useState(false);
-  const [renameVal,setRenameVal]=useState(chat.title);
-  const menuRef=useRef(null);
-
-  // Close menu when clicking outside
-  useEffect(()=>{
-    if(!menuOpen) return;
-    const handler=(e)=>{
-      if(menuRef.current&&!menuRef.current.contains(e.target)) setMenuOpen(false);
-    };
-    document.addEventListener("mousedown",handler);
-    document.addEventListener("touchstart",handler);
-    return()=>{
-      document.removeEventListener("mousedown",handler);
-      document.removeEventListener("touchstart",handler);
-    };
-  },[menuOpen]);
-
-  return(
-    <div style={{position:"relative",marginBottom:2}}>
-      <div className="sb-item" onClick={()=>{if(!menuOpen&&!renaming)onLoad();}}
-        style={{padding:"9px 12px",borderRadius:9,cursor:"pointer",
-          background:isActive?"rgba(201,168,76,0.11)":"transparent",
-          border:isActive?"1px solid rgba(201,168,76,0.28)":"1px solid transparent",
-          display:"flex",alignItems:"center",gap:6,transition:"all 0.14s"}}>
-        <div style={{flex:1,minWidth:0}}>
-          {renaming?(
-            <input value={renameVal} autoFocus onChange={e=>setRenameVal(e.target.value)}
-              onBlur={()=>{onRename(chat.id,renameVal.trim()||chat.title);setRenaming(false);}}
-              onKeyDown={e=>{if(e.key==="Enter"){onRename(chat.id,renameVal.trim()||chat.title);setRenaming(false);}if(e.key==="Escape")setRenaming(false);}}
-              onClick={e=>e.stopPropagation()}
-              style={{width:"100%",background:"rgba(255,255,255,0.9)",border:"1px solid rgba(201,168,76,0.4)",
-                borderRadius:5,padding:"2px 6px",fontSize:12,color:"#1a1410",outline:"none",fontFamily:"'DM Sans',sans-serif"}}/>
-          ):(
-            <div style={{fontSize:13,color:"#1a1410",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{chat.title}</div>
-          )}
-          <div style={{fontSize:10,color:"#a0896a",marginTop:2}}>{new Date(chat.time).toLocaleDateString("en-IN",{day:"numeric",month:"short"})}</div>
-        </div>
-        {/* 3-dot button */}
-        <button onClick={e=>{e.stopPropagation();setMenuOpen(s=>!s);}}
-          style={{flexShrink:0,width:28,height:28,borderRadius:5,background:"transparent",border:"none",
-            cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",
-            color:"#a0896a",fontSize:16,opacity:isActive?1:0.4,transition:"opacity 0.15s",
-            WebkitTapHighlightColor:"transparent"}}
-          onMouseEnter={e=>{e.currentTarget.style.opacity="1";e.currentTarget.style.background="rgba(201,168,76,0.15)";}}
-          onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.opacity=isActive?"1":"0";}}>
-          ⋯
-        </button>
-      </div>
-      {/* Dropdown menu */}
-      {menuOpen&&(
-        <div ref={menuRef} onClick={e=>e.stopPropagation()}
-          style={{position:"absolute",right:0,top:34,zIndex:100,
-            background:"#fff",borderRadius:10,padding:"4px 0",
-            boxShadow:"0 8px 28px rgba(0,0,0,0.15)",border:"1px solid rgba(201,168,76,0.2)",
-            minWidth:130}}>
-          <button onClick={()=>{setRenaming(true);setMenuOpen(false);}}
-            style={{display:"block",width:"100%",padding:"9px 14px",textAlign:"left",
-              background:"none",border:"none",cursor:"pointer",fontSize:13,
-              fontFamily:"'DM Sans',sans-serif",color:"#1a1410"}}
-            onMouseEnter={e=>e.currentTarget.style.background="rgba(201,168,76,0.08)"}
-            onMouseLeave={e=>e.currentTarget.style.background="none"}>
-            ✏️ Rename
-          </button>
-          <button onClick={()=>{onDelete(chat.id);setMenuOpen(false);}}
-            style={{display:"block",width:"100%",padding:"9px 14px",textAlign:"left",
-              background:"none",border:"none",cursor:"pointer",fontSize:13,
-              fontFamily:"'DM Sans',sans-serif",color:"#ef4444"}}
-            onMouseEnter={e=>e.currentTarget.style.background="rgba(239,68,68,0.06)"}
-            onMouseLeave={e=>e.currentTarget.style.background="none"}>
-            🗑️ Delete
-          </button>
-        </div>
-      )}
-    </div>
+// ── ALVRYN LOGO ───────────────────────────────────────────────────────────────
+function AlvrynLogo({ size=32, color="#c9a84c" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
+      <circle cx="32" cy="32" r="30" stroke={color} strokeWidth="1.5" fill="none"/>
+      <path d="M20 46 L28 18 L36 46" stroke={color} strokeWidth="2.2" strokeLinecap="round" fill="none"/>
+      <path d="M22.5 36 L33.5 36" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
+      <path d="M26 46 L34 18 L42 46" stroke={color} strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.5"/>
+    </svg>
   );
 }
 
-// ── Renameable chat title ─────────────────────────────────────────────────────
-function RenameableTitle({chat, onRename}){
-  const [editing, setEditing] = useState(false);
-  const [val, setVal] = useState(chat.title);
-  if(editing) return(
-    <input value={val} autoFocus
-      onChange={e=>setVal(e.target.value)}
-      onBlur={()=>{onRename(chat.id,val.trim()||chat.title);setEditing(false);}}
-      onKeyDown={e=>{if(e.key==="Enter"){onRename(chat.id,val.trim()||chat.title);setEditing(false);}if(e.key==="Escape")setEditing(false);}}
-      style={{width:"100%",background:"rgba(255,255,255,0.9)",border:"1px solid rgba(201,168,76,0.4)",
-        borderRadius:5,padding:"2px 6px",fontSize:12,color:"#1a1410",outline:"none",fontFamily:"'DM Sans',sans-serif"}}
-    />
-  );
-  return(
-    <div onDoubleClick={()=>setEditing(true)} title="Double-click to rename"
-      style={{fontSize:13,color:"#1a1410",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:"text"}}>
-      {chat.title}
-    </div>
-  );
-}
-
-// ── Smart chat title generator ────────────────────────────────────────────────
-function smartChatTitle(firstMsg, messages) {
-  const m = firstMsg.toLowerCase().trim();
-  // Greeting → look at second user message for real intent
-  const isGreeting = /^(hi+|hello+|hey+|hlo+|heyy*|namaste|hai|sup)$/.test(m) || m.length <= 4;
-  if (isGreeting) {
-    // Find first non-greeting user message
-    const realMsg = messages.find(msg => msg.role==="user" && msg.content.toLowerCase().trim() !== m);
-    if (realMsg) return smartChatTitle(realMsg.content, []);
-    return "New conversation";
-  }
-  // City pair → "Bangalore → New York"
-  const cities = m.match(/([a-z]+)\s+to\s+([a-z]+)/);
-  if (cities) {
-    const c1 = cities[1].charAt(0).toUpperCase()+cities[1].slice(1);
-    const c2 = cities[2].charAt(0).toUpperCase()+cities[2].slice(1);
-    return `${c1} → ${c2}`;
-  }
-  // Intent detection
-  if (/hotel|stay|room/i.test(m)) {
-    const city = m.match(/in\s+([a-z]+)/)?.[1];
-    return city ? `Hotels in ${city.charAt(0).toUpperCase()+city.slice(1)}` : "Hotel Search";
-  }
-  if (/flight|fly/i.test(m)) return "Flight Search";
-  if (/bus|coach/i.test(m))  return "Bus Search";
-  if (/train|irctc/i.test(m)) return "Train Search";
-  if (/trip|plan|visit|tour/i.test(m)) {
-    const city = m.match(/(?:to|visit|trip to|going to)\s+([a-z]+)/)?.[1];
-    return city ? `Trip to ${city.charAt(0).toUpperCase()+city.slice(1)}` : "Trip Planning";
-  }
-  // Default: truncate
-  return firstMsg.slice(0,36)+(firstMsg.length>36?"…":"");
-}
-
-
-// ── Country themes for AI chat ────────────────────────────────────────────────
-const COUNTRY_THEMES = {
-  india:       {bg:"#fdf6e8",accent:"#c9a84c",text:"#1a1410",nav:"rgba(248,244,236,0.97)",msgBg:"#f0e8d4",userGrad:"linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)"},
-  usa:         {bg:"#f0f4ff",accent:"#1d4ed8",text:"#0f172a",nav:"rgba(240,244,255,0.97)",msgBg:"#e8eeff",userGrad:"linear-gradient(135deg,#1d4ed8,#3b82f6,#1d4ed8)"},
-  uk:          {bg:"#f0f0ff",accent:"#1e40af",text:"#0f172a",nav:"rgba(240,240,255,0.97)",msgBg:"#e8e8ff",userGrad:"linear-gradient(135deg,#1e40af,#3b82f6,#1e40af)"},
-  japan:       {bg:"#fff5f5",accent:"#dc2626",text:"#0f172a",nav:"rgba(255,245,245,0.97)",msgBg:"#ffeeee",userGrad:"linear-gradient(135deg,#dc2626,#f87171,#dc2626)"},
-  australia:   {bg:"#fff8f0",accent:"#ea580c",text:"#1a1410",nav:"rgba(255,248,240,0.97)",msgBg:"#fff0e5",userGrad:"linear-gradient(135deg,#ea580c,#fb923c,#ea580c)"},
-  germany:     {bg:"#fffbf0",accent:"#ca8a04",text:"#1a1410",nav:"rgba(255,251,240,0.97)",msgBg:"#fef9e7",userGrad:"linear-gradient(135deg,#ca8a04,#fbbf24,#ca8a04)"},
-  france:      {bg:"#f0f8ff",accent:"#1d4ed8",text:"#0f172a",nav:"rgba(240,248,255,0.97)",msgBg:"#e8f4ff",userGrad:"linear-gradient(135deg,#1d4ed8,#60a5fa,#dc2626)"},
-  canada:      {bg:"#fff5f5",accent:"#dc2626",text:"#0f172a",nav:"rgba(255,245,245,0.97)",msgBg:"#ffeeee",userGrad:"linear-gradient(135deg,#dc2626,#f87171,#dc2626)"},
-  "south korea":{bg:"#f5f5ff",accent:"#1d4ed8",text:"#0f172a",nav:"rgba(245,245,255,0.97)",msgBg:"#eeeeff",userGrad:"linear-gradient(135deg,#1d4ed8,#dc2626,#1d4ed8)"},
-  brazil:      {bg:"#f0fff4",accent:"#16a34a",text:"#0f172a",nav:"rgba(240,255,244,0.97)",msgBg:"#e5ffee",userGrad:"linear-gradient(135deg,#16a34a,#4ade80,#16a34a)"},
-  spain:       {bg:"#fff8f0",accent:"#dc2626",text:"#1a1410",nav:"rgba(255,248,240,0.97)",msgBg:"#fff0e5",userGrad:"linear-gradient(135deg,#dc2626,#fbbf24,#dc2626)"},
-  italy:       {bg:"#f0fff4",accent:"#16a34a",text:"#0f172a",nav:"rgba(240,255,244,0.97)",msgBg:"#e5ffee",userGrad:"linear-gradient(135deg,#16a34a,#dc2626,#16a34a)"},
-  indonesia:   {bg:"#fff5f5",accent:"#dc2626",text:"#0f172a",nav:"rgba(255,245,245,0.97)",msgBg:"#ffeeee",userGrad:"linear-gradient(135deg,#dc2626,#f87171,#dc2626)"},
-  china:       {bg:"#fff8f0",accent:"#dc2626",text:"#0f172a",nav:"rgba(255,248,240,0.97)",msgBg:"#ffeeee",userGrad:"linear-gradient(135deg,#dc2626,#fbbf24,#dc2626)"},
-  russia:      {bg:"#f0f4ff",accent:"#1d4ed8",text:"#0f172a",nav:"rgba(240,244,255,0.97)",msgBg:"#e8eeff",userGrad:"linear-gradient(135deg,#1d4ed8,#dc2626,#1d4ed8)"},
-};
-
-
-// ── Static brand colors for sub-components (outside main component) ──────────
-// Full dynamic theming happens inside AIChatPage via the C object
-const C_STATIC = {
-  gold:"#c9a84c",   goldD:"#8B6914",  green:"#4ade80",   greenD:"#16a34a",
-  greenMid:"#22c55e",
-  grad:"linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)",
-  gradGG:"linear-gradient(135deg,#c9a84c,#f0d080,#4ade80)",
-  cardBg:"rgba(255,255,255,0.92)",
-  textPri:"#1a1410",  textSec:"rgba(26,20,10,0.75)",
-  textMuted:"rgba(26,20,10,0.42)",
-  border:"rgba(201,168,76,0.2)",
-};
-
-export default function AIChatPage(){
+// ══ MAIN COMPONENT ════════════════════════════════════════════════════════════
+export default function AIChatPage() {
   const navigate = useNavigate();
-  const [chats,setChats]     = useState([]);
-  const [countryKey,setCountryKey] = useState(()=>localStorage.getItem("alvryn_country")||"india");
-  const CT = COUNTRY_THEMES[countryKey] || COUNTRY_THEMES.india;
-
-  // ── Brand Colors — reacts to country theme ────────────────────────────────
-  const C = {
-    bg:        CT.bg||"#f8f4ec",
-    sbBg:      CT.msgBg||"#f0e8d4",
-    topBar:    CT.nav||"rgba(248,244,236,0.97)",
-    textPri:   CT.text||"#1a1410",
-    textSec:   CT.text ? CT.text+"cc" : "rgba(26,20,10,0.75)",
-    textMuted: CT.text ? CT.text+"66" : "rgba(26,20,10,0.42)",
-    border:    CT.accent ? CT.accent+"33" : "rgba(201,168,76,0.2)",
-    gold:      CT.accent||"#c9a84c",
-    grad:      CT.userGrad||"linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)",
-    gradGG:    CT.userGrad||"linear-gradient(135deg,#c9a84c,#f0d080,#4ade80)",
-    gradSb:    CT.bg||"#f0e8d4",
-  };
-  const [chatsLoaded,setChatsLoaded] = useState(false);
-  const [activeId,setActiveId] = useState(null);
-  const [messages,setMessages] = useState([]);
-  const [input,setInput]     = useState("");
-  const [loading,setLoading] = useState(false);
-  const [sbOpen,setSbOpen]   = useState(typeof window!=="undefined" && window.innerWidth>768);
+  const [themeKey, setThemeKey]   = useState(() => localStorage.getItem("alvryn_theme") || "gold");
+  const [chats, setChats]         = useState([]);
+  const [activeId, setActiveId]   = useState(null);
+  const [messages, setMessages]   = useState([]);
+  const [input, setInput]         = useState("");
+  const [loading, setLoading]     = useState(false);
+  const [thinking, setThinking]   = useState(false);
+  const [thinkQuery, setThinkQuery] = useState("");
+  const [sbOpen, setSbOpen]       = useState(false);
+  const [showThemes, setShowThemes] = useState(false);
   const bottomRef   = useRef(null);
   const inputRef    = useRef(null);
   const textareaRef = useRef(null);
-  const sessionIdRef = useRef(sessionStorage.getItem("alvryn_sid")||null);
+  const sessionIdRef = useRef(sessionStorage.getItem("alvryn_sid") || null);
+  const thinkStartRef = useRef(0);
 
-  let user={};
-  try{ user=JSON.parse(localStorage.getItem("user")||"{}"); }catch{}
+  const T = THEMES[themeKey];
   const token = localStorage.getItem("token");
+  let user = {};
+  try { user = JSON.parse(localStorage.getItem("user") || "{}"); } catch {}
 
-  // Auth gate
-  useEffect(()=>{ if(!token) navigate("/login"); },[token,navigate]);
-  // Auto scroll
-  useEffect(()=>{ bottomRef.current?.scrollIntoView({behavior:"smooth"}); },[messages,loading]);
-  // Persist chats
-  useEffect(()=>{ try{localStorage.setItem("alvryn_chats",JSON.stringify(chats.slice(0,30)));}catch{} },[chats]);
-  // Keep backend alive
-  useEffect(()=>{
+  useEffect(() => { if (!token) navigate("/login"); }, [token]);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior:"smooth" }); }, [messages, thinking]);
+  useEffect(() => { localStorage.setItem("alvryn_theme", themeKey); }, [themeKey]);
+  useEffect(() => {
     fetch(`${API}/test`).catch(()=>{});
-    const t=setInterval(()=>fetch(`${API}/test`).catch(()=>{}),14*60*1000);
-    return ()=>clearInterval(t);
-  },[]);
+    const t = setInterval(() => fetch(`${API}/test`).catch(()=>{}), 14*60*1000);
+    return () => clearInterval(t);
+  }, []);
 
-  // ── LOAD CHATS FROM DB (cross-device sync) ────────────────────────────────
-  useEffect(()=>{
-    if(!token) return;
-    // First load from localStorage immediately (instant display)
-    try{
-      const local=JSON.parse(localStorage.getItem("alvryn_chats")||"[]");
-      if(local.length>0) setChats(local);
-    }catch{}
-    // Then sync from DB (authoritative)
-    fetch(`${API}/chats`,{headers:{Authorization:`Bearer ${token}`}})
-      .then(r=>{if(!r.ok)throw new Error(r.status);return r.json();})
-      .then(data=>{
-        if(!Array.isArray(data)||!data.length) return;
-        const mapped=data.map(c=>({
-          id:c.chat_id,
-          title:c.title||"New chat",
-          messages:(Array.isArray(c.messages)?c.messages:[]).map(m=>({
-            ...m,
-            id:m.id||m.time||Date.now(),
-            role:m.role||"user",
-            content:m.content||m.text||""
+  // Load chats
+  useEffect(() => {
+    if (!token) return;
+    try {
+      const local = JSON.parse(localStorage.getItem("alvryn_chats") || "[]");
+      if (local.length > 0) setChats(local);
+    } catch {}
+    fetch(`${API}/chats`, { headers:{ Authorization:`Bearer ${token}` } })
+      .then(r => { if(!r.ok) throw new Error(); return r.json(); })
+      .then(data => {
+        if (!Array.isArray(data) || !data.length) return;
+        const mapped = data.map(c => ({
+          id: c.chat_id,
+          title: c.title || "New chat",
+          messages: (Array.isArray(c.messages) ? c.messages : []).map(m => ({
+            ...m, id: m.id||Date.now(), role: m.role||"user", content: m.content||m.text||"",
           })),
-          time:new Date(c.updated_at||c.created_at).getTime()
+          time: new Date(c.updated_at||c.created_at).getTime(),
         }));
         setChats(mapped);
-        // Update localStorage with DB version
-        localStorage.setItem("alvryn_chats",JSON.stringify(mapped.slice(0,30)));
+        localStorage.setItem("alvryn_chats", JSON.stringify(mapped.slice(0,30)));
       })
-      .catch(()=>{}); // Silently fall back to localStorage version
-  },[token]);
+      .catch(()=>{});
+  }, [token]);
 
-  const newChat = useCallback(()=>{
+  const saveChat = useCallback((id, msgs, chatTitle) => {
+    const title = chatTitle || "New chat";
+    setChats(prev => {
+      const ex = prev.find(c => c.id === id);
+      if (ex) return prev.map(c => c.id===id ? {...c, messages:msgs, time:Date.now()} : c);
+      return [{ id, title, messages:msgs, time:Date.now() }, ...prev].slice(0,50);
+    });
+    try {
+      const stored = JSON.parse(localStorage.getItem("alvryn_chats") || "[]");
+      const t2 = stored.find(c => c.id===id)?.title || title;
+      localStorage.setItem("alvryn_chats", JSON.stringify(
+        [{ id, title:t2, messages:msgs, time:Date.now() }, ...stored.filter(c=>c.id!==id)].slice(0,30)
+      ));
+    } catch {}
+    if (token) {
+      const stored2 = JSON.parse(localStorage.getItem("alvryn_chats")||"[]");
+      const t3 = stored2.find(c=>c.id===id)?.title || title;
+      fetch(`${API}/chats/${id}`, {
+        method:"POST",
+        headers:{"Content-Type":"application/json", Authorization:`Bearer ${token}`},
+        body: JSON.stringify({
+          title: t3,
+          messages: msgs.slice(0,100).map(m => ({
+            role:m.role, content:m.content||"", text:m.text||"",
+            cards:(m.cards||[]).slice(0,5), id:m.id,
+          })),
+        }),
+      }).catch(()=>{});
+    }
+  }, [token]);
+
+  const newChat = useCallback(() => {
     setActiveId(Date.now().toString());
     setMessages([]);
     setInput("");
-    setTimeout(()=>inputRef.current?.focus(),100);
-  },[]);
+    setSbOpen(false);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  }, []);
 
-  const loadChat = useCallback((chat)=>{
+  const loadChat = useCallback(chat => {
     setActiveId(chat.id);
-    setMessages(chat.messages||[]);
-  },[]);
+    setMessages(chat.messages || []);
+    setSbOpen(false);
+  }, []);
 
-  const deleteChat = useCallback((chatId)=>{
-    setChats(prev=>prev.filter(c=>c.id!==chatId));
-    if(chatId===activeId){ setActiveId(null); setMessages([]); }
-    try{
-      const local=JSON.parse(localStorage.getItem("alvryn_chats")||"[]");
-      localStorage.setItem("alvryn_chats",JSON.stringify(local.filter(c=>c.id!==chatId)));
-    }catch{}
-    if(token){
-      fetch(`${API}/chats/${chatId}`,{method:"DELETE",headers:{Authorization:`Bearer ${token}`}}).catch(()=>{});
-    }
-  },[activeId,token]);
+  const deleteChat = useCallback(chatId => {
+    setChats(prev => prev.filter(c => c.id !== chatId));
+    if (chatId === activeId) { setActiveId(null); setMessages([]); }
+    if (token) fetch(`${API}/chats/${chatId}`, { method:"DELETE", headers:{ Authorization:`Bearer ${token}` } }).catch(()=>{});
+  }, [activeId, token]);
 
-  const renameChat = useCallback((chatId, newTitle)=>{
-    setChats(prev=>prev.map(c=>c.id===chatId?{...c,title:newTitle}:c));
-    try{
-      const local=JSON.parse(localStorage.getItem("alvryn_chats")||"[]");
-      localStorage.setItem("alvryn_chats",JSON.stringify(local.map(c=>c.id===chatId?{...c,title:newTitle}:c)));
-    }catch{}
-    if(token){
-      const chat=JSON.parse(localStorage.getItem("alvryn_chats")||"[]").find(c=>c.id===chatId);
-      if(chat) fetch(`${API}/chats/${chatId}`,{
-        method:"POST",
-        headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},
-        body:JSON.stringify({title:newTitle,messages:chat.messages||[]})
-      }).catch(()=>{});
-    }
-  },[token]);
-
-  const saveChat = useCallback((id,msgs,firstMsgTitle)=>{
-    const chatTitle = firstMsgTitle || "New chat";
-    // Update local state immediately
-    setChats(prev=>{
-      const ex = prev.find(c=>c.id===id);
-      const title = ex?.title || chatTitle;
-      if(ex) return prev.map(c=>c.id===id?{...c,messages:msgs,time:Date.now()}:c);
-      return [{id,title,messages:msgs,time:Date.now()},...prev].slice(0,50);
-    });
-    // Always save to localStorage as immediate backup
-    try{
+  const renameChat = useCallback((chatId, newTitle) => {
+    setChats(prev => prev.map(c => c.id===chatId ? {...c, title:newTitle} : c));
+    try {
       const stored = JSON.parse(localStorage.getItem("alvryn_chats")||"[]");
-      const filtered = stored.filter(c=>c.id!==id);
-      const title = stored.find(c=>c.id===id)?.title || chatTitle;
-      localStorage.setItem("alvryn_chats",JSON.stringify([{id,title,messages:msgs,time:Date.now()},...filtered].slice(0,30)));
-    }catch{}
-    // Also sync to DB
-    if(token){
-      const storedChats = JSON.parse(localStorage.getItem("alvryn_chats")||"[]");
-      const title = storedChats.find(c=>c.id===id)?.title || chatTitle;
-      fetch(`${API}/chats/${id}`,{
-        method:"POST",
-        headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},
-        body:JSON.stringify({
-          title,
-          messages:msgs.slice(0,100).map(m=>({
-            role:m.role,content:m.content||"",
-            text:m.text||"",cards:(m.cards||[]).slice(0,5),
-            id:m.id,image:m.image||null,
-            quickReplies:m.quickReplies||[],
-            cta:m.cta||null,sectionNum:m.sectionNum||null,
-            totalSections:m.totalSections||null
-          }))
-        })
-      }).catch(()=>{}); // Ignore DB errors — localStorage is the fallback
-    }
-  },[token]);
+      localStorage.setItem("alvryn_chats", JSON.stringify(stored.map(c => c.id===chatId ? {...c, title:newTitle} : c)));
+      const chat = stored.find(c => c.id===chatId);
+      if (chat && token) {
+        fetch(`${API}/chats/${chatId}`, {
+          method:"POST",
+          headers:{"Content-Type":"application/json", Authorization:`Bearer ${token}`},
+          body: JSON.stringify({ title:newTitle, messages:chat.messages||[] }),
+        }).catch(()=>{});
+      }
+    } catch {}
+  }, [token]);
 
-  const send = useCallback(async(text)=>{
-    const q = (text||input).trim();
-    if(!q||loading) return;
+  const send = useCallback(async text => {
+    const q = (text || input).trim();
+    if (!q || loading) return;
     setInput("");
-    // Reset textarea height
-    if(textareaRef.current){ textareaRef.current.style.height="auto"; }
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
 
-    const id = activeId||Date.now().toString();
-    if(!activeId) setActiveId(id);
+    playSound("send");
 
-    const uMsg = {role:"user",content:q,id:Date.now()};
-    const next = [...messages,uMsg];
+    const id = activeId || Date.now().toString();
+    if (!activeId) setActiveId(id);
+
+    const uMsg = { role:"user", content:q, id:Date.now() };
+    const next = [...messages, uMsg];
     setMessages(next);
     setLoading(true);
+    setThinking(true);
+    setThinkQuery(q);
+    thinkStartRef.current = Date.now();
 
-    try{
-      const res = await fetch(`${API}/ai-chat-v2`,{
+    try {
+      const res = await fetch(`${API}/ai-chat-v2`, {
         method:"POST",
-        headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},
-        body:JSON.stringify({message:q,history:messages.slice(-6),sessionId:sessionIdRef.current}),
+        headers:{"Content-Type":"application/json", Authorization:`Bearer ${token}`},
+        body: JSON.stringify({ message:q, history:messages.slice(-6), sessionId:sessionIdRef.current }),
       });
       const data = await res.json();
+
+      // Minimum 2s thinking
+      const elapsed = Date.now() - thinkStartRef.current;
+      if (elapsed < 2000) await new Promise(r => setTimeout(r, 2000-elapsed));
+
       if (data.sessionId) { sessionIdRef.current = data.sessionId; sessionStorage.setItem("alvryn_sid", data.sessionId); }
-      const aMsg = {role:"assistant",id:Date.now()+1,text:data.text||"",cards:data.cards||[],cta:data.cta||null,quickReplies:data.quickReplies||[],tripSummary:data.tripSummary||null,showMindMap:data.showMindMap||false,sectionNum:data.sectionNum||null,totalSections:data.totalSections||null,image:data.image||null,showTextInput:data.showTextInput||null,_onSend:send};
-      const final = [...next,aMsg];
+
+      setThinking(false);
+      playSound("receive");
+
+      const aMsg = {
+        role:"assistant", id:Date.now()+1,
+        text: data.text || "",
+        cards: data.cards || [],
+        cta: data.cta || null,
+        quickReplies: data.quickReplies || [],
+        sectionNum: data.sectionNum || null,
+        totalSections: data.totalSections || null,
+        _shimmerDone: false,
+      };
+      const final = [...next, aMsg];
       setMessages(final);
-      // Title = first user message only, updates same chat entry
+
       const chatTitle = next[0]?.content?.slice(0,44)+(next[0]?.content?.length>44?"…":"") || "New chat";
-      saveChat(id,final,chatTitle);
-    }catch{
-      const errMsg = {role:"assistant",id:Date.now()+1,
-        text:"Sorry, I'm having trouble right now. Please try again in a moment. 🙏",
-        cards:[],cta:null};
-      setMessages([...next,errMsg]);
+      saveChat(id, final, chatTitle);
+    } catch {
+      setThinking(false);
+      const errMsg = {
+        role:"assistant", id:Date.now()+1,
+        text:"Hmm, something went sideways! 😅 Try again in a moment — I promise I'm usually faster than this! ✈️",
+        cards:[], cta:null,
+      };
+      setMessages([...next, errMsg]);
     }
     setLoading(false);
-    setTimeout(()=>inputRef.current?.focus(),80);
-  },[input,loading,messages,token,activeId,saveChat]);
+    setTimeout(() => inputRef.current?.focus(), 80);
+  }, [input, loading, messages, token, activeId, saveChat]);
 
-  const handleKey = (e)=>{
-    if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); send(); }
-  };
-  const handleInput = (e)=>{
+  const handleKey = e => { if (e.key==="Enter" && !e.shiftKey) { e.preventDefault(); send(); } };
+  const handleInput = e => {
     setInput(e.target.value);
-    if(textareaRef.current){
-      textareaRef.current.style.height="auto";
-      textareaRef.current.style.height=Math.min(textareaRef.current.scrollHeight,160)+"px";
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 130) + "px";
     }
   };
 
-  const empty = messages.length===0;
-  const chatTitle = chats.find(c=>c.id===activeId)?.title||"New Chat";
+  const empty = messages.length === 0;
+  const chatTitle = chats.find(c => c.id===activeId)?.title || "Alvryn AI";
 
-  return(
-    <div style={{display:"flex",height:"100vh",background:C.bg,overflow:"hidden",
-      fontFamily:"'DM Sans',sans-serif"}}>
+  const CSS = `
+    @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&display=swap');
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{height:100%;overflow:hidden;}
+    @keyframes globePulse{0%,100%{opacity:0.7;}50%{opacity:1;}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+    @keyframes sketchIn{from{opacity:0;transform:scale(0.93) rotate(-1deg);}to{opacity:1;transform:scale(1) rotate(0deg);}}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    @keyframes shimmerPulse{0%,100%{opacity:1;}50%{opacity:0.35;}}
+    @keyframes wobble{0%,100%{transform:rotate(-1deg);}50%{transform:rotate(1deg);}}
+    @keyframes chipHover{to{transform:translateY(-2px) rotate(-1deg);}}
+    ::-webkit-scrollbar{width:3px;}
+    ::-webkit-scrollbar-thumb{border-radius:2px;}
+    textarea{font-family:'Caveat',cursive!important;}
+    textarea::placeholder{font-family:'Caveat',cursive!important;}
+  `;
+
+  // ── RENDER ─────────────────────────────────────────────────────────────────
+  return (
+    <div style={{ display:"flex", height:"100vh", height:"100dvh", background:T.bg,
+      overflow:"hidden", fontFamily:"'Caveat',cursive",
+      transition:"background 0.4s ease" }}>
       <style>{CSS}</style>
 
-      {/* ══════════════════ SIDEBAR ══════════════════ */}
-      {sbOpen&&<div className="overlay" onClick={()=>setSbOpen(false)}/>}
-      <div className={`sidebar${sbOpen?" open":""}`}
-        style={{width:sbOpen?260:0,flexShrink:0,
-          background:C.sbBg,borderRight:"1px solid rgba(201,168,76,0.2)",
-          display:"flex",flexDirection:"column",
-          overflow:"hidden",transition:"width 0.22s ease",
-          boxShadow:sbOpen?"4px 0 24px rgba(0,0,0,0.3)":"none"}}>
-        {(
-          <div style={{display:"flex",flexDirection:"column",height:"100%",padding:"14px 10px"}}>
+      {/* OVERLAY */}
+      {sbOpen && (
+        <div onClick={() => setSbOpen(false)}
+          style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.55)",
+            backdropFilter:"blur(4px)", zIndex:390 }}/>
+      )}
 
-            {/* Logo */}
-            <div style={{display:"flex",alignItems:"center",gap:10,padding:"6px 8px 18px",
-              cursor:"pointer",borderBottom:"1px solid rgba(201,168,76,0.3)",marginBottom:14}}
-              onClick={()=>navigate("/")}>
-              <div style={{animation:"float 4s ease-in-out infinite"}}><Logo size={28}/></div>
+      {/* ══ SIDEBAR ══════════════════════════════════════════════════════════ */}
+      <div style={{
+        width: sbOpen ? "min(85vw,288px)" : 0,
+        flexShrink:0, background:T.sidebar,
+        borderRight:`2px solid ${T.sbBorder}`,
+        position:"fixed", left:0, top:0, bottom:0, zIndex:400,
+        overflow:"hidden",
+        transition:"width 0.26s cubic-bezier(0.4,0,0.2,1)",
+        boxShadow: sbOpen ? "4px 0 24px rgba(0,0,0,0.45)" : "none",
+      }}>
+        <div style={{ display:"flex", flexDirection:"column", height:"100%",
+          padding:"14px 11px", overflowY:"auto", overflowX:"hidden", whiteSpace:"nowrap",
+          minWidth:288 }}>
+
+          {/* Logo + close */}
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
+            marginBottom:16, paddingBottom:12, borderBottom:`2px dashed ${T.sbBorder}` }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer" }}
+              onClick={() => navigate("/")}>
+              <AlvrynLogo size={30} color={T.accent}/>
               <div>
-                <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:16,
-                  background:C.grad, WebkitBackgroundClip:"text", backgroundClip:"text",
-                  WebkitTextFillColor:"transparent",
-                  letterSpacing:"0.15em",
-                  transition:"all 0.4s ease",
-                  backgroundSize:"200% 200%",animation:"gradShift 4s ease infinite"}}>ALVRYN</div>
-                <div style={{fontFamily:"'Space Mono',monospace",fontSize:7,
-                  color:C.gold||"#c9a84c",letterSpacing:"0.2em",fontWeight:700,
-                  transition:"color 0.4s ease"}}>AI TRAVEL</div>
+                <div style={{ fontSize:17, fontWeight:700, color:T.accent, letterSpacing:"0.1em" }}>ALVRYN</div>
+                <div style={{ fontSize:10, color:T.sbSubText }}>AI Travel</div>
               </div>
             </div>
-
-            {/* Country selector */}
-            <div>
-              <div style={{fontFamily:"'Space Mono',monospace",fontSize:8,
-                color:C.gold||"#c9a84c",letterSpacing:"0.18em",fontWeight:700,
-                marginBottom:4,paddingLeft:2,transition:"color 0.4s ease"}}>
-                🌍 CHOOSE COUNTRY
-              </div>
-              <CountrySelector token={token} onSelect={(c)=>{ setCountryKey(c.key); }}/>
-              <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:10,
-                color:C.textMuted||"rgba(26,20,10,0.38)",marginTop:4,paddingLeft:2,
-                lineHeight:1.4,transition:"color 0.4s ease"}}>
-                Better local prices & transport
-              </div>
-            </div>
-
-            {/* New Chat */}
-            <button onClick={newChat}
-              style={{display:"flex",alignItems:"center",gap:9,padding:"10px 14px",
-                borderRadius:11,background:C.grad,backgroundSize:"200% 200%",
-                animation:"gradShift 4s ease infinite",border:"none",cursor:"pointer",
-                color:"#1a1410",fontFamily:"'DM Sans',sans-serif",fontWeight:700,
-                fontSize:13,marginBottom:16,width:"100%",
-                boxShadow:"0 4px 18px rgba(201,168,76,0.35)"}}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a1410" strokeWidth="2.5">
-                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-              New Chat
-            </button>
-
-            {/* History */}
-            <div style={{flex:1,overflowY:"auto",marginBottom:8}}>
-              {chats.length>0&&(
-                <>
-                  <div style={{fontFamily:"'Space Mono',monospace",fontSize:9,
-                    color:"#a0896a",letterSpacing:"0.15em",marginBottom:8,paddingLeft:8}}>
-                    RECENT
-                  </div>
-                  {chats.slice(0,30).map(chat=>(
-                    <ChatSidebarItem key={chat.id} chat={chat}
-                      isActive={activeId===chat.id}
-                      onLoad={()=>loadChat(chat)}
-                      onRename={(id,t)=>renameChat(id,t)}
-                      onDelete={(id)=>deleteChat(id)}/>
-                  ))}
-                </>
-              )}
-            </div>
-
-            {/* User info */}
-            <div style={{borderTop:`1px solid ${C.sbBorder}`,paddingTop:12}}>
-              <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:10,padding:"0 4px"}}>
-                <div style={{width:32,height:32,borderRadius:"50%",flexShrink:0,
-                  background:C.gradGG,backgroundSize:"200% 200%",animation:"gradShift 5s ease infinite",
-                  display:"flex",alignItems:"center",justifyContent:"center",
-                  fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:15,color:"#1a1410"}}>
-                  {user.name?.charAt(0)?.toUpperCase()||"U"}
-                </div>
-                <div style={{overflow:"hidden",flex:1}}>
-                  <div style={{fontSize:13,color:"#1a1410",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:500}}>{user.name||"Traveller"}</div>
-                  <div style={{fontSize:10,color:C.textMuted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user.email||""}</div>
-                </div>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:5}}>
-                {[["🔍","Search","/search"],["👤","Profile","/profile"],["🏠","Home","/"]].map(([icon,label,path])=>(
-                  <button key={path} className="sb-btn" onClick={()=>navigate(path)}
-                    style={{padding:"7px 4px",borderRadius:8,fontSize:11,fontWeight:600,cursor:"pointer",
-                      background:"rgba(255,255,255,0.04)",color:C.textMuted,
-                      border:`1px solid rgba(255,255,255,0.07)`,transition:"all 0.15s",fontFamily:"'DM Sans',sans-serif"}}>
-                    {icon}<br/><span style={{fontSize:9}}>{label}</span>
-                  </button>
-                ))}
-              </div>
-              <button onClick={()=>{localStorage.removeItem("token");localStorage.removeItem("user");navigate("/login");}}
-                style={{marginTop:8,width:"100%",padding:"8px",borderRadius:8,fontSize:12,fontWeight:600,
-                  cursor:"pointer",background:"rgba(239,68,68,0.08)",color:"rgba(239,68,68,0.7)",
-                  border:"1px solid rgba(239,68,68,0.15)",fontFamily:"'DM Sans',sans-serif",transition:"all 0.15s"}}
-                onMouseEnter={e=>{e.currentTarget.style.background="rgba(239,68,68,0.14)";}}
-                onMouseLeave={e=>{e.currentTarget.style.background="rgba(239,68,68,0.08)";}}>
-                Sign Out
-              </button>
-            </div>
+            <button onClick={() => setSbOpen(false)}
+              style={{ width:30, height:30, borderRadius:"50%", background:"transparent",
+                border:`2px solid ${T.sbBorder}`, cursor:"pointer",
+                color:T.sbSubText, fontSize:16, display:"flex",
+                alignItems:"center", justifyContent:"center" }}>×</button>
           </div>
-        )}
+
+          {/* New Chat */}
+          <button onClick={newChat}
+            style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 13px",
+              borderRadius:12, background:T.accent, border:`2px solid ${T.accentDark}`,
+              cursor:"pointer", color:T.userText, fontSize:14, fontWeight:700,
+              marginBottom:10, width:"100%", fontFamily:"'Caveat',cursive",
+              boxShadow:`3px 3px 0 ${T.accentDark}` }}
+            onMouseEnter={e=>{e.currentTarget.style.transform="translate(-2px,-2px)";e.currentTarget.style.boxShadow=`5px 5px 0 ${T.accentDark}`;}}
+            onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow=`3px 3px 0 ${T.accentDark}`;}}>
+            <span style={{fontSize:16}}>✚</span> New Chat
+          </button>
+
+          {/* Theme toggle */}
+          <button onClick={() => setShowThemes(s => !s)}
+            style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px",
+              borderRadius:10, background: showThemes ? `${T.accent}20` : "transparent",
+              border:`2px dashed ${T.sbBorder}`, cursor:"pointer",
+              color:T.sbText, fontSize:13, marginBottom:6, width:"100%",
+              fontFamily:"'Caveat',cursive", textAlign:"left" }}>
+            <div style={{ width:14, height:14, borderRadius:"50%", background:T.accent, flexShrink:0 }}/>
+            🎨 Change Theme {showThemes ? "▲" : "▼"}
+          </button>
+
+          {/* Theme picker */}
+          {showThemes && (
+            <div style={{ marginBottom:10, padding:"8px", background:"rgba(255,255,255,0.04)",
+              borderRadius:10, border:`1px dashed ${T.sbBorder}` }}>
+              <ThemePicker current={themeKey} onSelect={key => setThemeKey(key)} T={T}/>
+            </div>
+          )}
+
+          {/* Chat history — always visible regardless of theme state */}
+          <div style={{ flex:1, overflowY:"auto", overflowX:"hidden", marginBottom:8 }}>
+            {chats.length > 0 ? (
+              <>
+                <div style={{ fontSize:10, color:T.sbSubText, letterSpacing:"0.12em",
+                  marginBottom:6, paddingLeft:4 }}>RECENT CHATS</div>
+                {chats.slice(0,30).map(chat => (
+                  <SidebarChatItem key={chat.id} chat={chat}
+                    isActive={activeId===chat.id}
+                    onLoad={() => loadChat(chat)}
+                    onRename={(id,t) => renameChat(id,t)}
+                    onDelete={id => deleteChat(id)}
+                    T={T}/>
+                ))}
+              </>
+            ) : (
+              <div style={{ fontSize:13, color:T.sbSubText, textAlign:"center", padding:"16px 0" }}>
+                No chats yet.<br/>Start one! ✈️
+              </div>
+            )}
+          </div>
+
+          {/* User info */}
+          <div style={{ borderTop:`2px dashed ${T.sbBorder}`, paddingTop:10 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+              <div style={{ width:32, height:32, borderRadius:"50%", flexShrink:0,
+                background:T.accent, display:"flex", alignItems:"center",
+                justifyContent:"center", fontSize:15, fontWeight:700,
+                color:T.userText, border:`2px solid ${T.accentDark}` }}>
+                {user.name?.charAt(0)?.toUpperCase() || "U"}
+              </div>
+              <div style={{ overflow:"hidden", flex:1 }}>
+                <div style={{ fontSize:14, color:T.sbText, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                  {user.name || "Traveller"}
+                </div>
+                <div style={{ fontSize:10, color:T.sbSubText, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                  {user.email || ""}
+                </div>
+              </div>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:5, marginBottom:8 }}>
+              {[["🔍 Search","/search"],["👤 Profile","/profile"],["🏠 Home","/"],["🎫 Bookings","/bookings"]].map(([label,path]) => (
+                <button key={path} onClick={() => navigate(path)}
+                  style={{ padding:"7px 6px", borderRadius:8, fontSize:12, fontWeight:600,
+                    cursor:"pointer", background:"rgba(255,255,255,0.05)",
+                    color:T.sbSubText, border:`2px solid ${T.sbBorder}`,
+                    fontFamily:"'Caveat',cursive" }}
+                  onMouseEnter={e=>{e.currentTarget.style.background=`${T.accent}22`;e.currentTarget.style.color=T.sbText;}}
+                  onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,255,255,0.05)";e.currentTarget.style.color=T.sbSubText;}}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button onClick={() => { localStorage.removeItem("token"); localStorage.removeItem("user"); navigate("/login"); }}
+              style={{ width:"100%", padding:"8px", borderRadius:8, fontSize:13, fontWeight:600,
+                cursor:"pointer", background:"rgba(239,68,68,0.08)",
+                color:"rgba(239,68,68,0.8)", border:"2px dashed rgba(239,68,68,0.3)",
+                fontFamily:"'Caveat',cursive" }}>
+              Sign Out
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* ══════════════════ MAIN AREA ══════════════════ */}
-      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
+      {/* ══ MAIN AREA ════════════════════════════════════════════════════════ */}
+      <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", minWidth:0 }}>
 
-        {/* Top bar */}
-        <div style={{height:54,padding:"0 16px",display:"flex",alignItems:"center",
-          justifyContent:"space-between",borderBottom:"1px solid rgba(201,168,76,0.3)",
-          flexShrink:0,background:CT.nav||C.topBar,backdropFilter:"blur(12px)",transition:"background 0.5s ease",transition:"background 0.5s ease"}}>
-          <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <button onClick={()=>setSbOpen(s=>!s)}
-              style={{width:36,height:36,borderRadius:8,background:"rgba(255,255,255,0.04)",
-                border:`1px solid rgba(201,168,76,0.15)`,cursor:"pointer",
-                display:"flex",alignItems:"center",justifyContent:"center",
-                color:C.textSec,transition:"all 0.15s",
-                WebkitTapHighlightColor:"transparent",touchAction:"manipulation"}}
-              onMouseEnter={e=>{e.currentTarget.style.background="rgba(201,168,76,0.08)";e.currentTarget.style.color=C.gold;}}
-              onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,255,255,0.04)";e.currentTarget.style.color=C.textSec;}}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-              </svg>
+        {/* TOP BAR — sticky, always on screen */}
+        <div style={{
+          height:56, padding:"0 12px",
+          display:"flex", alignItems:"center", justifyContent:"space-between",
+          borderBottom:`2px dashed ${T.border}`,
+          flexShrink:0, background:T.navBg, backdropFilter:"blur(12px)",
+          position:"sticky", top:0, zIndex:100,
+          transition:"background 0.4s ease",
+        }}>
+          {/* LEFT: hamburger + title */}
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            {/* HAMBURGER — always visible */}
+            <button onClick={() => setSbOpen(s => !s)}
+              style={{
+                width:40, height:40, borderRadius:10, background:"transparent",
+                border:`2px solid ${T.border}`, cursor:"pointer",
+                display:"flex", flexDirection:"column",
+                alignItems:"center", justifyContent:"center", gap:4,
+                padding:"8px", flexShrink:0,
+              }}>
+              {[0,1,2].map(i => (
+                <div key={i} style={{ width:"100%", height:2.5, background:T.inkColor, borderRadius:2 }}/>
+              ))}
             </button>
-            <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:600,fontSize:16,color:C.goldD}}>
-              {empty?"Alvryn AI — Travel Assistant":chatTitle}
+            <div style={{ fontSize:15, fontWeight:700, color:T.aiText,
+              overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
+              maxWidth:"clamp(100px,30vw,300px)" }}>
+              {empty ? "Alvryn AI ✈" : chatTitle}
             </div>
           </div>
-          <div style={{display:"flex",gap:8,alignItems:"center"}}>
-            <div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:100,
-              background:"linear-gradient(90deg,rgba(201,168,76,0.08),rgba(74,222,128,0.06))",
-              border:`1px solid rgba(74,222,128,0.18)`}}>
-              <div style={{width:6,height:6,borderRadius:"50%",background:C.green,animation:"pulse 2s infinite"}}/>
-              <span style={{fontFamily:"'Space Mono',monospace",fontSize:9,color:C.green,letterSpacing:"0.1em"}}>AI LIVE</span>
+
+          {/* RIGHT: home icon + live badge + new */}
+          <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+            {/* HOME / SEARCH ICON */}
+            <button onClick={() => navigate("/search")}
+              title="Go to Flight Search"
+              style={{ width:38, height:38, borderRadius:10, background:`${T.accent}15`,
+                border:`2px solid ${T.border}`, cursor:"pointer",
+                display:"flex", alignItems:"center", justifyContent:"center",
+                fontSize:18, flexShrink:0 }}>
+              🔍
+            </button>
+
+            <div style={{ display:"flex", alignItems:"center", gap:4, padding:"4px 10px",
+              borderRadius:20, border:`2px dashed ${T.accent}`, background:`${T.accent}10` }}>
+              <div style={{ width:6, height:6, borderRadius:"50%", background:"#22c55e",
+                animation:"shimmerPulse 2s infinite" }}/>
+              <span style={{ fontFamily:"'Caveat',cursive", fontSize:11, color:T.accent }}>AI LIVE</span>
             </div>
             <button onClick={newChat}
-              style={{padding:"6px 13px",borderRadius:8,background:"rgba(201,168,76,0.08)",
-                border:`1px solid rgba(201,168,76,0.2)`,color:C.gold,
-                fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",
-                transition:"all 0.15s"}}
-              onMouseEnter={e=>{e.currentTarget.style.background="rgba(201,168,76,0.14)";}}
-              onMouseLeave={e=>{e.currentTarget.style.background="rgba(201,168,76,0.08)";}}>
+              style={{ padding:"6px 14px", borderRadius:10, background:T.accent,
+                border:`2px solid ${T.accentDark}`, color:T.userText, fontSize:13,
+                fontWeight:700, cursor:"pointer", fontFamily:"'Caveat',cursive",
+                boxShadow:`2px 2px 0 ${T.accentDark}` }}>
               + New
             </button>
           </div>
         </div>
 
-        {/* ── Messages ── */}
-        <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"clamp(10px,2vw,20px) clamp(8px,2vw,16px)",background:CT.msgBg||"#f0e8d4",minHeight:0,transition:"background 0.5s ease"}}>
-          <div style={{maxWidth:740,margin:"0 auto"}}>
-            {empty&&<EmptyState onChip={send}/>}
-            {messages.map(m=>(
-              m.role==="user"
-                ? <UserMsg key={m.id} m={m}/>
-                : <AiMsg   key={m.id} m={m}/>
-            ))}
-            {loading&&(
-              <div style={{display:"flex",gap:12,marginBottom:20,animation:"fadeIn 0.2s both"}}>
-                <div style={{flexShrink:0,width:34,height:34,borderRadius:"50%",
-                  background:"linear-gradient(135deg,rgba(201,168,76,0.18),rgba(74,222,128,0.1))",
-                  border:`1.5px solid rgba(201,168,76,0.5)`,
-                  display:"flex",alignItems:"center",justifyContent:"center"}}>
-                  <Logo size={22}/>
-                </div>
-                <div style={{paddingTop:5}}>
-                  <div style={{fontSize:12,color:C.textMuted,marginBottom:7,
-                    fontFamily:"'DM Sans',sans-serif",fontStyle:"italic"}}>Alvryn is thinking…</div>
-                  <Typing/>
+        {/* MESSAGES AREA */}
+        <div style={{ flex:1, overflowY:"auto", WebkitOverflowScrolling:"touch",
+          padding:"clamp(10px,2vw,18px) clamp(8px,2vw,14px)",
+          background:T.msgArea, minHeight:0,
+          transition:"background 0.4s ease" }}>
+          <div style={{ maxWidth:700, margin:"0 auto" }}>
+
+            {/* EMPTY STATE */}
+            {empty && (
+              <div style={{ textAlign:"center", paddingTop:"clamp(20px,5vh,50px)", animation:"fadeUp 0.5s both" }}>
+                <div style={{ fontSize:52, marginBottom:14, animation:"wobble 3s ease-in-out infinite" }}>✈️</div>
+                <h1 style={{ fontFamily:"'Caveat',cursive", fontWeight:700,
+                  fontSize:"clamp(26px,6vw,50px)", color:T.aiText,
+                  marginBottom:8, lineHeight:1.1 }}>
+                  Where do you want to go?
+                </h1>
+                <p style={{ fontFamily:"'Caveat',cursive", fontSize:"clamp(13px,3vw,17px)",
+                  color:T.aiText, opacity:0.7, marginBottom:20, lineHeight:1.6 }}>
+                  Flights · Buses · Hotels · Trains · Trip planning<br/>
+                  <span style={{ fontSize:"clamp(11px,2vw,13px)", opacity:0.5 }}>
+                    Any language. Any city. Typos? No problem 😄
+                  </span>
+                </p>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(clamp(130px,36vw,230px),1fr))",
+                  gap:9, maxWidth:580, margin:"0 auto", padding:"0 8px" }}>
+                  {[
+                    "✈️ Cheapest flight Bangalore to Delhi tomorrow",
+                    "🚌 Bus Chennai to Hyderabad tonight",
+                    "🏨 Hotels in Goa under ₹2000",
+                    "🚂 Train Delhi to Mumbai this weekend",
+                    "🗺️ Plan 2-day trip from Bangalore",
+                    "🌍 Flights to Dubai next month",
+                    "⚡ Fastest way Bangalore to Mumbai",
+                    "🏖️ Honeymoon destination Europe",
+                  ].map((s,i) => (
+                    <button key={i} onClick={() => send(s)}
+                      style={{
+                        padding:"10px 13px", borderRadius:14,
+                        background:T.aiBubble, border:`2px solid ${T.border}`,
+                        color:T.aiText, fontFamily:"'Caveat',cursive",
+                        fontSize:"clamp(12px,2.6vw,14px)", cursor:"pointer",
+                        textAlign:"left", lineHeight:1.4,
+                        boxShadow:`2px 2px 0 ${T.border}`,
+                        transition:"transform 0.15s, box-shadow 0.15s",
+                        animation:`sketchIn 0.35s ${i*45}ms both`,
+                      }}
+                      onMouseEnter={e=>{e.currentTarget.style.transform="translate(-2px,-2px) rotate(-1deg)";e.currentTarget.style.boxShadow=`4px 4px 0 ${T.border}`;}}
+                      onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow=`2px 2px 0 ${T.border}`;}}>
+                      {s}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
+
+            {/* MESSAGES */}
+            {messages.map(m => (
+              <div key={m.id}>
+                {m.role === "user" ? (
+                  <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:16, animation:"sketchIn 0.22s both" }}>
+                    <div style={{
+                      maxWidth:"72%", padding:"11px 16px",
+                      borderRadius:"18px 18px 4px 18px",
+                      background:T.userBubble, border:`2px solid ${T.accentDark}`,
+                      boxShadow:`3px 3px 0 ${T.accentDark}`,
+                      fontFamily:"'Caveat',cursive",
+                      fontSize:"clamp(14px,3vw,17px)",
+                      color:T.userText, fontWeight:600, lineHeight:1.6,
+                    }}>
+                      {m.content}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display:"flex", gap:9, marginBottom:22, animation:"fadeUp 0.28s both" }}>
+                    <div style={{
+                      flexShrink:0, width:34, height:34, borderRadius:"50%",
+                      background:T.userBubble, border:`2px solid ${T.accentDark}`,
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                      marginTop:4, boxShadow:`2px 2px 0 ${T.accentDark}`,
+                    }}>
+                      <AlvrynLogo size={20} color={T.userText}/>
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      {/* Section progress bar */}
+                      {m.sectionNum && m.totalSections && (
+                        <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:10 }}>
+                          {Array.from({length:m.totalSections},(_,i) => (
+                            <div key={i} style={{ flex:1, height:4, borderRadius:3,
+                              background: i < m.sectionNum ? `linear-gradient(90deg,${T.accent},${T.accentDark})` : `${T.border}60` }}/>
+                          ))}
+                          <span style={{ fontSize:10, color:T.accent, fontFamily:"'Caveat',cursive", marginLeft:4, whiteSpace:"nowrap" }}>
+                            {m.sectionNum}/{m.totalSections}
+                          </span>
+                        </div>
+                      )}
+
+                      {m.text && (
+                        <div style={{
+                          background:T.aiBubble, border:`2px solid ${T.border}`,
+                          borderRadius:"4px 18px 18px 18px",
+                          padding:"13px 16px", marginBottom: m.cards?.length ? 11 : 0,
+                          boxShadow:`3px 3px 0 ${T.border}`,
+                          fontFamily:"'Caveat',cursive",
+                          fontSize:"clamp(14px,3vw,17px)",
+                          color:T.aiText, lineHeight:1.75,
+                        }}>
+                          {m._shimmerDone === false ? (
+                            <ShimmerText text={m.text} themeKey={themeKey}
+                              onDone={() => setMessages(prev =>
+                                prev.map(msg => msg.id===m.id ? {...msg, _shimmerDone:true} : msg)
+                              )}/>
+                          ) : (
+                            <span style={{ whiteSpace:"pre-wrap" }}>{m.text}</span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Cards */}
+                      {m.cards?.filter(c=>c.type==="flight").map((c,i) => <FlightCard key={i} f={c} themeKey={themeKey}/>)}
+                      {m.cards?.filter(c=>c.type==="bus").map((c,i) => <BusCard key={i} b={c} themeKey={themeKey}/>)}
+                      {m.cards?.filter(c=>c.type==="hotel").map((c,i) => <HotelCard key={i} h={c} themeKey={themeKey}/>)}
+                      {m.cards?.filter(c=>c.type==="train").map((c,i) => <TrainCard key={i} t={c} themeKey={themeKey}/>)}
+
+                      {m.cards?.length > 0 && (
+                        <div style={{ fontFamily:"'Caveat',cursive", fontSize:11,
+                          color:T.aiText, opacity:0.4, marginTop:4 }}>
+                          Prices are approximate. Tap to check live availability.
+                        </div>
+                      )}
+
+                      {m.cta && (
+                        <div style={{ marginTop:10, padding:"9px 13px", borderRadius:10,
+                          border:`2px dashed ${T.border}`, fontFamily:"'Caveat',cursive",
+                          fontSize:14, color:T.accent, fontStyle:"italic",
+                          background:`${T.accent}08` }}>
+                          {m.cta}
+                        </div>
+                      )}
+
+                      {m.quickReplies?.length > 0 && (
+                        <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginTop:10 }}>
+                          {m.quickReplies.map((r,i) => (
+                            <button key={i} onClick={() => send(r)}
+                              style={{
+                                padding:"7px 13px", borderRadius:20,
+                                background:T.aiBubble, border:`2px solid ${T.border}`,
+                                color:T.accent, fontFamily:"'Caveat',cursive",
+                                fontSize:13, fontWeight:600, cursor:"pointer",
+                                boxShadow:`2px 2px 0 ${T.border}`,
+                              }}
+                              onMouseEnter={e=>{e.currentTarget.style.transform="translate(-1px,-1px)";e.currentTarget.style.boxShadow=`3px 3px 0 ${T.border}`;}}
+                              onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow=`2px 2px 0 ${T.border}`;}}>
+                              {r}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* THINKING — Globe animation */}
+            {thinking && (
+              <div style={{ display:"flex", gap:9, marginBottom:18, animation:"fadeUp 0.28s both" }}>
+                <div style={{ flexShrink:0, width:34, height:34, borderRadius:"50%",
+                  background:T.userBubble, border:`2px solid ${T.accentDark}`,
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  marginTop:4, boxShadow:`2px 2px 0 ${T.accentDark}` }}>
+                  <AlvrynLogo size={20} color={T.userText}/>
+                </div>
+                <div style={{ background:T.aiBubble, border:`2px solid ${T.border}`,
+                  borderRadius:"4px 18px 18px 18px",
+                  boxShadow:`3px 3px 0 ${T.border}`, minWidth:200 }}>
+                  <HolographicGlobe themeKey={themeKey} query={thinkQuery}/>
+                </div>
+              </div>
+            )}
+
             <div ref={bottomRef}/>
           </div>
         </div>
 
-        {/* ── Input ── */}
-        <div style={{padding:"12px 16px 18px",borderTop:`1px solid ${C.sbBorder}`,
-          flexShrink:0,background:CT.nav||C.topBar,backdropFilter:"blur(12px)",transition:"background 0.5s ease",transition:"background 0.5s ease"}}>
-          <div style={{maxWidth:740,margin:"0 auto"}}>
-            <div style={{display:"flex",alignItems:"flex-end",gap:10,
-              background:C.inputBg,borderRadius:16,padding:"10px 14px",
-              border:`1.5px solid rgba(201,168,76,0.18)`,
-              transition:"border-color 0.2s,box-shadow 0.2s",
-              boxShadow:"0 0 0 0 rgba(201,168,76,0)"}}
-              onFocusCapture={e=>{
-                e.currentTarget.style.borderColor="rgba(201,168,76,0.48)";
-                e.currentTarget.style.boxShadow="0 0 0 3px rgba(201,168,76,0.07)";
-              }}
-              onBlurCapture={e=>{
-                e.currentTarget.style.borderColor="rgba(201,168,76,0.22)";
-                e.currentTarget.style.boxShadow="0 0 0 0 rgba(201,168,76,0)";
-              }}>
+        {/* INPUT AREA — sticky at bottom */}
+        <div style={{
+          padding:"10px 12px 14px",
+          borderTop:`2px dashed ${T.border}`,
+          flexShrink:0, background:T.navBg, backdropFilter:"blur(12px)",
+          transition:"background 0.4s ease",
+        }}>
+          <div style={{ maxWidth:700, margin:"0 auto" }}>
+            <div style={{
+              display:"flex", alignItems:"flex-end", gap:9,
+              background:T.inputBg, borderRadius:16, padding:"9px 12px",
+              border:`2px solid ${T.border}`, boxShadow:`3px 3px 0 ${T.border}`,
+            }}>
               <textarea
-                ref={el=>{inputRef.current=el;textareaRef.current=el;}}
+                ref={el => { inputRef.current=el; textareaRef.current=el; }}
                 value={input}
                 onChange={handleInput}
                 onKeyDown={handleKey}
-                placeholder="Ask anything…"
+                placeholder="Ask anything... ✈"
                 rows={1}
-                style={{flex:1,background:"transparent",border:"none",outline:"none",
-                  fontFamily:"'DM Sans',sans-serif",fontSize:15,color:C.textPri,
-                  resize:"none",lineHeight:1.65,maxHeight:160,overflowY:"auto",
-                  paddingTop:2,placeholder:{color:C.textMuted}}}
+                style={{
+                  flex:1, background:"transparent", border:"none", outline:"none",
+                  fontFamily:"'Caveat',cursive",
+                  fontSize:"clamp(14px,3vw,17px)",
+                  color:T.inputText, resize:"none", lineHeight:1.6,
+                  maxHeight:130, overflowY:"auto", paddingTop:2,
+                }}
               />
-              <button className="send-btn" onClick={()=>send()}
-                disabled={!input.trim()||loading}
-                style={{flexShrink:0,width:37,height:37,borderRadius:11,
-                  background:input.trim()&&!loading?C.grad:"rgba(255,255,255,0.06)",
-                  backgroundSize:"200% 200%",
-                  animation:input.trim()&&!loading?"gradShift 3s ease infinite":"none",
-                  border:"none",cursor:input.trim()&&!loading?"pointer":"default",
-                  display:"flex",alignItems:"center",justifyContent:"center",
-                  fontSize:16,transition:"all 0.18s",
-                  boxShadow:input.trim()&&!loading?"0 4px 12px rgba(201,168,76,0.25)":"none"}}>
+              <button onClick={() => send()} disabled={!input.trim() || loading}
+                style={{
+                  flexShrink:0, width:38, height:38, borderRadius:12,
+                  background: input.trim() && !loading ? T.accent : "rgba(128,128,128,0.18)",
+                  border:`2px solid ${input.trim()&&!loading ? T.accentDark : "transparent"}`,
+                  cursor: input.trim() && !loading ? "pointer" : "default",
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  fontSize:18, transition:"all 0.18s",
+                  boxShadow: input.trim()&&!loading ? `2px 2px 0 ${T.accentDark}` : "none",
+                  color: input.trim()&&!loading ? T.userText : "rgba(128,128,128,0.4)",
+                }}>
                 {loading
-                  ? <div style={{width:15,height:15,border:"2px solid rgba(255,255,255,0.2)",
-                      borderTopColor:"#fff",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
-                  : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={input.trim()?"#1a1410":"#666"} strokeWidth="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
-                }
+                  ? <div style={{ width:15, height:15, border:"2.5px solid rgba(255,255,255,0.25)",
+                      borderTopColor:"#fff", borderRadius:"50%", animation:"spin 0.8s linear infinite" }}/>
+                  : "↑"}
               </button>
             </div>
-            <div style={{textAlign:"center",marginTop:7,fontSize:11,color:"rgba(201,168,76,0.4)",
-              fontFamily:"'DM Sans',sans-serif"}}>
-              Alvryn AI · Flights · Buses · Hotels · Trains · Bookings on partner sites
+            {/* Disclaimer */}
+            <div style={{ textAlign:"center", marginTop:5,
+              fontFamily:"'Caveat',cursive", fontSize:11,
+              color:T.aiText, opacity:0.38 }}>
+              Alvryn AI can make mistakes, so please double-check the responses.
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-// ── SECTION PROGRESS BAR ─────────────────────────────────────────────────────
-function SectionProgress({current,total}){
-  if(!current||!total)return null;
-  return(
-    <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:12,marginTop:8}}>
-      {Array.from({length:total},(_,i)=>(
-        <div key={i} style={{flex:1,height:4,borderRadius:3,transition:"all 0.4s",
-          background:i<current?"linear-gradient(90deg,#c9a84c,#f0d080)":"rgba(201,168,76,0.15)"}}/>
-      ))}
-      <span style={{fontSize:11,color:"#8B6914",fontFamily:"'Space Mono',monospace",marginLeft:4,whiteSpace:"nowrap"}}>{current}/{total}</span>
-    </div>
-  );
-}
-
-// ── QUICK REPLIES ─────────────────────────────────────────────────────────────
-function QuickReplies({replies,onSend,showInput}){
-  const [otherText,setOtherText]=useState("");
-  if(!replies?.length)return null;
-  return(
-    <div style={{marginTop:12}}>
-      <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:showInput?10:0}}>
-      {replies.map((r,i)=>(
-        <button key={i} onClick={()=>r.startsWith("Others")?null:onSend(r)}
-          style={{padding:"8px 14px",borderRadius:100,fontSize:13,cursor:"pointer",
-            background:"rgba(201,168,76,0.1)",border:"1.5px solid rgba(201,168,76,0.28)",
-            color:"#8B6914",fontFamily:"'DM Sans',sans-serif",fontWeight:600,
-            transition:"all 0.18s",animation:`fadeUp 0.3s ${i*60}ms both`}}
-          onMouseEnter={e=>{e.currentTarget.style.background="rgba(201,168,76,0.2)";e.currentTarget.style.borderColor="#c9a84c";}}
-          onMouseLeave={e=>{e.currentTarget.style.background="rgba(201,168,76,0.1)";e.currentTarget.style.borderColor="rgba(201,168,76,0.28)";}}>
-          {r}
-        </button>
-      ))}
-      </div>
-      {showInput&&(
-        <div style={{display:"flex",gap:8,marginTop:6}}>
-          <input value={otherText} onChange={e=>setOtherText(e.target.value)}
-            onKeyDown={e=>{if(e.key==="Enter"&&otherText.trim()){onSend(otherText.trim());setOtherText("");}}}
-            placeholder={showInput} style={{flex:1,padding:"9px 13px",borderRadius:10,
-              border:"1.5px solid rgba(201,168,76,0.3)",fontFamily:"'DM Sans',sans-serif",
-              fontSize:14,color:"#1a1410",background:"rgba(255,255,255,0.9)",outline:"none"}}/>
-          <button onClick={()=>{if(otherText.trim()){onSend(otherText.trim());setOtherText("");}}}
-            style={{padding:"9px 16px",borderRadius:10,background:"linear-gradient(135deg,#c9a84c,#f0d080)",
-              border:"none",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:700,fontSize:13,color:"#1a1410"}}>
-            Go →
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── TRIP MIND MAP ─────────────────────────────────────────────────────────────
-function TripMindMap({tripSummary}){
-  if(!tripSummary)return null;
-  const {from,to,purpose,budget,travelDate,homeLocation}=tripSummary;
-  const nodes=[
-    {icon:"🏠",label:homeLocation||"Home",c:"#f59e0b"},
-    {icon:"🚖",label:"To Airport",c:"#8b5cf6"},
-    {icon:"✈️",label:`Fly to ${to}`,c:"#c9a84c"},
-    {icon:"🏨",label:"Hotel",c:"#16a34a"},
-    {icon:"🗺️",label:"Explore",c:"#0ea5e9"},
-    {icon:"🔄",label:"Return",c:"#c9a84c"},
-  ];
-  return(
-    <div style={{background:"rgba(255,255,255,0.97)",borderRadius:16,padding:"18px 16px",
-      border:"1.5px solid rgba(201,168,76,0.25)",marginTop:14,
-      boxShadow:"0 4px 20px rgba(201,168,76,0.1)"}}>
-      <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:15,
-        color:"#1a1410",marginBottom:14,textAlign:"center"}}>🗺️ Your Trip at a Glance</div>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"center",flexWrap:"wrap",gap:0,marginBottom:14}}>
-        {nodes.map((node,i)=>(
-          <React.Fragment key={i}>
-            <div style={{display:"flex",flexDirection:"column",alignItems:"center",animation:`fadeUp 0.3s ${i*80}ms both`}}>
-              <div style={{width:40,height:40,borderRadius:"50%",
-                background:`${node.c}18`,border:`2px solid ${node.c}40`,
-                display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>
-                {node.icon}
-              </div>
-              <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:9,color:"#5a4a3a",
-                marginTop:3,textAlign:"center",maxWidth:54,overflow:"hidden",
-                textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                {node.label}
-              </div>
-            </div>
-            {i<nodes.length-1&&<div style={{width:20,height:2,background:"linear-gradient(90deg,rgba(201,168,76,0.25),rgba(201,168,76,0.5))",margin:"0 1px",marginBottom:18}}/>}
-          </React.Fragment>
-        ))}
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
-        {[["🎯 Purpose",purpose],["💰 Budget",budget?`₹${Number(budget).toLocaleString()}`:"Flexible"],
-          ["📅 Date",travelDate||"TBD"],["🛣️ Route",`${from}→${to}`]].map(([k,v])=>(
-          <div key={k} style={{padding:"7px 9px",borderRadius:8,
-            background:"rgba(201,168,76,0.06)",border:"1px solid rgba(201,168,76,0.12)"}}>
-            <div style={{fontFamily:"'Space Mono',monospace",fontSize:8,color:"#a0896a"}}>{k}</div>
-            <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:12,color:"#1a1410",
-              fontWeight:600,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{v||"—"}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── SHARE TRIP CARD ───────────────────────────────────────────────────────────
-function ShareTripCard({tripSummary}){
-  // Hook MUST be before any early return (React rules)
-  const [copied,setCopied]=useState(false);
-  if(!tripSummary)return null;
-  const {shareUrl,shareText}=tripSummary;
-  return(
-    <div style={{background:"linear-gradient(135deg,rgba(201,168,76,0.08),rgba(240,208,128,0.06))",
-      borderRadius:13,padding:"13px 14px",border:"1.5px solid rgba(201,168,76,0.28)",
-      marginTop:12,animation:"fadeUp 0.4s both"}}>
-      <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:600,color:"#8B6914",marginBottom:9}}>
-        🔗 Share your trip plan
-      </div>
-      <div style={{fontFamily:"'Space Mono',monospace",fontSize:9,color:"#5a4a3a",
-        background:"rgba(255,255,255,0.7)",padding:"5px 9px",borderRadius:7,
-        marginBottom:9,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-        {shareUrl}
-      </div>
-      <div style={{display:"flex",gap:7}}>
-        <button onClick={()=>{navigator.clipboard.writeText(shareUrl).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000);});}}
-          style={{flex:1,padding:"8px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",
-            background:copied?"rgba(22,163,74,0.1)":"rgba(201,168,76,0.1)",
-            border:copied?"1px solid #16a34a":"1px solid rgba(201,168,76,0.28)",
-            color:copied?"#16a34a":"#8B6914",fontFamily:"'DM Sans',sans-serif",transition:"all 0.2s"}}>
-          {copied?"✅ Copied!":"📋 Copy Link"}
-        </button>
-        <button onClick={()=>window.open(`https://wa.me/?text=${encodeURIComponent((shareText||"")+" "+(shareUrl||""))}`,"_blank")}
-          style={{flex:1,padding:"8px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",
-            background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.28)",
-            color:"#16a34a",fontFamily:"'DM Sans',sans-serif"}}>
-          📱 WhatsApp
-        </button>
       </div>
     </div>
   );

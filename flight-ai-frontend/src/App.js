@@ -35,7 +35,7 @@ const GOLD_DARK = "#8B6914";
 const GRAD = "linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)";
 
 // ─── AFFILIATE CONFIG ─────────────────────────────────────────────────────────
-const TP_MARKER  = "714667";
+const TP_MARKER  = "714667"; // eslint-disable-line no-unused-vars
 // Short tracking link — survives .com → .in geo-redirect, keeps marker intact
 /** Build Aviasales affiliate link with marker=714667
  *  India routes  → aviasales.in  (INR currency, no geo-redirect)
@@ -114,13 +114,26 @@ const SHARED_CSS = `
   @media(max-width:768px){
     .search-city-grid{grid-template-columns:1fr!important;}
     .search-date-grid{grid-template-columns:1fr 1fr!important;}
-    @media(max-width:520px){
-      .bus-row-grid{grid-template-columns:1fr!important;}
-      .flight-row-grid{grid-template-columns:1fr!important;}
-      .hotel-row-grid{grid-template-columns:1fr!important;}
-    }
     .results-card-bottom{flex-direction:column!important;gap:12px!important;}
-    .nav-right-btns button span.btn-label{display:none!important;}
+  }
+  @media(max-width:520px){
+    .bus-row-grid{grid-template-columns:1fr!important;}
+    .flight-row-grid{grid-template-columns:1fr!important;}
+    .hotel-row-grid{grid-template-columns:1fr!important;}
+  }
+  @media(max-width:640px){
+    .nav-right-btns{display:flex!important;flex-wrap:nowrap!important;align-items:center!important;gap:5px!important;}
+    .btn-label{display:none!important;}
+    .nav-right-btns button{padding:6px 10px!important;font-size:12px!important;min-width:0!important;white-space:nowrap!important;}
+    .nav-bookings{display:none!important;}
+  }
+  @media(max-width:480px){
+    .nav-right-btns button{padding:5px 8px!important;font-size:11px!important;}
+    .search-nav-btns{gap:4px!important;}
+  }
+  @media(max-width:380px){
+    .nav-right-btns{gap:3px!important;}
+    .nav-profile{display:none!important;}
   }
 `;
 
@@ -1294,7 +1307,9 @@ function SearchPage(){
   const inp  = {background:`${TT.from}06`||"#fafaf8",borderRadius:12,padding:"12px 14px",border:`1.5px solid ${TT.from}25`||"1.5px solid rgba(201,168,76,0.2)",transition:"background 0.5s ease, border-color 0.5s ease"};
 
   return (
-    <div style={{minHeight:"100vh",background:"#faf8f4",position:"relative",overflowX:"hidden",fontFamily:"'DM Sans',sans-serif"}}>
+    <div style={{minHeight:"100vh",
+          background:`linear-gradient(180deg,${TT.from}08 0%,#faf8f4 200px)`,
+          transition:"background 0.6s cubic-bezier(0.4,0,0.2,1)",position:"relative",overflowX:"hidden",fontFamily:"'DM Sans',sans-serif"}}>
       <style>{SHARED_CSS}</style>
       <AuroraBackground/>
 
@@ -1314,9 +1329,9 @@ function SearchPage(){
             <div style={{fontFamily:"'Space Mono',monospace",fontSize:7,color:GOLD,letterSpacing:"0.18em"}}>TRAVEL BEYOND</div>
           </div>
         </div>
-        <div className="nav-right-btns" style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+        <div className="nav-right-btns" style={{display:"flex",gap:8,flexWrap:"nowrap",alignItems:"center"}}>
           <button onClick={()=>navigate("/ai")} style={{padding:"8px 18px",borderRadius:10,fontSize:13,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.04em",cursor:"pointer",background:"linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)",backgroundSize:"200% 200%",animation:"gradShift 3s ease infinite",color:"#1a1410",border:"none",boxShadow:"0 4px 12px rgba(201,168,76,0.28)"}}>🤖 AI Chat</button>
-          <button onClick={()=>navigate("/bookings")} style={{padding:"8px 16px",borderRadius:10,fontSize:13,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",background:"transparent",color:"#3a2a1a",border:"1.5px solid rgba(0,0,0,0.15)"}}><span className="btn-label">My Bookings</span><span style={{display:"none"}} className="btn-icon">📋</span></button>
+          <button className="nav-bookings" onClick={()=>navigate("/bookings")} style={{padding:"8px 16px",borderRadius:10,fontSize:13,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",background:"transparent",color:"#3a2a1a",border:"1.5px solid rgba(0,0,0,0.15)"}}><span className="btn-label">My Bookings</span></button>
           <button onClick={()=>navigate("/profile")} style={{padding:"8px 16px",borderRadius:10,fontSize:13,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",background:`rgba(201,168,76,0.12)`,color:GOLD_DARK,border:`1.5px solid rgba(201,168,76,0.3)`}}>Profile</button>
           <button onClick={()=>{localStorage.removeItem("token");localStorage.removeItem("user");navigate("/login");}} style={{padding:"8px 16px",borderRadius:10,fontSize:13,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",background:"#fff0f0",color:"#cc2222",border:"1.5px solid rgba(200,34,34,0.25)"}}>Sign Out</button>
         </div>
@@ -1417,11 +1432,6 @@ function SearchPage(){
                     </div>
                   ))}
                 </div>
-                <div style={{display:"flex",alignItems:"center",gap:10,background:"rgba(201,168,76,0.07)",borderRadius:12,padding:"10px 16px",border:`1px solid rgba(201,168,76,0.22)`,marginBottom:12,cursor:"pointer"}} onClick={()=>{setMode("ai");setFlights([]);setSearched(false);}}>
-                  <span>🤖</span>
-                  <span style={{fontFamily:"'DM Sans',sans-serif",fontSize:13,color:GOLD_DARK,fontWeight:600}}>Or type naturally: "blr to goa kal cheapest"</span>
-                  <span style={{marginLeft:"auto",fontFamily:"'Space Mono',monospace",fontSize:11,color:GOLD_DARK,fontWeight:700}}>AI →</span>
-                </div>
                 <div className="search-date-grid" style={{display:"grid",gridTemplateColumns:tripType==="roundtrip"?"1fr 1fr 1fr 1fr":"1fr 1fr 1fr",gap:10,marginBottom:14}}>
                   <div style={{...inp,borderColor:!date&&validErr?"#ef4444":"rgba(201,168,76,0.2)"}}>
                     <label style={lbl}>DEPARTURE{!date&&<span style={{color:"#ef4444"}}> *</span>}</label>
@@ -1478,11 +1488,6 @@ function SearchPage(){
                       <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:20,color:"#1a1410"}}>🚌 {item.city}</div>
                     </div>
                   ))}
-                </div>
-                <div style={{display:"flex",alignItems:"center",gap:10,background:"rgba(201,168,76,0.07)",borderRadius:12,padding:"10px 16px",border:`1px solid rgba(201,168,76,0.22)`,marginBottom:12,cursor:"pointer"}} onClick={()=>{setMode("ai");setBuses([]);setSearched(false);}}>
-                  <span>🤖</span>
-                  <span style={{fontFamily:"'DM Sans',sans-serif",fontSize:13,color:GOLD_DARK,fontWeight:600}}>Or type: "bus bangalore to chennai kal"</span>
-                  <span style={{marginLeft:"auto",fontFamily:"'Space Mono',monospace",fontSize:11,color:GOLD_DARK,fontWeight:700}}>AI →</span>
                 </div>
                 <div className="bus-row-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}}>
                   <div style={{...inp,borderColor:!date&&validErr?"#ef4444":"rgba(201,168,76,0.2)"}}>

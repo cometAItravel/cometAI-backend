@@ -854,7 +854,7 @@ export default function AIChatPage() {
   `;
 
   return (
-    <div style={{ display:"flex", height:"100vh", height:"100dvh", background:T.bg, overflow:"hidden", fontFamily:"'DM Sans',sans-serif", transition:"background 0.5s ease" }}>
+    <div style={{ display:"flex", height:"100dvh", background:T.bg, overflow:"hidden", fontFamily:"'DM Sans',sans-serif", transition:"background 0.5s ease" }}>
       <style>{CSS}</style>
 
       {/* SIDEBAR OVERLAY */}

@@ -1518,40 +1518,109 @@ async function runTripPlanner(sid, message, userId, userName, prefs) {
   }
 
   if (state.step === "ask_home") {
-    // Check if user gave a travel mode instead of location
-    if (intent.hasTravelMode && !intent.hasLocation) {
-      const mode = intent.extracted.travelMode;
-      setTripSession(sid, { ...state, travelMode: mode });
+    // Always extract ALL info from this message regardless
+    const modeInMsg = intent.extracted.travelMode;
+    const peopleInMsg = intent.extracted.people;
+    const budgetInMsg = intent.extracted.budget;
+    const durationInMsg = intent.extracted.duration;
+    const purposeInMsg = intent.extracted.purpose;
+
+    // Save any extra info found
+    const updatedState = {
+      ...state,
+      ...(modeInMsg && !state.travelMode ? { travelMode: modeInMsg } : {}),
+      ...(peopleInMsg && !state.groupSize ? { groupSize: peopleInMsg } : {}),
+      ...(budgetInMsg && !state.budget ? { budget: budgetInMsg } : {}),
+      ...(durationInMsg && !state.duration ? { duration: durationInMsg } : {}),
+      ...(purposeInMsg && !state.purpose ? { purpose: purposeInMsg } : {}),
+    };
+
+    // Try to extract a clean location from the message
+    // Strip out travel mode words, trip detail words to find the actual location
+    let cleanedForLocation = m
+      .replace(/\b(by|via|in|using|through|prefer|want|going|planning|we are|i am|iam|we will|will go|travel by|travelling by|traveling by)\b/gi, " ")
+      .replace(/\b(train|flight|bus|car|drive|plane|fly|flying|rail|railway)\b/gi, " ")
+      .replace(/\b(members?|people|persons?|adults?|friends?|family|couple|solo|alone)\b/gi, " ")
+      .replace(/\b(\d+\s*(days?|nights?|weeks?))\b/gi, " ")
+      .replace(/\b(budget|under|below|less than|within|₹|rs\.?)\s*\d+/gi, " ")
+      .replace(/\b(tourism|vacation|holiday|honeymoon|business|backpacking|study)\b/gi, " ")
+      .replace(/\b(what about|also|and|but|so|actually|i said|i mentioned)\b/gi, " ")
+      .replace(/[^a-z0-9\s]/g, " ")
+      .replace(/\s+/g, " ").trim();
+
+    // Try to find a city/area in the cleaned text
+    const { from: locFrom } = extractCities(cleanedForLocation + " placeholder");
+    // Also try in CITY_MAP directly for any word in cleaned text
+    let foundLocation = locFrom;
+    if (!foundLocation) {
+      const words = cleanedForLocation.split(/\s+/);
+      for (const word of words) {
+        if (word.length >= 3 && CITY_MAP[word]) { foundLocation = CITY_MAP[word]; break; }
+      }
+    }
+
+    // If only travel mode was given and NO location — ask for location
+    if (modeInMsg && !foundLocation && cleanedForLocation.replace(/\s/g,"").length < 3) {
+      const acknowledgedInfo = [];
+      if (modeInMsg) acknowledgedInfo.push(`traveling by **${modeInMsg}**`);
+      if (peopleInMsg) acknowledgedInfo.push(`${peopleInMsg} people`);
+      if (durationInMsg) acknowledgedInfo.push(`${durationInMsg} days`);
+      setTripSession(sid, { ...updatedState });
       return {
-        text: `Got it — traveling by **${mode}**! 🚂\n\nStill need your starting location for the plan. What's your home area? (city + locality if possible)`,
+        text: `Got it — ${acknowledgedInfo.join(", ")}! 👍\n\nNow I need your **starting location** to plan the complete route. Where are you starting from?\n\nExample: "Hosur", "Koramangala, Bangalore", "Sector 15, Gurgaon"`,
         isTripPlanner: true
       };
     }
 
-    // Check if user gave trip details but no location
-    if (intent.hasMultipleInfos && !intent.hasLocation) {
-      const extraInfo = [];
-      if (intent.extracted.people) extraInfo.push(`${intent.extracted.people} people`);
-      if (intent.extracted.duration) extraInfo.push(`${intent.extracted.duration} days`);
-      if (intent.extracted.budget) extraInfo.push(`₹${intent.extracted.budget.toLocaleString()} budget`);
-
+    // If message has lots of info but we can't identify a clear location
+    if (!foundLocation && cleanedForLocation.replace(/\s/g,"").length < 3) {
+      const extraAcknowledge = [];
+      if (modeInMsg) extraAcknowledge.push(`by ${modeInMsg}`);
+      if (peopleInMsg) extraAcknowledge.push(`${peopleInMsg} people`);
+      setTripSession(sid, { ...updatedState });
       return {
-        text: `Noted — ${extraInfo.join(", ")}! 📝\n\nI still need your **starting location** to plan the complete route. Where are you starting from? (area/locality + city)`,
+        text: `${extraAcknowledge.length ? `Got it — ${extraAcknowledge.join(", ")}! 📝\n\n` : ""}I still need your **exact starting location** (area + city).\n\nJust the location, like: "Hosur", "Electronic City Bangalore", "Bandra Mumbai"`,
         isTripPlanner: true
       };
     }
 
-    const homeLocation = message.includes("saved location") && prefs.home_city ? prefs.home_city : message.trim();
+    // We have a location! Use it.
+    let homeLocation;
+    if (message.includes("saved location") && prefs.home_city) {
+      homeLocation = prefs.home_city;
+    } else if (foundLocation) {
+      // Use the cleaned location name nicely
+      homeLocation = foundLocation.charAt(0).toUpperCase() + foundLocation.slice(1);
+      // But also check if the original message had more detail (like "Hosur, Tamil Nadu")
+      const origWords = message.split(/[,\s]+/);
+      const cityIdx = origWords.findIndex(w => CITY_MAP[w.toLowerCase()] === foundLocation);
+      if (cityIdx >= 0) {
+        // Try to get surrounding context for more specific location
+        const nearbyWords = origWords.slice(Math.max(0,cityIdx-1), cityIdx+2).join(", ").replace(/[^a-zA-Z0-9, ]/g,"").trim();
+        if (nearbyWords.length > foundLocation.length) homeLocation = nearbyWords;
+      }
+    } else {
+      // Fallback: use cleaned message as location
+      homeLocation = cleanedForLocation.split(/\s+/).slice(0,3).join(" ");
+    }
+
     if (userId) await setUserPref(userId, "home_location", homeLocation);
 
-    // Detect nearest airport for any location worldwide
-    const localKey = Object.keys(LOCAL_AREA_TO_AIRPORT).find(k => homeLocation.toLowerCase().includes(k));
+    // Detect nearest airport
+    const localKey = Object.keys(LOCAL_AREA_TO_AIRPORT).find(k => homeLocation.toLowerCase().includes(k) || (foundLocation && foundLocation.toLowerCase().includes(k)));
     const airportInfo = localKey ? LOCAL_AREA_TO_AIRPORT[localKey] : null;
 
-    setTripSession(sid, { ...state, step: "ask_purpose", homeLocation, airportInfo });
+    // Build acknowledgement of all info collected
+    const collected = [];
+    if (updatedState.travelMode || modeInMsg) collected.push(`mode: **${updatedState.travelMode || modeInMsg}**`);
+    if (updatedState.groupSize || peopleInMsg) collected.push(`${updatedState.groupSize || peopleInMsg} people`);
+    if (updatedState.duration || durationInMsg) collected.push(`${updatedState.duration || durationInMsg} days`);
+    if (updatedState.budget || budgetInMsg) collected.push(`₹${(updatedState.budget || budgetInMsg).toLocaleString()} budget`);
+
+    setTripSession(sid, { ...updatedState, step: "ask_purpose", homeLocation, airportInfo });
 
     return {
-      text: `📍 Got it — starting from **${homeLocation}**!\n\n${airportInfo ? `✈️ Your nearest airport: **${airportInfo.airport}**` : "I'll find your nearest airport for the plan!"}\n\nWhat's the **purpose** of this trip? 🎯`,
+      text: `📍 Starting from **${homeLocation}**!${collected.length ? `\n\n✅ Also noted — ${collected.join(", ")}` : ""}\n\n${airportInfo ? `✈️ Nearest airport: **${airportInfo.airport}**` : "I'll find your nearest airport for the plan!"}\n\nWhat's the **purpose** of this trip? 🎯`,
       quickReplies: ["🏖️ Tourism / Vacation", "💼 Business", "👨‍👩‍👧 Family Visit", "💑 Honeymoon / Romantic", "🎒 Backpacking / Budget", "🎓 Study / Education"],
       isTripPlanner: true
     };

@@ -186,23 +186,23 @@ function FlightAnimation() {
     <div style={{ position:"absolute", inset:0, overflow:"hidden", pointerEvents:"none", zIndex:0 }}>
       {/* Slow drifting airplane */}
       <div style={{ position:"absolute", top:"38%", left:0, animation:"flyAcross 18s ease-in-out infinite", animationDelay:"0s" }}>
-        <svg width="90" height="36" viewBox="0 0 90 36" fill="none" opacity="0.10">
+        <svg width="90" height="36" viewBox="0 0 90 36" fill="none" opacity="0.22">
           <path d="M5 18 L55 6 L80 18 L55 30 Z" fill={GOLD}/>
           <path d="M55 18 L90 14 L90 22 Z" fill={GOLD}/>
           <path d="M30 18 L50 8 L50 28 Z" fill={GOLD} opacity="0.6"/>
         </svg>
       </div>
       <div style={{ position:"absolute", top:"55%", left:0, animation:"flyAcross 26s ease-in-out infinite", animationDelay:"9s" }}>
-        <svg width="60" height="24" viewBox="0 0 90 36" fill="none" opacity="0.06">
+        <svg width="60" height="24" viewBox="0 0 90 36" fill="none" opacity="0.14">
           <path d="M5 18 L55 6 L80 18 L55 30 Z" fill={GOLD}/>
           <path d="M55 18 L90 14 L90 22 Z" fill={GOLD}/>
         </svg>
       </div>
       {/* Subtle cloud shapes */}
-      <div style={{ position:"absolute", top:"20%", right:"15%", width:180, height:50, borderRadius:40, background:GOLD, opacity:0.03, animation:"shimmerGold 8s ease-in-out infinite" }}/>
-      <div style={{ position:"absolute", top:"65%", left:"8%", width:120, height:35, borderRadius:30, background:GOLD, opacity:0.025, animation:"shimmerGold 11s ease-in-out infinite 3s" }}/>
+      <div style={{ position:"absolute", top:"20%", right:"15%", width:180, height:50, borderRadius:40, background:GOLD, opacity:0.07, animation:"shimmerGold 8s ease-in-out infinite" }}/>
+      <div style={{ position:"absolute", top:"65%", left:"8%", width:120, height:35, borderRadius:30, background:GOLD, opacity:0.05, animation:"shimmerGold 11s ease-in-out infinite 3s" }}/>
       {/* Flight path arc */}
-      <svg style={{ position:"absolute", inset:0, width:"100%", height:"100%", opacity:0.05 }} viewBox="0 0 1000 300" preserveAspectRatio="none">
+      <svg style={{ position:"absolute", inset:0, width:"100%", height:"100%", opacity:0.12 }} viewBox="0 0 1000 300" preserveAspectRatio="none">
         <path d="M-50 250 Q 300 50 600 150 Q 800 220 1100 80" stroke={GOLD} strokeWidth="1.5" fill="none" strokeDasharray="12 8"/>
       </svg>
     </div>
@@ -796,24 +796,37 @@ function SearchPage() {
     setTimeout(()=>setTabTransition(false),400);
   };
 
-  const searchFlights=async()=>{
-    setValidErr("");if(!date){setValidErr("Please select a departure date");return;}
+  // Synchronous flight link opener — avoids popup blocker
+  const openFlightNow=(fromName,toName,dateStr,pax)=>{
+    const fc=CITY_TO_IATA[fromName?.toLowerCase()]||fromName?.slice(0,3).toUpperCase()||"BLR";
+    const tc=CITY_TO_IATA[toName?.toLowerCase()]||toName?.slice(0,3).toUpperCase()||"BOM";
+    const url=flightLink(fc,tc,dateStr||"",pax||1);
+    track("flight_click",`${fromName}→${toName}`,"web");
+    window.open(url,"_blank","noopener,noreferrer");
+  };
+
+  const searchFlights=()=>{
+    setValidErr("");
+    if(!date){setValidErr("Please select a departure date");return;}
+    // Open Aviasales immediately — synchronous, not inside async, so popup blocker won't trigger
+    openFlightNow(fromCity.name,toCity.name,date,passengers);
+    // Show loading state for UX
     setLoading(true);setSearched(true);setFlights([]);
-    try{
-      const params=new URLSearchParams({from:fromCity.name,to:toCity.name});
-      params.append("date",date);
-      const res=await axios.get(`${API}/flights?${params}`);
-      const data=res.data||[];
-      if(data.length===0){
+    // Fetch DB results in background (non-blocking)
+    axios.get(`${API}/flights?from=${encodeURIComponent(fromCity.name)}&to=${encodeURIComponent(toCity.name)}&date=${date}`)
+      .then(res=>{
+        const data=res.data||[];
+        if(data.length>0){
+          setFlights(data);
+          setFilterMaxPrice(Math.max(...data.map(f=>f.price))+1000);
+        } else {
+          setFlights([{id:"aff",affiliate:true,from_city:fromCity.name,to_city:toCity.name,airline:"Live Search"}]);
+        }
+      })
+      .catch(()=>{
         setFlights([{id:"aff",affiliate:true,from_city:fromCity.name,to_city:toCity.name,airline:"Live Search"}]);
-      }else{
-        setFlights(data);
-        setFilterMaxPrice(Math.max(...data.map(f=>f.price))+1000);
-      }
-    }catch{
-      setFlights([{id:"aff",affiliate:true,from_city:fromCity.name,to_city:toCity.name,airline:"Live Search"}]);
-    }
-    setLoading(false);
+      })
+      .finally(()=>setLoading(false));
   };
 
   const searchBuses=()=>{
@@ -917,20 +930,22 @@ function SearchPage() {
         </div>
 
         {/* TRAVEL TYPE TABS */}
-        <div style={{display:"flex",gap:0,borderRadius:"16px 16px 0 0",overflow:"hidden",position:"relative"}}>
-          {/* Tab background animation layer */}
-          <div style={{position:"absolute",inset:0,borderRadius:"16px 16px 0 0",overflow:"hidden",zIndex:0,opacity:tabTransition?0:1,transition:"opacity 0.4s ease"}}>
+        <div style={{display:"flex",gap:0,borderRadius:"16px 16px 0 0",position:"relative",minHeight:80}}>
+          {/* Dark base background */}
+          <div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,#1a140a,#2a1e0c)",borderRadius:"16px 16px 0 0",zIndex:0}}/>
+          {/* Tab animation layer — visible behind gradient */}
+          <div style={{position:"absolute",inset:0,borderRadius:"16px 16px 0 0",overflow:"hidden",zIndex:1,opacity:tabTransition?0:1,transition:"opacity 0.5s ease"}}>
             {TabBg[travelType]}
           </div>
-          {/* Gradient overlay to blend animation with tab bg */}
-          <div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,rgba(26,20,10,0.88),rgba(40,30,12,0.82))",borderRadius:"16px 16px 0 0",zIndex:1}}/>
-          {/* Tabs */}
+          {/* Subtle dark gradient overlay — lets animation show through */}
+          <div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,rgba(20,14,4,0.72),rgba(30,22,8,0.65))",borderRadius:"16px 16px 0 0",zIndex:2}}/>
+          {/* Tabs — on top of everything */}
           {TRAVEL_TABS.map((tab,i)=>(
             <button key={tab.id} onClick={()=>switchTab(tab.id)}
-              style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"14px 8px",cursor:"pointer",border:"none",position:"relative",zIndex:2,
+              style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"14px 8px",cursor:"pointer",border:"none",position:"relative",zIndex:3,
                 borderBottom:travelType===tab.id?`3px solid ${GOLD}`:"3px solid transparent",
-                background:travelType===tab.id?"rgba(201,168,76,0.15)":"transparent",
-                color:travelType===tab.id?GOLD:"rgba(240,220,180,0.55)",
+                background:travelType===tab.id?"rgba(201,168,76,0.18)":"transparent",
+                color:travelType===tab.id?GOLD:"rgba(240,220,180,0.5)",
                 fontFamily:"'DM Sans',sans-serif",fontSize:12,fontWeight:600,transition:"all 0.25s",whiteSpace:"nowrap",
                 borderRadius:i===0?"16px 0 0 0":i===TRAVEL_TABS.length-1?"0 16px 0 0":"0"}}>
               <span style={{fontSize:20,transition:"transform 0.25s",transform:travelType===tab.id?"scale(1.18)":"scale(1)"}}>{tab.icon}</span>

@@ -184,27 +184,27 @@ function AuroraBackground() {
 function FlightAnimation() {
   return (
     <div style={{ position:"absolute", inset:0, overflow:"hidden", pointerEvents:"none", zIndex:0 }}>
-      {/* Slow drifting airplane */}
-      <div style={{ position:"absolute", top:"38%", left:0, animation:"flyAcross 18s ease-in-out infinite", animationDelay:"0s" }}>
-        <svg width="90" height="36" viewBox="0 0 90 36" fill="none" opacity="0.22">
+      <div style={{ position:"absolute", top:"35%", left:0, animation:"flyAcross 16s linear infinite" }}>
+        <svg width="110" height="44" viewBox="0 0 90 36" fill="none" opacity="0.75">
           <path d="M5 18 L55 6 L80 18 L55 30 Z" fill={GOLD}/>
           <path d="M55 18 L90 14 L90 22 Z" fill={GOLD}/>
-          <path d="M30 18 L50 8 L50 28 Z" fill={GOLD} opacity="0.6"/>
+          <path d="M30 18 L50 8 L50 28 Z" fill={GOLD} opacity="0.8"/>
         </svg>
       </div>
-      <div style={{ position:"absolute", top:"55%", left:0, animation:"flyAcross 26s ease-in-out infinite", animationDelay:"9s" }}>
-        <svg width="60" height="24" viewBox="0 0 90 36" fill="none" opacity="0.14">
+      <div style={{ position:"absolute", top:"58%", left:0, animation:"flyAcross 24s linear infinite", animationDelay:"8s" }}>
+        <svg width="70" height="28" viewBox="0 0 90 36" fill="none" opacity="0.45">
           <path d="M5 18 L55 6 L80 18 L55 30 Z" fill={GOLD}/>
           <path d="M55 18 L90 14 L90 22 Z" fill={GOLD}/>
         </svg>
       </div>
-      {/* Subtle cloud shapes */}
-      <div style={{ position:"absolute", top:"20%", right:"15%", width:180, height:50, borderRadius:40, background:GOLD, opacity:0.07, animation:"shimmerGold 8s ease-in-out infinite" }}/>
-      <div style={{ position:"absolute", top:"65%", left:"8%", width:120, height:35, borderRadius:30, background:GOLD, opacity:0.05, animation:"shimmerGold 11s ease-in-out infinite 3s" }}/>
-      {/* Flight path arc */}
-      <svg style={{ position:"absolute", inset:0, width:"100%", height:"100%", opacity:0.12 }} viewBox="0 0 1000 300" preserveAspectRatio="none">
+      <div style={{ position:"absolute", top:"18%", right:"18%", width:200, height:55, borderRadius:40, background:GOLD, opacity:0.18, animation:"shimmerGold 8s ease-in-out infinite" }}/>
+      <div style={{ position:"absolute", top:"62%", left:"10%", width:140, height:38, borderRadius:30, background:GOLD, opacity:0.12, animation:"shimmerGold 11s ease-in-out infinite 3s" }}/>
+      <svg style={{ position:"absolute", inset:0, width:"100%", height:"100%", opacity:0.35 }} viewBox="0 0 1000 300" preserveAspectRatio="none">
         <path d="M-50 250 Q 300 50 600 150 Q 800 220 1100 80" stroke={GOLD} strokeWidth="1.5" fill="none" strokeDasharray="12 8"/>
       </svg>
+      {[{x:"15%",y:"25%"},{x:"45%",y:"15%"},{x:"70%",y:"30%"},{x:"85%",y:"20%"},{x:"30%",y:"70%"},{x:"60%",y:"65%"}].map((s,i)=>(
+        <div key={i} style={{ position:"absolute", left:s.x, top:s.y, width:3, height:3, borderRadius:"50%", background:GOLD, opacity:0.4, animation:`shimmerGold ${4+i}s ease-in-out infinite ${i*0.5}s` }}/>
+      ))}
     </div>
   );
 }
@@ -212,34 +212,37 @@ function FlightAnimation() {
 function BusAnimation() {
   return (
     <div style={{ position:"absolute", inset:0, overflow:"hidden", pointerEvents:"none", zIndex:0 }}>
-      {/* Road lines at bottom */}
-      <div style={{ position:"absolute", bottom:"18%", left:0, right:0, height:3, background:`linear-gradient(90deg, transparent, ${GOLD}22, transparent)` }}/>
+      {/* Road lines */}
+      <div style={{ position:"absolute", bottom:"18%", left:0, right:0, height:3, background:`linear-gradient(90deg, transparent, ${GOLD}88, transparent)` }}/>
       <div style={{ position:"absolute", bottom:"22%", left:0, right:0, overflow:"hidden", height:4 }}>
         <div style={{ display:"flex", gap:60, animation:"roadLines 2s linear infinite", width:"200%" }}>
           {Array.from({length:30}).map((_,i) => (
-            <div key={i} style={{ width:40, height:3, background:GOLD, opacity:0.08, borderRadius:2, flexShrink:0 }}/>
+            <div key={i} style={{ width:40, height:3, background:GOLD, opacity:0.5, borderRadius:2, flexShrink:0 }}/>
           ))}
         </div>
       </div>
-      {/* Bus silhouette */}
-      <div style={{ position:"absolute", bottom:"20%", left:0, animation:"busRoll 22s ease-in-out infinite" }}>
-        <svg width="120" height="50" viewBox="0 0 120 50" fill="none" opacity="0.09">
+      {/* Primary bus silhouette */}
+      <div style={{ position:"absolute", bottom:"20%", left:0, animation:"busRoll 18s linear infinite" }}>
+        <svg width="140" height="58" viewBox="0 0 120 50" fill="none" opacity="0.7">
           <rect x="5" y="8" width="110" height="32" rx="5" fill={GOLD}/>
-          <rect x="10" y="12" width="18" height="14" rx="2" fill={CREAM} opacity="0.4"/>
-          <rect x="32" y="12" width="18" height="14" rx="2" fill={CREAM} opacity="0.4"/>
-          <rect x="54" y="12" width="18" height="14" rx="2" fill={CREAM} opacity="0.4"/>
-          <rect x="76" y="12" width="18" height="14" rx="2" fill={CREAM} opacity="0.4"/>
+          <rect x="10" y="12" width="18" height="14" rx="2" fill={CREAM} opacity="0.5"/>
+          <rect x="32" y="12" width="18" height="14" rx="2" fill={CREAM} opacity="0.5"/>
+          <rect x="54" y="12" width="18" height="14" rx="2" fill={CREAM} opacity="0.5"/>
+          <rect x="76" y="12" width="18" height="14" rx="2" fill={CREAM} opacity="0.5"/>
           <circle cx="28" cy="42" r="7" fill={GOLD_DARK}/>
           <circle cx="88" cy="42" r="7" fill={GOLD_DARK}/>
         </svg>
       </div>
-      <div style={{ position:"absolute", bottom:"20%", left:0, animation:"busRoll 32s ease-in-out infinite", animationDelay:"14s" }}>
-        <svg width="80" height="34" viewBox="0 0 120 50" fill="none" opacity="0.05">
+      {/* Secondary bus */}
+      <div style={{ position:"absolute", bottom:"20%", left:0, animation:"busRoll 28s linear infinite", animationDelay:"12s" }}>
+        <svg width="90" height="40" viewBox="0 0 120 50" fill="none" opacity="0.4">
           <rect x="5" y="8" width="110" height="32" rx="5" fill={GOLD}/>
           <circle cx="28" cy="42" r="7" fill={GOLD_DARK}/>
           <circle cx="88" cy="42" r="7" fill={GOLD_DARK}/>
         </svg>
       </div>
+      {/* Road glow */}
+      <div style={{ position:"absolute", bottom:"15%", left:0, right:0, height:20, background:`linear-gradient(transparent, ${GOLD}18, transparent)` }}/>
     </div>
   );
 }
@@ -248,7 +251,7 @@ function HotelAnimation() {
   return (
     <div style={{ position:"absolute", inset:0, overflow:"hidden", pointerEvents:"none", zIndex:0 }}>
       {/* City skyline silhouette */}
-      <svg style={{ position:"absolute", bottom:0, left:0, right:0, width:"100%", opacity:0.07, animation:"cityRise 1.2s ease both" }} height="160" viewBox="0 0 1000 160" preserveAspectRatio="none">
+      <svg style={{ position:"absolute", bottom:0, left:0, right:0, width:"100%", opacity:0.55, animation:"cityRise 1.2s ease both" }} height="160" viewBox="0 0 1000 160" preserveAspectRatio="none">
         <rect x="20" y="60" width="60" height="100" fill={GOLD}/>
         <rect x="30" y="40" width="40" height="20" fill={GOLD}/>
         <rect x="100" y="30" width="80" height="130" fill={GOLD}/>
@@ -273,7 +276,7 @@ function HotelAnimation() {
         {x:"38%",y:"50%",d:"0.7s"},{x:"48%",y:"42%",d:"2.2s"},{x:"58%",y:"56%",d:"4s"},
         {x:"68%",y:"44%",d:"1s"},{x:"78%",y:"50%",d:"3.5s"},{x:"88%",y:"46%",d:"2s"},
       ].map((w,i) => (
-        <div key={i} style={{ position:"absolute", left:w.x, top:w.y, width:5, height:5, borderRadius:1, background:GOLD, animation:`windowBlink 4s ease-in-out infinite ${w.d}` }}/>
+        <div key={i} style={{ position:"absolute", left:w.x, top:w.y, width:6, height:6, borderRadius:1, background:GOLD, opacity:0.7, animation:`windowBlink 4s ease-in-out infinite ${w.d}` }}/>
       ))}
     </div>
   );
@@ -283,35 +286,36 @@ function TrainAnimation() {
   return (
     <div style={{ position:"absolute", inset:0, overflow:"hidden", pointerEvents:"none", zIndex:0 }}>
       {/* Railway tracks */}
-      <div style={{ position:"absolute", bottom:"22%", left:0, right:0, height:2, background:`linear-gradient(90deg,transparent,${GOLD}20,transparent)` }}/>
-      <div style={{ position:"absolute", bottom:"25%", left:0, right:0, height:2, background:`linear-gradient(90deg,transparent,${GOLD}20,transparent)` }}/>
+      <div style={{ position:"absolute", bottom:"22%", left:0, right:0, height:2, background:`linear-gradient(90deg,transparent,${GOLD}88,transparent)` }}/>
+      <div style={{ position:"absolute", bottom:"25%", left:0, right:0, height:2, background:`linear-gradient(90deg,transparent,${GOLD}88,transparent)` }}/>
       {/* Track sleepers */}
       <div style={{ position:"absolute", bottom:"21%", left:0, right:0, overflow:"hidden", height:6 }}>
         <div style={{ display:"flex", gap:24, animation:"trackShift 1.5s linear infinite", width:"200%" }}>
           {Array.from({length:60}).map((_,i) => (
-            <div key={i} style={{ width:6, height:6, background:GOLD, opacity:0.08, borderRadius:1, flexShrink:0 }}/>
+            <div key={i} style={{ width:6, height:6, background:GOLD, opacity:0.5, borderRadius:1, flexShrink:0 }}/>
           ))}
         </div>
       </div>
-      {/* Train silhouette */}
-      <div style={{ position:"absolute", bottom:"23%", left:0, animation:"trainRoll 20s linear infinite" }}>
-        <svg width="200" height="44" viewBox="0 0 200 44" fill="none" opacity="0.10">
+      {/* Primary train silhouette */}
+      <div style={{ position:"absolute", bottom:"23%", left:0, animation:"trainRoll 18s linear infinite" }}>
+        <svg width="220" height="48" viewBox="0 0 200 44" fill="none" opacity="0.72">
           <rect x="5" y="6" width="55" height="28" rx="4" fill={GOLD}/>
           <rect x="58" y="6" width="50" height="28" rx="2" fill={GOLD}/>
           <rect x="106" y="6" width="50" height="28" rx="2" fill={GOLD}/>
           <rect x="154" y="6" width="42" height="28" rx="2" fill={GOLD}/>
-          <rect x="8" y="10" width="14" height="10" rx="1.5" fill={CREAM} opacity="0.4"/>
-          <rect x="25" y="10" width="14" height="10" rx="1.5" fill={CREAM} opacity="0.4"/>
-          <rect x="62" y="10" width="12" height="10" rx="1.5" fill={CREAM} opacity="0.35"/>
+          <rect x="8" y="10" width="14" height="10" rx="1.5" fill={CREAM} opacity="0.5"/>
+          <rect x="25" y="10" width="14" height="10" rx="1.5" fill={CREAM} opacity="0.5"/>
+          <rect x="62" y="10" width="12" height="10" rx="1.5" fill={CREAM} opacity="0.45"/>
           <circle cx="25" cy="36" r="5" fill={GOLD_DARK}/>
           <circle cx="75" cy="36" r="5" fill={GOLD_DARK}/>
           <circle cx="130" cy="36" r="5" fill={GOLD_DARK}/>
           <circle cx="175" cy="36" r="5" fill={GOLD_DARK}/>
-          <path d="M5 6 Q 12 2 20 6" stroke={GOLD} strokeWidth="1.5" fill="none" opacity="0.5"/>
+          <path d="M5 6 Q 12 2 20 6" stroke={GOLD} strokeWidth="1.5" fill="none" opacity="0.7"/>
         </svg>
       </div>
-      <div style={{ position:"absolute", bottom:"23%", left:0, animation:"trainRoll 30s linear infinite", animationDelay:"14s" }}>
-        <svg width="130" height="35" viewBox="0 0 200 44" fill="none" opacity="0.055">
+      {/* Secondary train */}
+      <div style={{ position:"absolute", bottom:"23%", left:0, animation:"trainRoll 28s linear infinite", animationDelay:"12s" }}>
+        <svg width="140" height="35" viewBox="0 0 200 44" fill="none" opacity="0.4">
           <rect x="5" y="6" width="55" height="28" rx="4" fill={GOLD}/>
           <rect x="58" y="6" width="50" height="28" rx="2" fill={GOLD}/>
           <rect x="106" y="6" width="50" height="28" rx="2" fill={GOLD}/>
@@ -328,29 +332,30 @@ function CabAnimation() {
   return (
     <div style={{ position:"absolute", inset:0, overflow:"hidden", pointerEvents:"none", zIndex:0 }}>
       {/* Road */}
-      <div style={{ position:"absolute", bottom:"18%", left:0, right:0, height:2, background:`linear-gradient(90deg,transparent,${GOLD}18,transparent)` }}/>
-      {/* Dashes */}
+      <div style={{ position:"absolute", bottom:"18%", left:0, right:0, height:3, background:`linear-gradient(90deg,transparent,${GOLD}88,transparent)` }}/>
+      {/* Road dashes */}
       <div style={{ position:"absolute", bottom:"21%", left:0, right:0, overflow:"hidden", height:3 }}>
         <div style={{ display:"flex", gap:50, animation:"roadLines 1.8s linear infinite", width:"200%" }}>
           {Array.from({length:30}).map((_,i) => (
-            <div key={i} style={{ width:28, height:2, background:GOLD, opacity:0.07, borderRadius:1, flexShrink:0 }}/>
+            <div key={i} style={{ width:28, height:2, background:GOLD, opacity:0.5, borderRadius:1, flexShrink:0 }}/>
           ))}
         </div>
       </div>
-      {/* Cab silhouette */}
-      <div style={{ position:"absolute", bottom:"19%", left:0, animation:"cabDrive 16s ease-in-out infinite" }}>
-        <svg width="90" height="40" viewBox="0 0 90 40" fill="none" opacity="0.10">
+      {/* Primary cab */}
+      <div style={{ position:"absolute", bottom:"19%", left:0, animation:"cabDrive 14s linear infinite" }}>
+        <svg width="105" height="46" viewBox="0 0 90 40" fill="none" opacity="0.72">
           <rect x="10" y="18" width="70" height="16" rx="3" fill={GOLD}/>
           <path d="M18 18 L25 8 L65 8 L72 18Z" fill={GOLD}/>
-          <rect x="28" y="10" width="14" height="10" rx="1.5" fill={CREAM} opacity="0.4"/>
-          <rect x="46" y="10" width="14" height="10" rx="1.5" fill={CREAM} opacity="0.4"/>
+          <rect x="28" y="10" width="14" height="10" rx="1.5" fill={CREAM} opacity="0.5"/>
+          <rect x="46" y="10" width="14" height="10" rx="1.5" fill={CREAM} opacity="0.5"/>
           <circle cx="24" cy="36" r="6" fill={GOLD_DARK}/>
           <circle cx="66" cy="36" r="6" fill={GOLD_DARK}/>
-          <ellipse cx="12" cy="22" rx="4" ry="3" fill={GOLD} opacity="0.4"/>
+          <ellipse cx="12" cy="22" rx="5" ry="3" fill={GOLD} opacity="0.6"/>
         </svg>
       </div>
-      <div style={{ position:"absolute", bottom:"19%", left:0, animation:"cabDrive 24s ease-in-out infinite", animationDelay:"11s" }}>
-        <svg width="60" height="28" viewBox="0 0 90 40" fill="none" opacity="0.055">
+      {/* Secondary cab */}
+      <div style={{ position:"absolute", bottom:"19%", left:0, animation:"cabDrive 22s linear infinite", animationDelay:"9s" }}>
+        <svg width="70" height="32" viewBox="0 0 90 40" fill="none" opacity="0.4">
           <rect x="10" y="18" width="70" height="16" rx="3" fill={GOLD}/>
           <path d="M18 18 L25 8 L65 8 L72 18Z" fill={GOLD}/>
           <circle cx="24" cy="36" r="6" fill={GOLD_DARK}/>
@@ -830,16 +835,11 @@ function SearchPage() {
   };
 
   const searchBuses=()=>{
-    track("bus_search",`${busFrom} → ${busTo}`,"web");
-    setValidErr("");if(!date){setValidErr("Please select a travel date");return;}
-    setLoading(true);setSearched(true);setBuses([]);
-    setTimeout(()=>{
-      let results=BUS_ROUTES.filter(b=>b.from.toLowerCase()===busFrom.toLowerCase()&&b.to.toLowerCase()===busTo.toLowerCase());
-      if(busType!=="Any")results=results.filter(b=>b.type===busType);
-      setBuses(results);
-      setFilterMaxPrice(results.length>0?Math.max(...results.map(b=>b.price))+500:5000);
-      setLoading(false);
-    },700);
+    setValidErr("");
+    if(!date){setValidErr("Please select a travel date");return;}
+    // Directly redirect to RedBus with pre-filled from, to and date — just like flights go to Aviasales
+    track("bus_search",`${busFrom}→${busTo}`,"web");
+    window.open(busLink(busFrom,busTo,date),"_blank","noopener,noreferrer");
   };
 
   const openFlightLink=(from,to)=>{
@@ -930,22 +930,22 @@ function SearchPage() {
         </div>
 
         {/* TRAVEL TYPE TABS */}
-        <div style={{display:"flex",gap:0,borderRadius:"16px 16px 0 0",position:"relative",minHeight:80}}>
+        <div style={{display:"flex",gap:0,borderRadius:"16px 16px 0 0",position:"relative",minHeight:80,overflow:"hidden"}}>
           {/* Dark base background */}
           <div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,#1a140a,#2a1e0c)",borderRadius:"16px 16px 0 0",zIndex:0}}/>
-          {/* Tab animation layer — visible behind gradient */}
+          {/* Tab animation layer — MUST be visible, very low overlay */}
           <div style={{position:"absolute",inset:0,borderRadius:"16px 16px 0 0",overflow:"hidden",zIndex:1,opacity:tabTransition?0:1,transition:"opacity 0.5s ease"}}>
             {TabBg[travelType]}
           </div>
-          {/* Subtle dark gradient overlay — lets animation show through */}
-          <div style={{position:"absolute",inset:0,background:"linear-gradient(135deg,rgba(20,14,4,0.72),rgba(30,22,8,0.65))",borderRadius:"16px 16px 0 0",zIndex:2}}/>
-          {/* Tabs — on top of everything */}
+          {/* Very light overlay — just enough to keep text readable, NOT covering animations */}
+          <div style={{position:"absolute",inset:0,background:"rgba(15,10,3,0.38)",borderRadius:"16px 16px 0 0",zIndex:2}}/>
+          {/* Tabs — on top */}
           {TRAVEL_TABS.map((tab,i)=>(
             <button key={tab.id} onClick={()=>switchTab(tab.id)}
               style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"14px 8px",cursor:"pointer",border:"none",position:"relative",zIndex:3,
                 borderBottom:travelType===tab.id?`3px solid ${GOLD}`:"3px solid transparent",
-                background:travelType===tab.id?"rgba(201,168,76,0.18)":"transparent",
-                color:travelType===tab.id?GOLD:"rgba(240,220,180,0.5)",
+                background:travelType===tab.id?"rgba(201,168,76,0.22)":"transparent",
+                color:travelType===tab.id?GOLD:"rgba(255,235,190,0.7)",
                 fontFamily:"'DM Sans',sans-serif",fontSize:12,fontWeight:600,transition:"all 0.25s",whiteSpace:"nowrap",
                 borderRadius:i===0?"16px 0 0 0":i===TRAVEL_TABS.length-1?"0 16px 0 0":"0"}}>
               <span style={{fontSize:20,transition:"transform 0.25s",transform:travelType===tab.id?"scale(1.18)":"scale(1)"}}>{tab.icon}</span>

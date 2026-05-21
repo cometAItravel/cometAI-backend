@@ -642,6 +642,630 @@ function AlvrynLogo({ size=32, color="#c9a84c" }) {
   );
 }
 
+// ── FEEDBACK BAR ─────────────────────────────────────────────────────────────
+function FeedbackBar({ message, prevUserMessage, T }) {
+  const [rating, setRating]       = useState(null); // 1 | -1 | null
+  const [showReason, setShowReason] = useState(false);
+  const [reason, setReason]       = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving]       = useState(false);
+
+  const submit = async (r, reasonText = "") => {
+    if (submitted || saving) return;
+    setSaving(true);
+    try {
+      const token = localStorage.getItem("token");
+      await fetch(`${API}/feedback`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          message_id:   String(message.id),
+          user_message: prevUserMessage || "",
+          ai_response:  message.text || "",
+          rating:       r,
+          reason:       reasonText,
+        }),
+      });
+    } catch {}
+    setSaving(false);
+    setSubmitted(true);
+    setShowReason(false);
+  };
+
+  const handleThumbsUp = () => {
+    if (submitted) return;
+    setRating(1);
+    setShowReason(false);
+    submit(1);
+  };
+
+  const handleThumbsDown = () => {
+    if (submitted) return;
+    setRating(-1);
+    setShowReason(true);
+  };
+
+  const handleReasonSubmit = () => {
+    submit(-1, reason.trim());
+  };
+
+  const handleReasonSkip = () => {
+    submit(-1, "");
+  };
+
+  if (submitted) {
+    return (
+      <div style={{
+        display: "flex", alignItems: "center", gap: 6,
+        marginTop: 10, opacity: 0.6,
+        fontFamily: "'DM Sans',sans-serif", fontSize: 11, color: T.aiText,
+        animation: "fadeUp 0.3s both",
+      }}>
+        {rating === 1
+          ? <><span style={{ color: "#22c55e" }}>👍</span> Thanks for the feedback!</>
+          : <><span style={{ color: "#ef4444" }}>👎</span> Got it — we'll improve this.</>
+        }
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 10, animation: "fadeUp 0.3s both" }}>
+      {/* Thumbs row */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{
+          fontFamily: "'DM Sans',sans-serif", fontSize: 10,
+          color: T.aiText, opacity: 0.35, letterSpacing: "0.06em",
+        }}>
+          Was this helpful?
+        </span>
+        {/* Thumbs Up */}
+        <button
+          onClick={handleThumbsUp}
+          title="Helpful"
+          style={{
+            width: 28, height: 28, borderRadius: 8,
+            background: rating === 1 ? "rgba(34,197,94,0.12)" : "transparent",
+            border: rating === 1 ? "1px solid rgba(34,197,94,0.35)" : `1px solid ${T.border}`,
+            cursor: "pointer", fontSize: 13,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            transition: "all 0.18s", color: rating === 1 ? "#22c55e" : T.aiText,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = "rgba(34,197,94,0.08)"; e.currentTarget.style.borderColor = "rgba(34,197,94,0.3)"; }}
+          onMouseLeave={e => {
+            if (rating !== 1) {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.borderColor = T.border;
+            }
+          }}>
+          👍
+        </button>
+        {/* Thumbs Down */}
+        <button
+          onClick={handleThumbsDown}
+          title="Not helpful"
+          style={{
+            width: 28, height: 28, borderRadius: 8,
+            background: rating === -1 ? "rgba(239,68,68,0.10)" : "transparent",
+            border: rating === -1 ? "1px solid rgba(239,68,68,0.35)" : `1px solid ${T.border}`,
+            cursor: "pointer", fontSize: 13,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            transition: "all 0.18s", color: rating === -1 ? "#ef4444" : T.aiText,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = "rgba(239,68,68,0.08)"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.3)"; }}
+          onMouseLeave={e => {
+            if (rating !== -1) {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.borderColor = T.border;
+            }
+          }}>
+          👎
+        </button>
+      </div>
+
+      {/* Reason box — appears after thumbs down */}
+      {showReason && (
+        <div style={{
+          marginTop: 10, padding: "12px 14px",
+          borderRadius: 12,
+          background: T.aiBubble,
+          border: `1px solid rgba(239,68,68,0.2)`,
+          animation: "fadeUp 0.25s cubic-bezier(0.34,1.56,0.64,1) both",
+        }}>
+          <div style={{
+            fontFamily: "'DM Sans',sans-serif", fontSize: 12,
+            color: T.aiText, marginBottom: 8, opacity: 0.7,
+          }}>
+            What went wrong? <span style={{ opacity: 0.5 }}>(optional)</span>
+          </div>
+          <textarea
+            value={reason}
+            onChange={e => setReason(e.target.value)}
+            placeholder="Wrong city info, bad suggestion, didn't understand my question..."
+            rows={2}
+            style={{
+              width: "100%", borderRadius: 8, resize: "none",
+              background: "transparent",
+              border: `1px solid ${T.border}`,
+              padding: "8px 10px",
+              fontFamily: "'DM Sans',sans-serif", fontSize: 12,
+              color: T.inputText, outline: "none",
+              lineHeight: 1.5,
+            }}
+          />
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <button
+              onClick={handleReasonSubmit}
+              disabled={saving}
+              style={{
+                padding: "6px 16px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                background: `linear-gradient(135deg,${T.accent},${T.accentDark})`,
+                border: "none", color: "#fff", cursor: "pointer",
+                fontFamily: "'DM Sans',sans-serif",
+                opacity: saving ? 0.7 : 1,
+              }}>
+              {saving ? "Sending..." : "Send feedback"}
+            </button>
+            <button
+              onClick={handleReasonSkip}
+              style={{
+                padding: "6px 14px", borderRadius: 8, fontSize: 12,
+                background: "transparent",
+                border: `1px solid ${T.border}`,
+                color: T.aiText, cursor: "pointer",
+                fontFamily: "'DM Sans',sans-serif", opacity: 0.55,
+              }}>
+              Skip
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── PLANS MODAL ───────────────────────────────────────────────────────────────
+function PlansModal({ onClose, T }) {
+  const [hoveredPlan, setHoveredPlan]   = useState(null);
+  const [notified, setNotified]         = useState({}); // { navigator: bool, voyager: bool }
+  const [notifying, setNotifying]       = useState({}); // loading state per plan
+  const [toast, setToast]               = useState(null); // { msg, type }
+
+  // Detect if current theme is "dark" so we adapt modal colours
+  const isDark = ["avengers","f1","wwe","galaxy"].includes(
+    localStorage.getItem("alvryn_theme") || "gold"
+  );
+
+  // Modal palette — always looks clean regardless of theme
+  const M = {
+    bg:        isDark ? "#12100e"          : "#ffffff",
+    bgCard:    isDark ? "#1c1810"          : "#faf8f4",
+    bgVoyager: isDark
+      ? "linear-gradient(160deg,rgba(201,168,76,0.12),rgba(201,168,76,0.04))"
+      : "linear-gradient(160deg,#fffdf5,#fdf6e3)",
+    headerBg:  isDark ? "#12100e"          : "#ffffff",
+    border:    isDark ? "rgba(201,168,76,0.18)" : "rgba(201,168,76,0.2)",
+    cardBorder:isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)",
+    textPrimary: isDark ? "#f0e6cc"        : "#1a1410",
+    textSub:   isDark ? "#b8964a"          : "#5a4a3a",
+    textMuted: isDark ? "rgba(240,230,204,0.45)" : "#888",
+    featureText: isDark ? "#d4c4a0"        : "#3a2a1a",
+    closeBg:   isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)",
+    closeColor:isDark ? "rgba(240,230,204,0.5)" : "#888",
+    notifyBg:  isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)",
+    notifyBorder: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+    notifyText:isDark ? "rgba(240,230,204,0.5)" : "#777",
+    shadow:    isDark
+      ? "0 40px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(201,168,76,0.15)"
+      : "0 40px 100px rgba(0,0,0,0.18), 0 0 0 1px rgba(201,168,76,0.12)",
+  };
+
+  const showToast = (msg, type = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  const handleNotify = async (planId) => {
+    if (notified[planId]) return;
+    setNotifying(prev => ({ ...prev, [planId]: true }));
+
+    // Get user email from localStorage
+    let email = "";
+    try { email = JSON.parse(localStorage.getItem("user") || "{}").email || ""; } catch {}
+
+    // Save notification request to backend (best-effort)
+    try {
+      const token = localStorage.getItem("token");
+      await fetch(`${API}/waitlist`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({
+          email,
+          name: planId === "navigator" ? "ALVRYN Navigator Pro" : "ALVRYN Voyager Premium",
+          source: `plans_notify_${planId}`,
+        }),
+      });
+    } catch {}
+
+    setNotifying(prev => ({ ...prev, [planId]: false }));
+    setNotified(prev => ({ ...prev, [planId]: true }));
+    showToast(
+      email
+        ? `We'll notify you at ${email} as soon as ${planId === "navigator" ? "Navigator Pro" : "Voyager Premium"} launches. We're crafting something special for you! ✨`
+        : `You're on the list! We'll let you know the moment it's ready. ✨`,
+      "success"
+    );
+  };
+
+  const plans = [
+    {
+      id: "explorer",
+      tier: "ALVRYN Explorer",
+      badge: "Free",
+      icon: "🧭",
+      tagline: "Start your journey",
+      active: true,
+      accentColor: "#22c55e",
+      features: [
+        { icon:"✈️", text:"Flight, bus, hotel & train search" },
+        { icon:"🗺️", text:"Up to 2 complete door-to-door trip plans per month" },
+        { icon:"💬", text:"AI travel chat with smart conversation" },
+        { icon:"🛡️", text:"AI Safety Insights — proactive for any destination" },
+        { icon:"📍", text:"AI Check-In via WhatsApp" },
+        { icon:"🧠", text:"Basic travel memory & preferences" },
+        { icon:"📚", text:"Unlimited basic travel Q&A" },
+        { icon:"🕐", text:"20 advanced AI responses per day" },
+      ],
+    },
+    {
+      id: "navigator",
+      tier: "ALVRYN Navigator",
+      badge: "Pro",
+      icon: "🌍",
+      tagline: "For the serious traveller",
+      active: false,
+      comingSoon: true,
+      accentColor: "#3b82f6",
+      features: [
+        { icon:"✅", text:"Everything in ALVRYN Explorer — Free", inherited: true },
+        { icon:"♾️", text:"Unlimited complete trip plans" },
+        { icon:"📅", text:"Day-by-day itinerary generation" },
+        { icon:"🧠", text:"Extended AI memory across trips" },
+        { icon:"💰", text:"Smart budget optimizer" },
+        { icon:"🗺️", text:"Multi-city trip planning" },
+        { icon:"🛣️", text:"Safe Route Suggestions" },
+        { icon:"💾", text:"Save & revisit trip plans anytime" },
+        { icon:"⚡", text:"Priority AI responses" },
+        { icon:"📜", text:"Unlimited chat history" },
+      ],
+    },
+    {
+      id: "voyager",
+      tier: "ALVRYN Voyager",
+      badge: "Premium",
+      icon: "🚀",
+      tagline: "Your personal travel companion",
+      active: false,
+      comingSoon: true,
+      mostPopular: true,
+      accentColor: "#c9a84c",
+      features: [
+        { icon:"✅", text:"Everything in ALVRYN Navigator — Pro", inherited: true },
+        { icon:"🤖", text:"Most advanced AI for complex trip planning" },
+        { icon:"♾️", text:"Unlimited AI responses" },
+        { icon:"👥", text:"Group travel planner — split costs & itineraries" },
+        { icon:"🌏", text:"Multi-country route optimization" },
+        { icon:"⚠️", text:"Scam Awareness for any destination" },
+        { icon:"👩", text:"Women Traveler Mode" },
+        { icon:"💼", text:"Business traveler mode" },
+        { icon:"🌤️", text:"Weather & crowd optimization" },
+        { icon:"🚨", text:"Emergency Companion Mode (coming soon)" },
+        { icon:"👨‍👩‍👧", text:"Family Tracking (coming soon)" },
+      ],
+    },
+  ];
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position:"fixed", inset:0, zIndex:1000,
+        background:"rgba(0,0,0,0.6)",
+        backdropFilter:"blur(14px)",
+        display:"flex", alignItems:"center", justifyContent:"center",
+        padding:"20px 16px",
+        animation:"plansModalIn 0.25s ease both",
+      }}>
+
+      {/* Toast notification */}
+      {toast && (
+        <div style={{
+          position:"fixed", top:24, left:"50%", transform:"translateX(-50%)",
+          zIndex:1100, maxWidth:420, width:"90%",
+          background: toast.type === "success" ? "#1a3a1a" : "#3a1a1a",
+          border:`1px solid ${toast.type === "success" ? "rgba(34,197,94,0.4)" : "rgba(239,68,68,0.4)"}`,
+          borderRadius:14, padding:"14px 20px",
+          boxShadow:"0 8px 32px rgba(0,0,0,0.4)",
+          animation:"plansSlideUp 0.3s cubic-bezier(0.34,1.56,0.64,1) both",
+          fontFamily:"'DM Sans',sans-serif", fontSize:13,
+          color: toast.type === "success" ? "#86efac" : "#fca5a5",
+          lineHeight:1.6, textAlign:"center",
+        }}>
+          {toast.msg}
+        </div>
+      )}
+
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width:"100%", maxWidth:900,
+          maxHeight:"92vh", overflowY:"auto",
+          background: M.bg,
+          borderRadius:24,
+          border:`1px solid ${M.border}`,
+          boxShadow: M.shadow,
+          animation:"plansSlideUp 0.35s cubic-bezier(0.34,1.56,0.64,1) both",
+          scrollbarWidth:"thin",
+        }}>
+
+        {/* ── Header ── */}
+        <div style={{
+          padding:"26px 28px 18px",
+          borderBottom:`1px solid ${M.border}`,
+          display:"flex", alignItems:"flex-start", justifyContent:"space-between",
+          position:"sticky", top:0, zIndex:10,
+          background: M.headerBg,
+          borderRadius:"24px 24px 0 0",
+          backdropFilter:"blur(20px)",
+        }}>
+          <div>
+            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:6 }}>
+              <AlvrynLogo size={26} color="#c9a84c"/>
+              <div style={{
+                fontFamily:"'Space Mono',monospace", fontSize:9,
+                color:"#c9a84c", letterSpacing:"0.22em",
+              }}>INTELLIGENT TRAVEL</div>
+            </div>
+            <div style={{
+              fontFamily:"'Cormorant Garamond',serif", fontWeight:600,
+              fontSize:26, color: M.textPrimary, lineHeight:1.1,
+            }}>
+              Choose Your Journey
+            </div>
+            <div style={{
+              fontFamily:"'DM Sans',sans-serif", fontSize:13,
+              color: M.textSub, marginTop:5,
+            }}>
+              Every traveller deserves the right companion.
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              width:36, height:36, borderRadius:"50%",
+              background: M.closeBg,
+              border:`1px solid ${M.cardBorder}`,
+              cursor:"pointer", color: M.closeColor, fontSize:20,
+              display:"flex", alignItems:"center", justifyContent:"center",
+              flexShrink:0, marginTop:4, transition:"all 0.2s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(201,168,76,0.12)"; e.currentTarget.style.color = "#c9a84c"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = M.closeBg; e.currentTarget.style.color = M.closeColor; }}>
+            ×
+          </button>
+        </div>
+
+        {/* ── Plans grid ── */}
+        <div style={{
+          display:"grid",
+          gridTemplateColumns:"repeat(auto-fit, minmax(260px, 1fr))",
+          gap:16,
+          padding:"20px 24px 8px",
+        }}>
+          {plans.map((plan) => (
+            <div
+              key={plan.id}
+              onMouseEnter={() => setHoveredPlan(plan.id)}
+              onMouseLeave={() => setHoveredPlan(null)}
+              style={{
+                borderRadius:18,
+                border: plan.id === "voyager"
+                  ? `1.5px solid rgba(201,168,76,0.45)`
+                  : hoveredPlan === plan.id
+                  ? `1px solid rgba(201,168,76,0.3)`
+                  : `1px solid ${M.cardBorder}`,
+                background: plan.id === "voyager"
+                  ? M.bgVoyager
+                  : M.bgCard,
+                padding:"22px 20px 20px",
+                position:"relative",
+                transform: hoveredPlan === plan.id ? "translateY(-3px)" : "translateY(0)",
+                transition:"all 0.25s cubic-bezier(0.4,0,0.2,1)",
+                boxShadow: plan.id === "voyager"
+                  ? `0 8px 32px rgba(201,168,76,0.1), 0 2px 8px rgba(0,0,0,0.06)`
+                  : hoveredPlan === plan.id
+                  ? "0 8px 24px rgba(0,0,0,0.1)"
+                  : `0 2px 8px rgba(0,0,0,0.04)`,
+              }}>
+
+              {/* Most Popular badge */}
+              {plan.mostPopular && (
+                <div style={{
+                  position:"absolute", top:-12, left:"50%", transform:"translateX(-50%)",
+                  background:"linear-gradient(135deg,#c9a84c,#f0d080)",
+                  color:"#1a1008", fontFamily:"'Space Mono',monospace",
+                  fontSize:8, fontWeight:700, letterSpacing:"0.14em",
+                  padding:"4px 14px", borderRadius:20, whiteSpace:"nowrap",
+                  boxShadow:"0 4px 12px rgba(201,168,76,0.35)",
+                }}>
+                  ✦ MOST POPULAR
+                </div>
+              )}
+
+              {/* Plan header */}
+              <div style={{ marginBottom:14 }}>
+                <div style={{ fontSize:26, marginBottom:8 }}>{plan.icon}</div>
+                <div style={{
+                  fontFamily:"'Cormorant Garamond',serif", fontWeight:700,
+                  fontSize:19, color: M.textPrimary, marginBottom:6,
+                }}>
+                  {plan.tier}
+                </div>
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+                  <span style={{
+                    fontFamily:"'Space Mono',monospace", fontSize:9, fontWeight:700,
+                    letterSpacing:"0.1em", padding:"3px 10px", borderRadius:20,
+                    background: plan.id === "explorer"
+                      ? "rgba(34,197,94,0.12)"
+                      : plan.id === "navigator"
+                      ? "rgba(59,130,246,0.12)"
+                      : "rgba(201,168,76,0.15)",
+                    color: plan.id === "explorer" ? "#16a34a"
+                      : plan.id === "navigator" ? "#2563eb"
+                      : "#92701a",
+                    border: `1px solid ${
+                      plan.id === "explorer" ? "rgba(34,197,94,0.25)"
+                      : plan.id === "navigator" ? "rgba(59,130,246,0.25)"
+                      : "rgba(201,168,76,0.3)"}`,
+                  }}>
+                    {plan.badge}
+                  </span>
+                  {plan.active && (
+                    <span style={{
+                      fontFamily:"'DM Sans',sans-serif", fontSize:11,
+                      color:"#16a34a", fontWeight:600,
+                    }}>
+                      ● Active
+                    </span>
+                  )}
+                </div>
+                <div style={{
+                  fontFamily:"'DM Sans',sans-serif", fontSize:12,
+                  color: M.textSub, fontStyle:"italic",
+                }}>
+                  {plan.tagline}
+                </div>
+              </div>
+
+              {/* Coming Soon banner */}
+              {plan.comingSoon && (
+                <div style={{
+                  marginBottom:14, padding:"10px 14px", borderRadius:10,
+                  background: isDark ? "rgba(201,168,76,0.06)" : "rgba(201,168,76,0.08)",
+                  border:"1px solid rgba(201,168,76,0.2)",
+                }}>
+                  <div style={{
+                    fontFamily:"'Cormorant Garamond',serif", fontWeight:600,
+                    fontSize:12, color:"#92701a", marginBottom:3,
+                  }}>
+                    ✦ Intelligent Travel Upgrades Are On The Way
+                  </div>
+                  <div style={{
+                    fontFamily:"'DM Sans',sans-serif", fontSize:11,
+                    color: M.textMuted, lineHeight:1.55,
+                  }}>
+                    Currently being crafted with precision. You'll be among the first to know.
+                  </div>
+                </div>
+              )}
+
+              {/* Features list */}
+              <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
+                {plan.features.map((f, i) => (
+                  <div key={i} style={{
+                    display:"flex", alignItems:"flex-start", gap:9,
+                    paddingBottom: f.inherited ? 8 : 0,
+                    borderBottom: f.inherited ? `1px dashed ${isDark ? "rgba(201,168,76,0.15)" : "rgba(0,0,0,0.08)"}` : "none",
+                    marginBottom: f.inherited ? 4 : 0,
+                  }}>
+                    <span style={{ fontSize:12, flexShrink:0, marginTop:1 }}>{f.icon}</span>
+                    <span style={{
+                      fontFamily:"'DM Sans',sans-serif", fontSize:12,
+                      color: f.inherited
+                        ? (isDark ? "rgba(201,168,76,0.7)" : "#8B6914")
+                        : M.featureText,
+                      lineHeight:1.5,
+                      fontWeight: f.inherited ? 600 : 400,
+                      fontStyle: f.inherited ? "italic" : "normal",
+                    }}>
+                      {f.text}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* CTA */}
+              <div style={{ marginTop:18 }}>
+                {plan.active ? (
+                  <div style={{
+                    padding:"10px 16px", borderRadius:10, textAlign:"center",
+                    background: isDark ? "rgba(34,197,94,0.08)" : "rgba(34,197,94,0.07)",
+                    border:"1px solid rgba(34,197,94,0.22)",
+                    fontFamily:"'DM Sans',sans-serif", fontSize:13,
+                    color:"#16a34a", fontWeight:600,
+                  }}>
+                    ✓ Your Current Plan
+                  </div>
+                ) : notified[plan.id] ? (
+                  <div style={{
+                    padding:"10px 16px", borderRadius:10, textAlign:"center",
+                    background: isDark ? "rgba(34,197,94,0.06)" : "rgba(34,197,94,0.06)",
+                    border:"1px solid rgba(34,197,94,0.2)",
+                    fontFamily:"'DM Sans',sans-serif", fontSize:12,
+                    color:"#16a34a",
+                  }}>
+                    ✓ You're on the list!
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => handleNotify(plan.id)}
+                    disabled={notifying[plan.id]}
+                    style={{
+                      width:"100%", padding:"10px 16px", borderRadius:10,
+                      textAlign:"center", cursor:"pointer",
+                      background: M.notifyBg,
+                      border:`1px solid ${M.notifyBorder}`,
+                      fontFamily:"'DM Sans',sans-serif", fontSize:12,
+                      color: M.notifyText,
+                      transition:"all 0.2s",
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = "rgba(201,168,76,0.1)";
+                      e.currentTarget.style.borderColor = "rgba(201,168,76,0.35)";
+                      e.currentTarget.style.color = "#92701a";
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = M.notifyBg;
+                      e.currentTarget.style.borderColor = M.notifyBorder;
+                      e.currentTarget.style.color = M.notifyText;
+                    }}>
+                    {notifying[plan.id] ? "Saving..." : "Notify me when available →"}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding:"16px 24px 24px",
+          textAlign:"center",
+          fontFamily:"'DM Sans',sans-serif", fontSize:11,
+          color: M.textMuted, lineHeight:1.7,
+          borderTop:`1px solid ${M.border}`,
+          marginTop:16,
+        }}>
+          🛡️ We care more about your journey than just your ticket. &nbsp;·&nbsp; AI Safety Insights & Check-In are included in all plans, always free.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  MAIN AI CHAT PAGE
 // ══════════════════════════════════════════════════════════════════════════════
@@ -657,6 +1281,7 @@ export default function AIChatPage() {
   const [thinkQuery, setThinkQuery] = useState("");
   const [sbOpen, setSbOpen]     = useState(false);
   const [showThemes, setShowThemes] = useState(false);
+  const [showPlans, setShowPlans]   = useState(false); // ← NEW
   const bottomRef    = useRef(null);
   const inputRef     = useRef(null);
   const textareaRef  = useRef(null);
@@ -791,7 +1416,6 @@ export default function AIChatPage() {
       });
       const data = await res.json();
 
-      // Ensure minimum thinking time of 2s for premium feel
       const elapsed = Date.now()-thinkStart.current;
       if (elapsed<2000) await new Promise(r=>setTimeout(r,2000-elapsed));
 
@@ -845,6 +1469,8 @@ export default function AIChatPage() {
     @keyframes spin{to{transform:rotate(360deg);}}
     @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
     @keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+    @keyframes plansModalIn{from{opacity:0;}to{opacity:1;}}
+    @keyframes plansSlideUp{from{opacity:0;transform:translateY(30px) scale(0.97);}to{opacity:1;transform:translateY(0) scale(1);}}
     ::-webkit-scrollbar{width:3px;}
     ::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.3);border-radius:2px;}
     textarea::placeholder{font-family:'DM Sans',sans-serif!important;}
@@ -856,6 +1482,9 @@ export default function AIChatPage() {
   return (
     <div style={{ display:"flex", height:"100dvh", background:T.bg, overflow:"hidden", fontFamily:"'DM Sans',sans-serif", transition:"background 0.5s ease" }}>
       <style>{CSS}</style>
+
+      {/* Plans Modal */}
+      {showPlans && <PlansModal onClose={() => setShowPlans(false)} T={T}/>}
 
       {/* SIDEBAR OVERLAY */}
       {sbOpen && (
@@ -902,14 +1531,14 @@ export default function AIChatPage() {
             <span style={{ marginLeft:"auto", opacity:0.5 }}>{showThemes?"▲":"▼"}</span>
           </button>
 
-          {/* Theme Picker (inline, doesn't push chats) */}
+          {/* Theme Picker */}
           {showThemes && (
             <div style={{ marginBottom:12, padding:"10px", background:"rgba(255,255,255,0.03)", borderRadius:10, border:`1px solid ${T.sbBorder}` }}>
               <ThemePicker current={themeKey} onSelect={k=>{setThemeKey(k);}} T={T}/>
             </div>
           )}
 
-          {/* Chat History — always visible regardless of theme picker */}
+          {/* Chat History */}
           <div style={{ flex:1, overflowY:"auto", overflowX:"hidden", marginBottom:8 }}>
             {chats.length > 0 ? (
               <>
@@ -929,8 +1558,10 @@ export default function AIChatPage() {
             )}
           </div>
 
-          {/* User Info */}
+          {/* ── USER INFO SECTION ── */}
           <div style={{ borderTop:`1px solid ${T.sbBorder}`, paddingTop:12 }}>
+
+            {/* User avatar + name */}
             <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
               <div style={{ width:34, height:34, borderRadius:"50%", flexShrink:0, background:`linear-gradient(135deg,${T.accent},${T.accentDark})`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, fontWeight:700, color:"#fff" }}>
                 {user.name?.charAt(0)?.toUpperCase()||"U"}
@@ -940,6 +1571,8 @@ export default function AIChatPage() {
                 <div style={{ fontSize:10, color:T.sbSubText, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{user.email||""}</div>
               </div>
             </div>
+
+            {/* Nav shortcuts */}
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:5, marginBottom:8 }}>
               {[["🔍 Search","/search"],["👤 Profile","/profile"],["🏠 Home","/"],["🎫 Bookings","/bookings"]].map(([label,path])=>(
                 <button key={path} onClick={()=>navigate(path)}
@@ -950,6 +1583,34 @@ export default function AIChatPage() {
                 </button>
               ))}
             </div>
+
+            {/* ── PLANS BUTTON (NEW) ── */}
+            <button
+              onClick={() => setShowPlans(true)}
+              style={{
+                width:"100%", padding:"9px 12px", borderRadius:10,
+                background:"rgba(201,168,76,0.06)",
+                border:`1px solid ${T.accent}44`,
+                cursor:"pointer", marginBottom:8,
+                display:"flex", alignItems:"center", gap:8,
+                fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:600,
+                color:T.accent, letterSpacing:"0.04em",
+                transition:"all 0.2s",
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = T.accentSoft;
+                e.currentTarget.style.borderColor = `${T.accent}88`;
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = "rgba(201,168,76,0.06)";
+                e.currentTarget.style.borderColor = `${T.accent}44`;
+              }}>
+              <span style={{ fontSize:14 }}>✨</span>
+              <span>ALVRYN Plans</span>
+              <span style={{ marginLeft:"auto", fontSize:10, opacity:0.6 }}>›</span>
+            </button>
+
+            {/* Sign Out */}
             <button onClick={()=>{localStorage.removeItem("token");localStorage.removeItem("user");navigate("/login");}}
               style={{ width:"100%", padding:"8px", borderRadius:8, fontSize:12, fontWeight:500, cursor:"pointer", background:"rgba(239,68,68,0.06)", color:"rgba(239,68,68,0.7)", border:"1px solid rgba(239,68,68,0.2)", fontFamily:"'DM Sans',sans-serif" }}>
               Sign Out
@@ -971,7 +1632,6 @@ export default function AIChatPage() {
           transition:"background 0.4s ease",
         }}>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            {/* Hamburger — always visible */}
             <button onClick={()=>setSbOpen(s=>!s)}
               style={{ width:40, height:40, borderRadius:10, background:"transparent", border:`1px solid ${T.border}`, cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:5, padding:"10px", flexShrink:0, transition:"all 0.2s" }}
               onMouseEnter={e=>{e.currentTarget.style.background=T.accentSoft;}}
@@ -987,7 +1647,6 @@ export default function AIChatPage() {
           </div>
 
           <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-            {/* Search / Home icon */}
             <button onClick={()=>navigate("/search")} title="Search Flights & More"
               style={{ width:36, height:36, borderRadius:10, background:T.accentSoft, border:`1px solid ${T.border}`, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0, transition:"all 0.2s" }}
               onMouseEnter={e=>{e.currentTarget.style.background=`${T.accent}25`;}}
@@ -995,7 +1654,6 @@ export default function AIChatPage() {
               🔍
             </button>
 
-            {/* Live indicator */}
             <div style={{ display:"flex", alignItems:"center", gap:5, padding:"5px 12px", borderRadius:20, border:`1px solid ${T.border}`, background:T.accentSoft }}>
               <div style={{ width:6, height:6, borderRadius:"50%", background:"#22c55e", animation:"pulse 2s infinite" }}/>
               <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:T.accent, letterSpacing:"0.06em", fontWeight:500 }}>AI LIVE</span>
@@ -1115,6 +1773,17 @@ export default function AIChatPage() {
                           ))}
                         </div>
                       )}
+
+                      {/* FEEDBACK BAR */}
+                      {m.text && (
+                        <FeedbackBar
+                          message={m}
+                          prevUserMessage={
+                            messages[messages.findIndex(x => x.id === m.id) - 1]?.content || ""
+                          }
+                          T={T}
+                        />
+                      )}
                     </div>
                   </div>
                 )}
@@ -1137,7 +1806,7 @@ export default function AIChatPage() {
           </div>
         </div>
 
-        {/* ── INPUT AREA — sticky at bottom ── */}
+        {/* ── INPUT AREA ── */}
         <div style={{ padding:"10px 16px 16px", borderTop:`1px solid ${T.border}`, flexShrink:0, background:T.navBg, backdropFilter:"blur(20px)", transition:"background 0.4s ease" }}>
           <div style={{ maxWidth:700, margin:"0 auto" }}>
             <div style={{ display:"flex", alignItems:"flex-end", gap:10, background:T.inputBg, borderRadius:16, padding:"10px 14px", border:`1px solid ${T.border}`, boxShadow:`0 4px 20px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.5)`, backdropFilter:"blur(10px)", transition:"box-shadow 0.2s, border-color 0.2s" }}
@@ -1158,7 +1827,6 @@ export default function AIChatPage() {
               </button>
             </div>
 
-            {/* Disclaimer */}
             <div style={{ textAlign:"center", marginTop:6, fontFamily:"'DM Sans',sans-serif", fontSize:11, color:T.aiText, opacity:0.3, fontWeight:300, letterSpacing:"0.01em" }}>
               Alvryn AI can make mistakes — please double-check important details.
             </div>

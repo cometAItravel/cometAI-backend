@@ -2141,7 +2141,6 @@ app.post("/whatsapp", async (req, res) => {
 
 // ── Mount server2 routes ──────────────────────────────────────────────────────
 require("./server2.js")(app, pool);
-
 require("./server_plans.js")(app, pool);
 
 // ── START SERVER ──────────────────────────────────────────────────────────────

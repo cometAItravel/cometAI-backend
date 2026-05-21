@@ -64,9 +64,12 @@ export default function AdminDashboard() {
   const [events,    setEvents]    = useState([]);
   const [promos,    setPromos]    = useState([]);
   const [waitlist,  setWaitlist]  = useState([]);
+  const [feedback,  setFeedback]  = useState([]);
+  const [fbSummary, setFbSummary] = useState(null);
   const [search,    setSearch]    = useState("");
+  const [fbFilter,  setFbFilter]  = useState("all"); // all | thumbs_up | thumbs_down
 
-  // Persist admin session in sessionStorage
+  // Persist admin session
   useEffect(() => {
     if (sessionStorage.getItem("alvryn_admin") === "true") setAuthed(true);
   }, []);
@@ -85,12 +88,16 @@ export default function AdminDashboard() {
       fetch(`${API}/admin/events`).then(r=>r.json()).catch(()=>[]),
       fetch(`${API}/admin/promo-codes`).then(r=>r.json()).catch(()=>[]),
       fetch(`${API}/admin/waitlist`).then(r=>r.json()).catch(()=>[]),
-    ]).then(([b,u,e,p,w]) => {
+      fetch(`${API}/admin/feedback`).then(r=>r.json()).catch(()=>[]),
+      fetch(`${API}/admin/feedback/summary`).then(r=>r.json()).catch(()=>null),
+    ]).then(([b,u,e,p,w,fb,fbs]) => {
       setBookings(Array.isArray(b)?b:[]);
       setUsers(Array.isArray(u)?u:[]);
       setEvents(Array.isArray(e)?e:[]);
       setPromos(Array.isArray(p)?p:[]);
       setWaitlist(Array.isArray(w)?w:[]);
+      setFeedback(Array.isArray(fb)?fb:[]);
+      setFbSummary(fbs||null);
     }).finally(() => setLoading(false));
   }, [authed]);
 
@@ -119,40 +126,58 @@ export default function AdminDashboard() {
   );
 
   // ── Computed stats ─────────────────────────────────────────────────────────
-  const totalRevenue = bookings.reduce((s,b)=>s+(b.final_price||b.price||0),0);
-  const avgBookingVal = bookings.length ? Math.round(totalRevenue/bookings.length) : 0;
-  const todayBookings = bookings.filter(b=>{
-    const d=new Date(b.booked_at||b.created_at||Date.now());
-    const t=new Date();
+  const totalRevenue    = bookings.reduce((s,b)=>s+(b.final_price||b.price||0),0);
+  const avgBookingVal   = bookings.length ? Math.round(totalRevenue/bookings.length) : 0;
+  const todayBookings   = bookings.filter(b=>{
+    const d=new Date(b.booked_at||b.created_at||Date.now()); const t=new Date();
     return d.getDate()===t.getDate()&&d.getMonth()===t.getMonth()&&d.getFullYear()===t.getFullYear();
   }).length;
 
-  // Event analytics
-  const viewDealClicks   = events.filter(e=>e.event_type==="view_deal").length;
-  const searchEvents     = events.filter(e=>e.event_type==="search").length;
-  const whatsappClicks   = events.filter(e=>e.event_type==="whatsapp_start").length;
-  const hotelClicks      = events.filter(e=>e.event_type==="hotel_search").length;
-  const busClicks        = events.filter(e=>e.event_type==="bus_search").length;
-  const flightSearches   = events.filter(e=>e.event_type==="flight_search").length;
+  const viewDealClicks  = events.filter(e=>e.event_type==="view_deal").length;
+  const searchEvents    = events.filter(e=>e.event_type==="search").length;
+  const whatsappClicks  = events.filter(e=>e.event_type==="whatsapp_start").length;
+  const hotelClicks     = events.filter(e=>e.event_type==="hotel_search").length;
+  const busClicks       = events.filter(e=>e.event_type==="bus_search").length;
+  const flightSearches  = events.filter(e=>e.event_type==="flight_search").length;
 
-  // Route popularity from bookings
   const routeMap = {};
-  bookings.forEach(b=>{
-    const key=`${b.from_city||""} → ${b.to_city||""}`;
-    routeMap[key]=(routeMap[key]||0)+1;
-  });
-  const topRoutes = Object.entries(routeMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  bookings.forEach(b=>{ const key=`${b.from_city||""} → ${b.to_city||""}`; routeMap[key]=(routeMap[key]||0)+1; });
+  const topRoutes   = Object.entries(routeMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
 
-  // Airline breakdown
   const airlineMap = {};
   bookings.forEach(b=>{ if(b.airline){airlineMap[b.airline]=(airlineMap[b.airline]||0)+1;} });
   const topAirlines = Object.entries(airlineMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
 
-  // Promo usage
-  const promoUsed = bookings.filter(b=>b.promo_code).length;
-  const totalDiscount = bookings.reduce((s,b)=>s+(b.discount_applied||0),0);
+  const promoUsed      = bookings.filter(b=>b.promo_code).length;
+  const totalDiscount  = bookings.reduce((s,b)=>s+(b.discount_applied||0),0);
 
-  // Filter for search
+  // Waitlist split — plan notify vs general
+  const navigatorInterest = waitlist.filter(w =>
+    (w.name||"").toLowerCase().includes("navigator") ||
+    (w.source||"").includes("navigator")
+  );
+  const voyagerInterest = waitlist.filter(w =>
+    (w.name||"").toLowerCase().includes("voyager") ||
+    (w.source||"").includes("voyager")
+  );
+  const generalWaitlist = waitlist.filter(w =>
+    !(w.source||"").includes("plans_notify")
+  );
+
+  // Feedback filters
+  const filteredFeedback = feedback.filter(f => {
+    if (fbFilter === "thumbs_up")   return f.rating === 1;
+    if (fbFilter === "thumbs_down") return f.rating === -1;
+    return true;
+  }).filter(f =>
+    !search ||
+    (f.user_message||"").toLowerCase().includes(search.toLowerCase()) ||
+    (f.ai_response||"").toLowerCase().includes(search.toLowerCase()) ||
+    (f.reason||"").toLowerCase().includes(search.toLowerCase()) ||
+    (f.user_name||"").toLowerCase().includes(search.toLowerCase()) ||
+    (f.user_email||"").toLowerCase().includes(search.toLowerCase())
+  );
+
   const filteredBookings = bookings.filter(b=>
     !search ||
     (b.passenger_name||"").toLowerCase().includes(search.toLowerCase()) ||
@@ -169,12 +194,13 @@ export default function AdminDashboard() {
   );
 
   const TABS = [
-    {id:"overview",  label:"Overview",   icon:"📊"},
-    {id:"bookings",  label:"Bookings",   icon:"🎫"},
-    {id:"users",     label:"Users",      icon:"👥"},
-    {id:"analytics", label:"Analytics",  icon:"📈"},
-    {id:"promos",    label:"Promos",     icon:"🏷️"},
-    {id:"waitlist",  label:"Waitlist",   icon:"📋"},
+    { id:"overview",  label:"Overview",    icon:"📊" },
+    { id:"bookings",  label:"Bookings",    icon:"🎫" },
+    { id:"users",     label:"Users",       icon:"👥" },
+    { id:"analytics", label:"Analytics",   icon:"📈" },
+    { id:"promos",    label:"Promos",      icon:"🏷️" },
+    { id:"waitlist",  label:"Waitlist",    icon:"📋" },
+    { id:"feedback",  label:"AI Feedback", icon:"💬" },
   ];
 
   const th = {fontFamily:"'Space Mono',monospace",fontSize:9,color:"#888",letterSpacing:"0.12em",padding:"10px 14px",textAlign:"left",borderBottom:"1px solid rgba(201,168,76,0.15)",whiteSpace:"nowrap"};
@@ -223,9 +249,26 @@ export default function AdminDashboard() {
             {/* Tabs */}
             <div style={{display:"flex",gap:0,background:"rgba(255,255,255,0.88)",backdropFilter:"blur(10px)",borderRadius:"14px 14px 0 0",border:"1px solid rgba(201,168,76,0.18)",borderBottom:"none",overflowX:"auto",marginBottom:0}}>
               {TABS.map((t,i)=>(
-                <button key={t.id} onClick={()=>setTab(t.id)}
-                  style={{display:"flex",alignItems:"center",gap:6,padding:"12px 18px",cursor:"pointer",border:"none",borderBottom:tab===t.id?`2.5px solid ${GOLD}`:"2.5px solid transparent",background:"transparent",color:tab===t.id?GOLD_D:"#888",fontFamily:"'DM Sans',sans-serif",fontSize:12,fontWeight:600,transition:"all 0.2s",whiteSpace:"nowrap",borderRadius:i===0?"14px 0 0 0":i===TABS.length-1?"0 14px 0 0":"0"}}>
+                <button key={t.id} onClick={()=>{setTab(t.id);setSearch("");}}
+                  style={{display:"flex",alignItems:"center",gap:6,padding:"12px 18px",cursor:"pointer",border:"none",
+                    borderBottom:tab===t.id?`2.5px solid ${GOLD}`:"2.5px solid transparent",
+                    background:"transparent",color:tab===t.id?GOLD_D:"#888",
+                    fontFamily:"'DM Sans',sans-serif",fontSize:12,fontWeight:600,transition:"all 0.2s",
+                    whiteSpace:"nowrap",
+                    borderRadius:i===0?"14px 0 0 0":i===TABS.length-1?"0 14px 0 0":"0"}}>
                   <span>{t.icon}</span>{t.label}
+                  {/* Badge for feedback tab */}
+                  {t.id==="feedback" && feedback.filter(f=>f.rating===-1&&f.reason).length>0 && (
+                    <span style={{background:"#ef4444",color:"#fff",borderRadius:100,fontSize:9,padding:"1px 6px",marginLeft:2,fontFamily:"'Space Mono',monospace"}}>
+                      {feedback.filter(f=>f.rating===-1&&f.reason).length}
+                    </span>
+                  )}
+                  {/* Badge for waitlist tab showing plan interest */}
+                  {t.id==="waitlist" && (navigatorInterest.length+voyagerInterest.length)>0 && (
+                    <span style={{background:GOLD,color:"#1a1008",borderRadius:100,fontSize:9,padding:"1px 6px",marginLeft:2,fontFamily:"'Space Mono',monospace"}}>
+                      {navigatorInterest.length+voyagerInterest.length}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -248,7 +291,64 @@ export default function AdminDashboard() {
                     <StatCard icon="💬" label="WHATSAPP STARTS"  value={whatsappClicks||"—"}        sub="bot activations"/>
                   </div>
 
-                  {/* Top routes */}
+                  {/* AI Feedback summary + Plan interest */}
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:24}}>
+                    {/* Feedback summary */}
+                    <div style={{padding:"18px 20px",borderRadius:16,background:"rgba(201,168,76,0.06)",border:"1px solid rgba(201,168,76,0.18)"}}>
+                      <div style={{fontFamily:"'Space Mono',monospace",fontSize:9,color:"#888",letterSpacing:"0.12em",marginBottom:12}}>AI FEEDBACK SUMMARY</div>
+                      {fbSummary ? (
+                        <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
+                          <div style={{textAlign:"center"}}>
+                            <div style={{fontSize:28}}>👍</div>
+                            <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:26,color:"#16a34a"}}>{fbSummary.thumbs_up||0}</div>
+                            <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#888"}}>Helpful</div>
+                          </div>
+                          <div style={{textAlign:"center"}}>
+                            <div style={{fontSize:28}}>👎</div>
+                            <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:26,color:"#ef4444"}}>{fbSummary.thumbs_down||0}</div>
+                            <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#888"}}>Needs fix</div>
+                          </div>
+                          <div style={{textAlign:"center"}}>
+                            <div style={{fontSize:28}}>⭐</div>
+                            <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:26,color:GOLD_D}}>{fbSummary.satisfaction_pct||0}%</div>
+                            <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#888"}}>Satisfaction</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{fontSize:13,color:"#bbb"}}>No feedback yet</div>
+                      )}
+                      <button onClick={()=>setTab("feedback")} style={{marginTop:14,padding:"7px 14px",borderRadius:8,fontSize:12,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",background:"rgba(201,168,76,0.12)",border:"1px solid rgba(201,168,76,0.25)",color:GOLD_D}}>
+                        View all feedback →
+                      </button>
+                    </div>
+
+                    {/* Plan interest */}
+                    <div style={{padding:"18px 20px",borderRadius:16,background:"rgba(201,168,76,0.06)",border:"1px solid rgba(201,168,76,0.18)"}}>
+                      <div style={{fontFamily:"'Space Mono',monospace",fontSize:9,color:"#888",letterSpacing:"0.12em",marginBottom:12}}>PLAN UPGRADE INTEREST</div>
+                      <div style={{display:"flex",gap:20,flexWrap:"wrap",marginBottom:12}}>
+                        <div style={{textAlign:"center"}}>
+                          <div style={{fontSize:24}}>🌍</div>
+                          <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:26,color:"#2563eb"}}>{navigatorInterest.length}</div>
+                          <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#888"}}>Navigator Pro</div>
+                        </div>
+                        <div style={{textAlign:"center"}}>
+                          <div style={{fontSize:24}}>🚀</div>
+                          <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:26,color:GOLD_D}}>{voyagerInterest.length}</div>
+                          <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#888"}}>Voyager Premium</div>
+                        </div>
+                        <div style={{textAlign:"center"}}>
+                          <div style={{fontSize:24}}>📋</div>
+                          <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:26,color:"#888"}}>{generalWaitlist.length}</div>
+                          <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#888"}}>General waitlist</div>
+                        </div>
+                      </div>
+                      <button onClick={()=>setTab("waitlist")} style={{padding:"7px 14px",borderRadius:8,fontSize:12,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",background:"rgba(201,168,76,0.12)",border:"1px solid rgba(201,168,76,0.25)",color:GOLD_D}}>
+                        View all →
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Top routes + airlines */}
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
                     <div>
                       <div style={{fontFamily:"'Space Mono',monospace",fontSize:9,color:"#888",letterSpacing:"0.12em",marginBottom:12}}>TOP BOOKED ROUTES</div>
@@ -339,7 +439,7 @@ export default function AdminDashboard() {
                     <table className="admin-table" style={{width:"100%",borderCollapse:"collapse"}}>
                       <thead>
                         <tr>
-                          {["ID","Name","Email","Phone","Ref Code","Wallet Balance","Referred By","Joined"].map(h=>(
+                          {["ID","Name","Email","Phone","Plan","Ref Code","Wallet","Joined"].map(h=>(
                             <th key={h} style={th}>{h}</th>
                           ))}
                         </tr>
@@ -351,9 +451,18 @@ export default function AdminDashboard() {
                             <td style={{...td,fontWeight:600}}>{u.name||"—"}</td>
                             <td style={td}>{u.email||"—"}</td>
                             <td style={td}>{u.phone||"—"}</td>
+                            <td style={td}>
+                              <span style={{
+                                padding:"2px 9px", borderRadius:100, fontSize:10,
+                                fontFamily:"'Space Mono',monospace",
+                                background: u.plan==="voyager"?"rgba(201,168,76,0.15)": u.plan==="navigator"?"rgba(59,130,246,0.12)":"rgba(34,197,94,0.10)",
+                                color: u.plan==="voyager"?GOLD_D: u.plan==="navigator"?"#2563eb":"#16a34a",
+                              }}>
+                                {(u.plan||"explorer").toUpperCase()}
+                              </span>
+                            </td>
                             <td style={td}><span style={{fontFamily:"'Space Mono',monospace",fontSize:11,color:GOLD_D}}>{u.ref_code||"—"}</span></td>
                             <td style={{...td,color:"#059669",fontWeight:600}}>₹{(u.wallet_balance||0).toLocaleString()}</td>
-                            <td style={td}>{u.referred_by||"—"}</td>
                             <td style={{...td,fontSize:11,color:"#888",whiteSpace:"nowrap"}}>{u.created_at?new Date(u.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}):"—"}</td>
                           </tr>
                         ))}
@@ -375,11 +484,9 @@ export default function AdminDashboard() {
                     <StatCard icon="🚌" label="BUS SEARCHES"     value={busClicks||0}       sub="web + AI + WhatsApp"/>
                     <StatCard icon="🏨" label="HOTEL SEARCHES"   value={hotelClicks||0}     sub="→ Booking.com"/>
                   </div>
-
-                  {/* Recent events table */}
                   <div style={{fontFamily:"'Space Mono',monospace",fontSize:9,color:"#888",letterSpacing:"0.12em",marginBottom:12}}>RECENT EVENTS (last 50)</div>
                   {events.length===0
-                    ? <div style={{fontSize:14,color:"#bbb",textAlign:"center",padding:"28px 0"}}>No events tracked yet. Events are logged when users search or click deals.</div>
+                    ? <div style={{fontSize:14,color:"#bbb",textAlign:"center",padding:"28px 0"}}>No events tracked yet.</div>
                     : (
                     <div style={{overflowX:"auto"}}>
                       <table className="admin-table" style={{width:"100%",borderCollapse:"collapse"}}>
@@ -434,29 +541,200 @@ export default function AdminDashboard() {
               {/* ── WAITLIST ── */}
               {tab==="waitlist" && (
                 <div>
-                  <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:20,color:"#1a1410",marginBottom:20}}>
-                    Waitlist ({waitlist.length} members)
+                  {/* Plan interest summary */}
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:24}}>
+                    <div style={{padding:"18px 20px",borderRadius:14,background:"rgba(59,130,246,0.07)",border:"1px solid rgba(59,130,246,0.2)",textAlign:"center"}}>
+                      <div style={{fontSize:26,marginBottom:6}}>🌍</div>
+                      <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:30,color:"#2563eb"}}>{navigatorInterest.length}</div>
+                      <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:12,color:"#555",marginTop:4}}>Interested in <strong>Navigator Pro</strong></div>
+                    </div>
+                    <div style={{padding:"18px 20px",borderRadius:14,background:"rgba(201,168,76,0.08)",border:"1px solid rgba(201,168,76,0.25)",textAlign:"center"}}>
+                      <div style={{fontSize:26,marginBottom:6}}>🚀</div>
+                      <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:30,color:GOLD_D}}>{voyagerInterest.length}</div>
+                      <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:12,color:"#555",marginTop:4}}>Interested in <strong>Voyager Premium</strong></div>
+                    </div>
+                    <div style={{padding:"18px 20px",borderRadius:14,background:"rgba(0,0,0,0.03)",border:"1px solid rgba(0,0,0,0.08)",textAlign:"center"}}>
+                      <div style={{fontSize:26,marginBottom:6}}>📋</div>
+                      <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:30,color:"#555"}}>{generalWaitlist.length}</div>
+                      <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:12,color:"#888",marginTop:4}}>General waitlist</div>
+                    </div>
                   </div>
-                  <div style={{overflowX:"auto"}}>
-                    <table className="admin-table" style={{width:"100%",borderCollapse:"collapse"}}>
-                      <thead>
-                        <tr>{["Email","Ref Code","Referrals","Referred By","Joined"].map(h=><th key={h} style={th}>{h}</th>)}</tr>
-                      </thead>
-                      <tbody>
-                        {waitlist.map((w,i)=>(
-                          <tr key={i} style={{background:i%2===0?"transparent":"rgba(201,168,76,0.03)"}}>
-                            <td style={{...td,fontWeight:500}}>{w.email}</td>
-                            <td style={td}><span style={{fontFamily:"'Space Mono',monospace",fontSize:11,color:GOLD_D}}>{w.ref_code}</span></td>
-                            <td style={{...td,fontWeight:700,color:w.ref_count>0?"#059669":"#aaa"}}>{w.ref_count||0}</td>
-                            <td style={td}>{w.referred_by||"—"}</td>
-                            <td style={{...td,fontSize:11,color:"#888"}}>{w.joined_at?new Date(w.joined_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}):"—"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+
+                  {/* Navigator interest */}
+                  {navigatorInterest.length > 0 && (
+                    <div style={{marginBottom:24}}>
+                      <div style={{fontFamily:"'Space Mono',monospace",fontSize:9,color:"#2563eb",letterSpacing:"0.12em",marginBottom:10}}>
+                        🌍 NAVIGATOR PRO INTEREST ({navigatorInterest.length})
+                      </div>
+                      <div style={{overflowX:"auto"}}>
+                        <table className="admin-table" style={{width:"100%",borderCollapse:"collapse"}}>
+                          <thead><tr>{["Email","Source","Joined"].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
+                          <tbody>
+                            {navigatorInterest.map((w,i)=>(
+                              <tr key={i} style={{background:i%2===0?"transparent":"rgba(59,130,246,0.03)"}}>
+                                <td style={{...td,fontWeight:500}}>{w.email}</td>
+                                <td style={td}><span style={{fontFamily:"'Space Mono',monospace",fontSize:10,color:"#2563eb"}}>{w.source||"—"}</span></td>
+                                <td style={{...td,fontSize:11,color:"#888"}}>{w.created_at?new Date(w.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}):"—"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Voyager interest */}
+                  {voyagerInterest.length > 0 && (
+                    <div style={{marginBottom:24}}>
+                      <div style={{fontFamily:"'Space Mono',monospace",fontSize:9,color:GOLD_D,letterSpacing:"0.12em",marginBottom:10}}>
+                        🚀 VOYAGER PREMIUM INTEREST ({voyagerInterest.length})
+                      </div>
+                      <div style={{overflowX:"auto"}}>
+                        <table className="admin-table" style={{width:"100%",borderCollapse:"collapse"}}>
+                          <thead><tr>{["Email","Source","Joined"].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
+                          <tbody>
+                            {voyagerInterest.map((w,i)=>(
+                              <tr key={i} style={{background:i%2===0?"transparent":"rgba(201,168,76,0.04)"}}>
+                                <td style={{...td,fontWeight:500}}>{w.email}</td>
+                                <td style={td}><span style={{fontFamily:"'Space Mono',monospace",fontSize:10,color:GOLD_D}}>{w.source||"—"}</span></td>
+                                <td style={{...td,fontSize:11,color:"#888"}}>{w.created_at?new Date(w.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}):"—"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* General waitlist */}
+                  <div>
+                    <div style={{fontFamily:"'Space Mono',monospace",fontSize:9,color:"#888",letterSpacing:"0.12em",marginBottom:10}}>
+                      📋 GENERAL WAITLIST ({generalWaitlist.length})
+                    </div>
+                    {generalWaitlist.length === 0
+                      ? <div style={{fontSize:13,color:"#bbb",padding:"20px 0"}}>No general waitlist entries yet.</div>
+                      : (
+                      <div style={{overflowX:"auto"}}>
+                        <table className="admin-table" style={{width:"100%",borderCollapse:"collapse"}}>
+                          <thead><tr>{["Email","Name","Source","Joined"].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
+                          <tbody>
+                            {generalWaitlist.map((w,i)=>(
+                              <tr key={i} style={{background:i%2===0?"transparent":"rgba(201,168,76,0.03)"}}>
+                                <td style={{...td,fontWeight:500}}>{w.email}</td>
+                                <td style={td}>{w.name||"—"}</td>
+                                <td style={td}>{w.source||"web"}</td>
+                                <td style={{...td,fontSize:11,color:"#888"}}>{w.created_at?new Date(w.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}):"—"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
+
+              {/* ── AI FEEDBACK ── */}
+              {tab==="feedback" && (
+                <div>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
+                    <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:20,color:"#1a1410"}}>
+                      AI Feedback ({feedback.length} responses)
+                    </div>
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search feedback…"
+                        style={{padding:"9px 14px",borderRadius:10,fontSize:13,fontFamily:"'DM Sans',sans-serif",border:"1.5px solid rgba(201,168,76,0.25)",outline:"none",color:"#1a1410",background:"#fafaf8",width:200}}/>
+                      {["all","thumbs_up","thumbs_down"].map(f=>(
+                        <button key={f} onClick={()=>setFbFilter(f)}
+                          style={{padding:"8px 14px",borderRadius:10,fontSize:12,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",
+                            background:fbFilter===f?"rgba(201,168,76,0.15)":"transparent",
+                            border:`1.5px solid ${fbFilter===f?"rgba(201,168,76,0.4)":"rgba(0,0,0,0.12)"}`,
+                            color:fbFilter===f?GOLD_D:"#666"}}>
+                          {f==="all"?"All 📊":f==="thumbs_up"?"👍 Helpful":"👎 Needs Fix"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Summary row */}
+                  {fbSummary && (
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
+                      <StatCard icon="📊" label="TOTAL FEEDBACK"   value={fbSummary.total||0}          sub="all responses rated"/>
+                      <StatCard icon="👍" label="THUMBS UP"        value={fbSummary.thumbs_up||0}       sub="helpful responses" color="#16a34a"/>
+                      <StatCard icon="👎" label="THUMBS DOWN"      value={fbSummary.thumbs_down||0}     sub="needs improvement" color="#ef4444"/>
+                      <StatCard icon="⭐" label="SATISFACTION"     value={`${fbSummary.satisfaction_pct||0}%`} sub="of responses helpful" color={GOLD_D}/>
+                    </div>
+                  )}
+
+                  {filteredFeedback.length === 0
+                    ? <div style={{textAlign:"center",padding:"40px",fontSize:14,color:"#bbb"}}>No feedback found.</div>
+                    : (
+                    <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                      {filteredFeedback.map((f,i)=>(
+                        <div key={i} style={{
+                          padding:"16px 18px", borderRadius:14,
+                          background: f.rating===1 ? "rgba(34,197,94,0.04)" : "rgba(239,68,68,0.04)",
+                          border: `1px solid ${f.rating===1?"rgba(34,197,94,0.18)":"rgba(239,68,68,0.18)"}`,
+                          animation:"fadeUp 0.4s both",
+                        }}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10,flexWrap:"wrap",gap:8}}>
+                            <div style={{display:"flex",alignItems:"center",gap:10}}>
+                              <span style={{fontSize:20}}>{f.rating===1?"👍":"👎"}</span>
+                              <div>
+                                <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:600,color:"#1a1410"}}>
+                                  {f.user_name||"Anonymous"} {f.user_email?<span style={{color:"#888",fontWeight:400}}>· {f.user_email}</span>:null}
+                                </div>
+                                <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#888",marginTop:2}}>
+                                  {f.created_at?new Date(f.created_at).toLocaleString("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit",hour12:false}):"—"}
+                                </div>
+                              </div>
+                            </div>
+                            <span style={{
+                              padding:"3px 10px",borderRadius:100,fontSize:10,
+                              fontFamily:"'Space Mono',monospace",fontWeight:700,
+                              background:f.rating===1?"rgba(34,197,94,0.12)":"rgba(239,68,68,0.12)",
+                              color:f.rating===1?"#16a34a":"#ef4444",
+                            }}>
+                              {f.rating===1?"HELPFUL":"NEEDS FIX"}
+                            </span>
+                          </div>
+
+                          {/* User question */}
+                          {f.user_message && (
+                            <div style={{marginBottom:8}}>
+                              <div style={{fontFamily:"'Space Mono',monospace",fontSize:9,color:"#888",letterSpacing:"0.1em",marginBottom:4}}>USER ASKED</div>
+                              <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"#1a1410",background:"rgba(0,0,0,0.03)",padding:"8px 12px",borderRadius:8,lineHeight:1.5}}>
+                                {f.user_message}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* AI response preview */}
+                          {f.ai_response && (
+                            <div style={{marginBottom:8}}>
+                              <div style={{fontFamily:"'Space Mono',monospace",fontSize:9,color:"#888",letterSpacing:"0.1em",marginBottom:4}}>AI RESPONDED</div>
+                              <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:12,color:"#444",background:"rgba(201,168,76,0.04)",padding:"8px 12px",borderRadius:8,lineHeight:1.5,maxHeight:80,overflow:"hidden",position:"relative"}}>
+                                {f.ai_response.slice(0,300)}{f.ai_response.length>300?"…":""}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Reason for thumbs down */}
+                          {f.reason && (
+                            <div style={{marginTop:8,padding:"10px 12px",borderRadius:8,background:"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.15)"}}>
+                              <div style={{fontFamily:"'Space Mono',monospace",fontSize:9,color:"#ef4444",letterSpacing:"0.1em",marginBottom:4}}>USER SAID</div>
+                              <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"#1a1410",fontStyle:"italic"}}>
+                                "{f.reason}"
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
             </div>
           </>
         )}

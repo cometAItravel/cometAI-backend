@@ -2077,7 +2077,16 @@ app.post("/ai-chat-v2", authenticateToken, async (req, res) => {
     }
   } catch { safetyInsight = ""; }
   // ────────────────────────────────────────────────────────────────────────
-
+let safetyInsight = "";
+      try {
+        const destCity = t || f;
+        if (destCity && f && t && app.locals.buildSafetyInsight) {
+          const userPlan = await app.locals.getUserPlan?.(userId) || "explorer";
+          const womenTraveler = /\bwomen?\b|\bfemale\b|\blady\b/i.test(message);
+          safetyInsight = await app.locals.buildSafetyInsight(destCity, userPlan, { womenTraveler }) || "";
+        }
+      } catch { safetyInsight = ""; }
+      
   logEvent("ai_groq", message.slice(0, 80), "ai_chat", userId).catch(() => {});
   return res.json({
     text: aiText + safetyInsight + limitNote,
@@ -2163,6 +2172,7 @@ app.post("/whatsapp", async (req, res) => {
 require("./server2.js")(app, pool);
 require("./server_plans.js")(app, pool);
 require("./server_safety.js")(app, pool);
+require("./server_checkin.js")(app, pool);
 
 // ── START SERVER ──────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 4000;

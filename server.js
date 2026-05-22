@@ -2062,7 +2062,7 @@ app.post("/ai-chat-v2", authenticateToken, async (req, res) => {
     : "";
 
   // ── SAFETY INSIGHTS (auto-appended for all tiers) ──────────────────────
-  let safetyInsight = "";
+  
   try {
     const isTravelQuery = f && t &&
       !/^(hi|hello|hey|thanks|ok|okay|yes|no|good|great)$/i.test(message.trim());
@@ -2086,7 +2086,7 @@ let safetyInsight = "";
           safetyInsight = await app.locals.buildSafetyInsight(destCity, userPlan, { womenTraveler }) || "";
         }
       } catch { safetyInsight = ""; }
-      
+
   logEvent("ai_groq", message.slice(0, 80), "ai_chat", userId).catch(() => {});
   return res.json({
     text: aiText + safetyInsight + limitNote,

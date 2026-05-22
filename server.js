@@ -2057,15 +2057,35 @@ app.post("/ai-chat-v2", authenticateToken, async (req, res) => {
     }
 
     if (aiText) {
-      const limitNote = remaining <= 3 ? `\n\n_💡 ${remaining} AI response${remaining === 1 ? "" : "s"} left today — book via Alvryn to unlock more!_` : "";
-      logEvent("ai_groq", message.slice(0, 80), "ai_chat", userId).catch(() => {});
-      return res.json({
-        text: aiText + limitNote,
-        cards,
-        cta: cards.length ? "💡 Tap any card to check live prices on our partner site." : null,
-        sessionId: sid
-      });
+  const limitNote = remaining <= 3
+    ? `\n\n_💡 ${remaining} AI response${remaining === 1 ? "" : "s"} left today — book via Alvryn to unlock more!_`
+    : "";
+
+  // ── SAFETY INSIGHTS (auto-appended for all tiers) ──────────────────────
+  let safetyInsight = "";
+  try {
+    const isTravelQuery = f && t &&
+      !/^(hi|hello|hey|thanks|ok|okay|yes|no|good|great)$/i.test(message.trim());
+    const destCity = t || f;
+
+    if (destCity && isTravelQuery && app.locals.buildSafetyInsight) {
+      const userPlan = await app.locals.getUserPlan?.(userId) || "explorer";
+      const womenTraveler = /\bwomen?\b|\bsolo\s+girl\b|\bfemale\b|\blady\b|\bladies\b/i.test(message);
+      safetyInsight = await app.locals.buildSafetyInsight(
+        destCity, userPlan, { womenTraveler }
+      ) || "";
     }
+  } catch { safetyInsight = ""; }
+  // ────────────────────────────────────────────────────────────────────────
+
+  logEvent("ai_groq", message.slice(0, 80), "ai_chat", userId).catch(() => {});
+  return res.json({
+    text: aiText + safetyInsight + limitNote,
+    cards,
+    cta: cards.length ? "💡 Tap any card to check live prices on our partner site." : null,
+    sessionId: sid
+  });
+}
 
     // ── FINAL FALLBACK ────────────────────────────────────────────────────────
     const fallbackCards = buildCards(message, f, t, date);

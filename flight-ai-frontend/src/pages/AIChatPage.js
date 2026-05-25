@@ -642,6 +642,173 @@ function AlvrynLogo({ size=32, color="#c9a84c" }) {
   );
 }
 
+// ── CHECKIN PROMPT COMPONENT ─────────────────────────────────────────────────
+function CheckinPromptCard({ prompt, waNumber, token, T, onDone }) {
+  const [number, setNumber]   = useState(waNumber || "");
+  const [saving, setSaving]   = useState(false);
+  const [saved, setSaved]     = useState(false);
+  const [skipped, setSkipped] = useState(false);
+  const [error, setError]     = useState("");
+
+  // If user already has WA number saved, register silently and show done
+  useEffect(() => {
+    if (waNumber && !saved) {
+      registerCheckin(waNumber, true);
+    }
+  }, []);
+
+  const registerCheckin = async (num, silent = false) => {
+    if (!token || !num) { if (!silent) setError("Please enter your WhatsApp number"); return; }
+    const clean = num.replace(/[^\d+]/g, "");
+    if (clean.length < 10) { if (!silent) setError("Please enter a valid number"); return; }
+    setSaving(true); setError("");
+    try {
+      await fetch(`${API}/checkin/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          whatsapp_number: clean,
+          destination:     prompt.destination || "",
+          travel_date:     prompt.travelDate  || null,
+        }),
+      });
+      // Also save to profile
+      await fetch(`${API}/whatsapp-number`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ whatsapp_number: clean }),
+      });
+      setSaved(true);
+      if (onDone) onDone(clean);
+    } catch {
+      if (!silent) setError("Could not save — please try again");
+    }
+    setSaving(false);
+  };
+
+  if (skipped) return null;
+
+  if (saved) return (
+    <div style={{
+      marginTop: 12, padding: "12px 16px", borderRadius: 12,
+      background: "rgba(34,197,94,0.07)",
+      border: "1px solid rgba(34,197,94,0.2)",
+      display: "flex", alignItems: "center", gap: 10,
+      animation: "fadeUp 0.3s both",
+    }}>
+      <span style={{ fontSize: 18 }}>🛡️</span>
+      <div style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: T.aiText, lineHeight: 1.5 }}>
+        <strong style={{ color: "#16a34a" }}>Check-in registered!</strong> We'll message you on WhatsApp on your travel date to make sure you reached safely. ✅
+      </div>
+    </div>
+  );
+
+  // Already has WA number — show minimal card
+  if (waNumber) return (
+    <div style={{
+      marginTop: 12, padding: "12px 16px", borderRadius: 12,
+      background: T.accentSoft,
+      border: `1px solid ${T.accent}33`,
+      animation: "fadeUp 0.3s both",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+        <span style={{ fontSize: 16 }}>🛡️</span>
+        <span style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 600, fontSize: 15, color: T.aiText }}>
+          Safe Arrival Check-In
+        </span>
+      </div>
+      <div style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 12, color: T.aiText, opacity: 0.7, marginBottom: 10, lineHeight: 1.5 }}>
+        Would you like ALVRYN to check in with you on your travel date to make sure you reached {prompt.destination ? prompt.destination.charAt(0).toUpperCase() + prompt.destination.slice(1) : "your destination"} safely? We'll send a quick WhatsApp message — completely optional.
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button
+          onClick={() => registerCheckin(waNumber)}
+          disabled={saving}
+          style={{
+            padding: "7px 16px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+            background: `linear-gradient(135deg,${T.accent},${T.accentDark})`,
+            border: "none", color: "#fff", cursor: "pointer",
+            fontFamily: "'DM Sans',sans-serif", opacity: saving ? 0.7 : 1,
+          }}>
+          {saving ? "Saving..." : "Yes, check in on me 🙏"}
+        </button>
+        <button
+          onClick={() => { setSkipped(true); if(onDone) onDone(null); }}
+          style={{
+            padding: "7px 14px", borderRadius: 8, fontSize: 12,
+            background: "transparent", border: `1px solid ${T.border}`,
+            color: T.aiText, cursor: "pointer", opacity: 0.5,
+            fontFamily: "'DM Sans',sans-serif",
+          }}>
+          Skip
+        </button>
+      </div>
+    </div>
+  );
+
+  // No WA number saved — show input
+  return (
+    <div style={{
+      marginTop: 12, padding: "14px 16px", borderRadius: 12,
+      background: T.accentSoft,
+      border: `1px solid ${T.accent}33`,
+      animation: "fadeUp 0.3s both",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+        <span style={{ fontSize: 16 }}>🛡️</span>
+        <span style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 600, fontSize: 15, color: T.aiText }}>
+          Safe Arrival Check-In
+        </span>
+      </div>
+      <div style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 12, color: T.aiText, opacity: 0.7, marginBottom: 12, lineHeight: 1.6 }}>
+        One last thing — would you like ALVRYN to check in with you on your travel date to make sure you reached <strong>{prompt.destination ? prompt.destination.charAt(0).toUpperCase() + prompt.destination.slice(1) : "your destination"}</strong> safely? Share your WhatsApp number below for a quick check-in message. <em>Completely optional 😊 — we use it only for your safety.</em>
+      </div>
+      {error && (
+        <div style={{ fontSize: 11, color: "#ef4444", marginBottom: 8, fontFamily: "'DM Sans',sans-serif" }}>{error}</div>
+      )}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <input
+          value={number}
+          onChange={e => { setNumber(e.target.value); setError(""); }}
+          placeholder="+91 98765 43210"
+          style={{
+            flex: 1, minWidth: 160, padding: "8px 12px", borderRadius: 8,
+            border: `1px solid ${T.border}`, background: T.inputBg,
+            fontFamily: "'DM Sans',sans-serif", fontSize: 13,
+            color: T.inputText, outline: "none",
+          }}
+          onKeyDown={e => { if (e.key === "Enter") registerCheckin(number); }}
+        />
+        <button
+          onClick={() => registerCheckin(number)}
+          disabled={saving || !number.trim()}
+          style={{
+            padding: "8px 16px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+            background: `linear-gradient(135deg,${T.accent},${T.accentDark})`,
+            border: "none", color: "#fff", cursor: saving || !number.trim() ? "default" : "pointer",
+            fontFamily: "'DM Sans',sans-serif",
+            opacity: saving || !number.trim() ? 0.6 : 1,
+          }}>
+          {saving ? "Saving..." : "Save & notify me"}
+        </button>
+        <button
+          onClick={() => { setSkipped(true); if(onDone) onDone(null); }}
+          style={{
+            padding: "8px 14px", borderRadius: 8, fontSize: 12,
+            background: "transparent", border: `1px solid ${T.border}`,
+            color: T.aiText, cursor: "pointer", opacity: 0.5,
+            fontFamily: "'DM Sans',sans-serif",
+          }}>
+          Skip
+        </button>
+      </div>
+      <div style={{ marginTop: 8, fontFamily: "'DM Sans',sans-serif", fontSize: 10, color: T.aiText, opacity: 0.35 }}>
+        Your number is saved securely and used only for travel safety check-ins. You can remove it anytime from your profile.
+      </div>
+    </div>
+  );
+}
+
 // ── FEEDBACK BAR ─────────────────────────────────────────────────────────────
 function FeedbackBar({ message, prevUserMessage, T }) {
   const [rating, setRating]       = useState(null); // 1 | -1 | null
@@ -1281,7 +1448,12 @@ export default function AIChatPage() {
   const [thinkQuery, setThinkQuery] = useState("");
   const [sbOpen, setSbOpen]     = useState(false);
   const [showThemes, setShowThemes] = useState(false);
-  const [showPlans, setShowPlans]   = useState(false); // ← NEW
+  const [showPlans, setShowPlans]       = useState(false);
+  const [checkinPrompt, setCheckinPrompt] = useState(null);
+  const [checkinNumber, setCheckinNumber] = useState('');
+  const [checkinSaving, setCheckinSaving] = useState(false);
+  const [checkinDone, setCheckinDone]     = useState(false);
+  const [waNumber, setWaNumber]           = useState('');
   const bottomRef    = useRef(null);
   const inputRef     = useRef(null);
   const textareaRef  = useRef(null);
@@ -1303,6 +1475,47 @@ export default function AIChatPage() {
     const t = setInterval(() => fetch(`${API}/test`).catch(()=>{}), 14*60*1000);
     return () => clearInterval(t);
   }, []);
+
+  // Load WhatsApp number + handle wa_session URL param
+  useEffect(() => {
+    if (!token) return;
+
+    // 1. Fetch saved WhatsApp number from user profile
+    fetch(`${API}/my-plan`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => {
+        if (data.whatsappNumber) setWaNumber(data.whatsappNumber);
+      })
+      .catch(() => {});
+
+    // 2. Handle ?wa_session=PHONE URL param — load WhatsApp conversation
+    const params = new URLSearchParams(window.location.search);
+    const waSession = params.get("wa_session");
+    if (waSession) {
+      fetch(`${API}/wa-session/${encodeURIComponent(waSession)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+        .then(data => {
+          if (!data.messages?.length) return;
+          // Convert WA messages to chat format
+          const converted = data.messages.map((m, i) => ({
+            id: Date.now() + i,
+            role: m.role === "user" ? "user" : "assistant",
+            content: m.content || "",
+            text: m.role !== "user" ? (m.content || "") : "",
+            cards: [], cta: null, _elegantDone: true,
+          }));
+          const newId = data.sessionId || Date.now().toString();
+          setActiveId(newId);
+          setMessages(converted);
+          sessionIdRef.current = newId;
+          // Clean URL
+          window.history.replaceState({}, "", "/ai");
+        })
+        .catch(() => {});
+    }
+  }, [token]);
 
   // Load chats from local + DB
   useEffect(() => {
@@ -1434,6 +1647,25 @@ export default function AIChatPage() {
       setMessages(final);
       const chatTitle = next[0]?.content?.slice(0,44)+(next[0]?.content?.length>44?"…":"") || "New chat";
       saveChat(id, final, chatTitle);
+
+      // ── CHECK-IN PROMPT ────────────────────────────────────────────────────
+      // Show after any response that mentions a destination
+      try {
+        const responseText = data.text || "";
+        const userMsg      = q.toLowerCase();
+        // Detect destination from AI response or user message
+        const destMatch =
+          responseText.match(/(goa|dubai|mumbai|delhi|bangalore|chennai|hyderabad|kolkata|jaipur|kochi|singapore|bangkok|london|new york|bali|paris|tokyo|maldives|kerala|manali|shimla|varanasi|coimbatore|trivandrum|pune|ahmedabad)/i) ||
+          userMsg.match(/(goa|dubai|mumbai|delhi|bangalore|chennai|hyderabad|kolkata|jaipur|kochi|singapore|bangkok|london|new york|bali|paris|tokyo|maldives|kerala|manali|shimla|varanasi|coimbatore|trivandrum|pune|ahmedabad)/i);
+        const travelDateMatch = responseText.match(/(\d{4}-\d{2}-\d{2}|\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec))/i);
+        if (destMatch && !checkinDone) {
+          setCheckinPrompt({
+            destination: destMatch[0].toLowerCase(),
+            travelDate:  travelDateMatch ? travelDateMatch[0] : null,
+          });
+        }
+      } catch {}
+      // ─────────────────────────────────────────────────────────────────────
     } catch {
       setThinking(false);
       setMessages([...next, {
@@ -1799,6 +2031,23 @@ export default function AIChatPage() {
                 <div style={{ background:T.aiBubble, border:`1px solid ${T.border}`, borderLeft:`3px solid ${T.accent}`, borderRadius:"0 16px 16px 16px", boxShadow:T.cardShadow, overflow:"hidden" }}>
                   <HolographicGlobe themeKey={themeKey} query={thinkQuery}/>
                 </div>
+              </div>
+            )}
+
+            {/* CHECK-IN PROMPT — shown after destination detected */}
+            {checkinPrompt && !checkinDone && (
+              <div style={{ maxWidth:700, margin:"0 auto", paddingBottom:8, animation:"fadeUp 0.4s both" }}>
+                <CheckinPromptCard
+                  prompt={checkinPrompt}
+                  waNumber={waNumber}
+                  token={token}
+                  T={T}
+                  onDone={(num) => {
+                    setCheckinDone(true);
+                    if (num) setWaNumber(num);
+                    setCheckinPrompt(null);
+                  }}
+                />
               </div>
             )}
 

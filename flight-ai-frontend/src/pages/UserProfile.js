@@ -81,7 +81,10 @@ function AuroraBackground() {
 
 export default function UserProfile() {
   const navigate = useNavigate();
-  const [profile,  setProfile]  = useState({ name: "", email: "", phone: "", ref_code: "", wallet_balance: 0 });
+  const [profile, setProfile] = useState({
+    name: "", email: "", phone: "", ref_code: "",
+    wallet_balance: 0, whatsapp_number: "",
+  });
   const [loading,  setLoading]  = useState(true);
   const [saving,   setSaving]   = useState(false);
   const [pwForm,   setPwForm]   = useState({ currentPassword: "", newPassword: "", confirm: "" });
@@ -92,39 +95,31 @@ export default function UserProfile() {
 
   const token = localStorage.getItem("token");
 
-  // Redirect if not logged in
   useEffect(() => {
     if (!token) { navigate("/login"); }
   }, [token, navigate]);
 
-  // Fetch profile
   useEffect(() => {
     if (!token) return;
     setLoading(true);
     fetch(`${API}/profile`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => {
-        if (!r.ok) throw new Error("failed");
-        return r.json();
-      })
+      .then(r => { if (!r.ok) throw new Error("failed"); return r.json(); })
       .then(data => {
         setProfile({
-          name:           data.name           || "",
-          email:          data.email          || "",
-          phone:          data.phone          || "",
-          ref_code:       data.ref_code       || "",
-          wallet_balance: data.wallet_balance || 0,
+          name:             data.name             || "",
+          email:            data.email            || "",
+          phone:            data.phone            || "",
+          ref_code:         data.ref_code         || "",
+          wallet_balance:   data.wallet_balance   || 0,
+          whatsapp_number:  data.whatsapp_number  || "",
         });
         const stored = JSON.parse(localStorage.getItem("user") || "{}");
         localStorage.setItem("user", JSON.stringify({ ...stored, ...data }));
       })
-      .catch(err => {
-        console.error("Profile fetch error:", err);
-        // Don't stay loading on error — show empty form
-      })
+      .catch(err => console.error("Profile fetch error:", err))
       .finally(() => setLoading(false));
   }, [token]);
 
-  // Fetch bookings when tab opens
   useEffect(() => {
     if (activeTab !== "bookings" || !token) return;
     setBLoading(true);
@@ -146,10 +141,26 @@ export default function UserProfile() {
       const res = await fetch(`${API}/profile`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ name: profile.name, email: profile.email, phone: profile.phone }),
+        body: JSON.stringify({
+          name:  profile.name,
+          email: profile.email,
+          phone: profile.phone,
+        }),
       });
       const data = await res.json();
       if (!res.ok) return flash("error", data.message || "Update failed");
+
+      // Save WhatsApp number separately if provided
+      if (profile.whatsapp_number) {
+        try {
+          await fetch(`${API}/whatsapp-number`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ whatsapp_number: profile.whatsapp_number }),
+          });
+        } catch {}
+      }
+
       flash("success", "Profile updated ✓");
       const stored = JSON.parse(localStorage.getItem("user") || "{}");
       localStorage.setItem("user", JSON.stringify({ ...stored, name: profile.name, email: profile.email }));
@@ -207,7 +218,6 @@ export default function UserProfile() {
     boxShadow: `0 6px 22px rgba(201,168,76,0.4)`,
   };
 
-  // Show spinner while loading
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", background: "#faf8f4", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
@@ -314,7 +324,9 @@ export default function UserProfile() {
                   </div>
                 ))}
               </div>
-              <div style={{ marginBottom: 28 }}>
+
+              {/* Phone */}
+              <div style={{ marginBottom: 16 }}>
                 <label style={lbl}>PHONE NUMBER <span style={{ color: "#aaa", fontWeight: 400, fontSize: 11 }}>(optional)</span></label>
                 <input type="tel" value={profile.phone} placeholder="+91 98765 43210"
                   onChange={e => setProfile({ ...profile, phone: e.target.value })}
@@ -322,6 +334,24 @@ export default function UserProfile() {
                   onFocus={e => { e.target.style.borderColor = GOLD; e.target.style.boxShadow = "0 0 0 3px rgba(201,168,76,0.1)"; }}
                   onBlur={e => { e.target.style.borderColor = "rgba(201,168,76,0.25)"; e.target.style.boxShadow = "none"; }}/>
               </div>
+
+              {/* WhatsApp Number — NEW */}
+              <div style={{ marginBottom: 28 }}>
+                <label style={lbl}>
+                  WHATSAPP NUMBER{" "}
+                  <span style={{ color: "#aaa", fontWeight: 400, fontSize: 11 }}>(for safe arrival check-ins)</span>
+                </label>
+                <input type="tel" value={profile.whatsapp_number} placeholder="+91 98765 43210"
+                  onChange={e => setProfile({ ...profile, whatsapp_number: e.target.value })}
+                  style={inp}
+                  onFocus={e => { e.target.style.borderColor = GOLD; e.target.style.boxShadow = "0 0 0 3px rgba(201,168,76,0.1)"; }}
+                  onBlur={e => { e.target.style.borderColor = "rgba(201,168,76,0.25)"; e.target.style.boxShadow = "none"; }}/>
+                <div style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 11, color: "#888", marginTop: 6, lineHeight: 1.5, display: "flex", alignItems: "center", gap: 5 }}>
+                  <span>🛡️</span>
+                  <span>Used only for ALVRYN travel safety check-ins. Optional — we care more about your journey than just your ticket.</span>
+                </div>
+              </div>
+
               <button onClick={saveProfile} disabled={saving} style={{ ...btn, opacity: saving ? 0.7 : 1 }}>
                 {saving ? "Saving…" : "Save Changes"}
               </button>
@@ -373,7 +403,7 @@ export default function UserProfile() {
                 {[
                   { icon: "🎁", title: "Refer a friend",  desc: "They book a flight above ₹5,000 → You get ₹150 wallet credit" },
                   { icon: "🆕", title: "Friend gets",     desc: "₹100 wallet credit on their first booking above ₹5,000" },
-                  { icon: "🏷️",title: "Promo codes",      desc: "Apply codes at checkout to save on every booking" },
+                  { icon: "🏷️", title: "Promo codes",     desc: "Apply codes at checkout to save on every booking" },
                 ].map(item => (
                   <div key={item.title} style={{ display: "flex", gap: 14, marginBottom: 14, alignItems: "flex-start" }}>
                     <span style={{ fontSize: 22 }}>{item.icon}</span>

@@ -479,7 +479,10 @@ app.post("/login", async (req, res) => {
 
 app.get("/profile", authenticateToken, async (req, res) => {
   try {
-    const r = await pool.query("SELECT id,name,email,phone,ref_code,wallet_balance,referred_by FROM users WHERE id=$1", [req.user.id]);
+    const r = await pool.query(
+      "SELECT id,name,email,phone,ref_code,wallet_balance,referred_by,whatsapp_number FROM users WHERE id=$1",
+      [req.user.id]
+    );
     res.json(r.rows[0] || {});
   } catch { res.status(500).json({ message: "Server error" }); }
 });
@@ -2062,7 +2065,7 @@ app.post("/ai-chat-v2", authenticateToken, async (req, res) => {
     : "";
 
   // ── SAFETY INSIGHTS (auto-appended for all tiers) ──────────────────────
-  
+  let safetyInsight = ""
   try {
     const isTravelQuery = f && t &&
       !/^(hi|hello|hey|thanks|ok|okay|yes|no|good|great)$/i.test(message.trim());
@@ -2077,15 +2080,6 @@ app.post("/ai-chat-v2", authenticateToken, async (req, res) => {
     }
   } catch { safetyInsight = ""; }
   // ────────────────────────────────────────────────────────────────────────
-let safetyInsight = "";
-      try {
-        const destCity = t || f;
-        if (destCity && f && t && app.locals.buildSafetyInsight) {
-          const userPlan = await app.locals.getUserPlan?.(userId) || "explorer";
-          const womenTraveler = /\bwomen?\b|\bfemale\b|\blady\b/i.test(message);
-          safetyInsight = await app.locals.buildSafetyInsight(destCity, userPlan, { womenTraveler }) || "";
-        }
-      } catch { safetyInsight = ""; }
 
   logEvent("ai_groq", message.slice(0, 80), "ai_chat", userId).catch(() => {});
   return res.json({
@@ -2122,7 +2116,7 @@ app.get("/admin/bookings", async (req, res) => {
 });
 
 app.get("/admin/users", async (req, res) => {
-  try { const r = await pool.query("SELECT id,name,email,phone,created_at FROM users ORDER BY id DESC LIMIT 200"); res.json(r.rows); }
+  try { const r = await pool.query("SELECT id,name,email,phone,plan,created_at FROM users ORDER BY id DESC LIMIT 200"); res.json(r.rows); }
   catch (e) { res.status(500).json({ message: "Server error" }); }
 });
 

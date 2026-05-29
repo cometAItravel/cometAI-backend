@@ -2167,6 +2167,7 @@ require("./server2.js")(app, pool);
 require("./server_plans.js")(app, pool);
 require("./server_safety.js")(app, pool);
 require("./server_checkin.js")(app, pool);
+require("./server_auth_recovery.js")(app, pool, resend);
 
 // ── START SERVER ──────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 4000;

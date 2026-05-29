@@ -1655,9 +1655,9 @@ export default function AIChatPage() {
         const userMsg      = q.toLowerCase();
         // Detect destination from AI response or user message
         const destMatch =
-          responseText.match(/(goa|dubai|mumbai|delhi|bangalore|chennai|hyderabad|kolkata|jaipur|kochi|singapore|bangkok|london|new york|bali|paris|tokyo|maldives|kerala|manali|shimla|varanasi|coimbatore|trivandrum|pune|ahmedabad)/i) ||
-          userMsg.match(/(goa|dubai|mumbai|delhi|bangalore|chennai|hyderabad|kolkata|jaipur|kochi|singapore|bangkok|london|new york|bali|paris|tokyo|maldives|kerala|manali|shimla|varanasi|coimbatore|trivandrum|pune|ahmedabad)/i);
-        const travelDateMatch = responseText.match(/(\d{4}-\d{2}-\d{2}|\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec))/i);
+          responseText.match(/(goa|dubai|mumbai|delhi|bangalore|chennai|hyderabad|kolkata|jaipur|kochi|singapore|bangkok|london|new york|bali|paris|tokyo|maldives|kerala|manali|shimla|varanasi|coimbatore|trivandrum|pune|ahmedabad)/i) ||
+          userMsg.match(/(goa|dubai|mumbai|delhi|bangalore|chennai|hyderabad|kolkata|jaipur|kochi|singapore|bangkok|london|new york|bali|paris|tokyo|maldives|kerala|manali|shimla|varanasi|coimbatore|trivandrum|pune|ahmedabad)/i);
+        const travelDateMatch = responseText.match(/(\d{4}-\d{2}-\d{2}|\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec))/i);
         if (destMatch && !checkinDone) {
           setCheckinPrompt({
             destination: destMatch[0].toLowerCase(),
@@ -2084,4 +2084,4 @@ export default function AIChatPage() {
       </div>
     </div>
   );
-}
+}  

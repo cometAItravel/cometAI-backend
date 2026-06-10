@@ -93,6 +93,11 @@ export default function UserProfile() {
   const [bookings, setBookings] = useState([]);
   const [bLoading, setBLoading] = useState(false);
 
+  // Forgot password state (for users who forgot current password)
+  const [fpScreen,  setFpScreen]  = useState("idle"); // idle | sent | verify | reset | done
+  const [fpError,   setFpError]   = useState("");
+  const [fpSuccess, setFpSuccess] = useState("");
+
   const token = localStorage.getItem("token");
 
   useEffect(() => {
@@ -129,6 +134,10 @@ export default function UserProfile() {
       .catch(() => setBookings([]))
       .finally(() => setBLoading(false));
   }, [activeTab, token]);
+
+  // ── FORGOT PASSWORD FUNCTIONS ────────────────────────────────────────────────
+
+
 
   const flash = (type, text) => {
     setMsg({ type, text });
@@ -358,29 +367,170 @@ export default function UserProfile() {
             </div>
           )}
 
-          {/* ── PASSWORD ── */}
+          {/* ── PASSWORD / RECOVERY ── */}
           {activeTab === "security" && (
             <div style={{ animation: "fadeUp 0.4s both" }}>
-              <h2 style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 700, fontSize: 22, color: "#1a1410", marginBottom: 24 }}>Change Password</h2>
-              <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 420 }}>
-                {[
-                  { key: "currentPassword", label: "CURRENT PASSWORD",     ph: "Your current password" },
-                  { key: "newPassword",     label: "NEW PASSWORD",         ph: "At least 6 characters" },
-                  { key: "confirm",         label: "CONFIRM NEW PASSWORD", ph: "Repeat new password" },
-                ].map(f => (
-                  <div key={f.key}>
-                    <label style={lbl}>{f.label}</label>
-                    <input type="password" value={pwForm[f.key]} placeholder={f.ph}
-                      onChange={e => setPwForm({ ...pwForm, [f.key]: e.target.value })}
-                      style={inp}
-                      onFocus={e => { e.target.style.borderColor = GOLD; e.target.style.boxShadow = "0 0 0 3px rgba(201,168,76,0.1)"; }}
-                      onBlur={e => { e.target.style.borderColor = "rgba(201,168,76,0.25)"; e.target.style.boxShadow = "none"; }}/>
+
+              {/* ── Change password (knows current password) ── */}
+              {fpScreen === "idle" && (
+                <>
+                  <h2 style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 700, fontSize: 22, color: "#1a1410", marginBottom: 8 }}>Password & Security</h2>
+                  <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: "#888", marginBottom: 24 }}>Update your password or recover it via email OTP if you've forgotten it.</p>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 420 }}>
+                    {[
+                      { key: "currentPassword", label: "CURRENT PASSWORD",     ph: "Your current password" },
+                      { key: "newPassword",     label: "NEW PASSWORD",         ph: "At least 6 characters" },
+                      { key: "confirm",         label: "CONFIRM NEW PASSWORD", ph: "Repeat new password" },
+                    ].map(f => (
+                      <div key={f.key}>
+                        <label style={lbl}>{f.label}</label>
+                        <input type="password" value={pwForm[f.key]} placeholder={f.ph}
+                          onChange={e => setPwForm({ ...pwForm, [f.key]: e.target.value })}
+                          style={inp}
+                          onFocus={e => { e.target.style.borderColor = GOLD; e.target.style.boxShadow = "0 0 0 3px rgba(201,168,76,0.1)"; }}
+                          onBlur={e => { e.target.style.borderColor = "rgba(201,168,76,0.25)"; e.target.style.boxShadow = "none"; }}/>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <button onClick={savePassword} disabled={saving} style={{ ...btn, marginTop: 24, opacity: saving ? 0.7 : 1 }}>
-                {saving ? "Updating…" : "Update Password"}
-              </button>
+                  <button onClick={savePassword} disabled={saving} style={{ ...btn, marginTop: 24, opacity: saving ? 0.7 : 1 }}>
+                    {saving ? "Updating…" : "Update Password"}
+                  </button>
+
+                  {/* Divider + forgot option */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "24px 0 16px", maxWidth: 420 }}>
+                    <div style={{ flex: 1, height: 1, background: "rgba(201,168,76,0.18)" }}/>
+                    <span style={{ fontSize: 12, color: "#aaa", fontFamily: "'DM Sans',sans-serif" }}>or</span>
+                    <div style={{ flex: 1, height: 1, background: "rgba(201,168,76,0.18)" }}/>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      setFpError(""); setFpSuccess(""); setFpScreen("sending");
+                      try {
+                        const res = await fetch(`${API}/forgot-password`, {
+                          method: "POST", headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ email: profile.email }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) { setFpError(data.message || "Failed to send OTP."); setFpScreen("idle"); return; }
+                        setFpScreen("sent");
+                        setFpSuccess(`OTP sent to ${profile.email} — check your inbox!`);
+                      } catch { setFpError("Connection error. Please try again."); setFpScreen("idle"); }
+                    }}
+                    style={{ background: "rgba(201,168,76,0.07)", border: "1.5px solid rgba(201,168,76,0.25)", borderRadius: 12, padding: "12px 20px", color: GOLD_DARK, fontFamily: "'DM Sans',sans-serif", fontSize: 14, fontWeight: 600, cursor: "pointer", maxWidth: 420, width: "100%", textAlign: "left" }}>
+                    🔑 Forgot your password? Recover via email OTP →
+                  </button>
+                </>
+              )}
+
+              {/* Sending OTP spinner */}
+              {fpScreen === "sending" && (
+                <div style={{ textAlign: "center", padding: "40px 0" }}>
+                  <div style={{ width: 36, height: 36, border: "3px solid rgba(201,168,76,0.2)", borderTopColor: GOLD, borderRadius: "50%", animation: "spinSlow 1s linear infinite", margin: "0 auto 16px" }}/>
+                  <div style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 14, color: "#888" }}>Sending OTP to {profile.email}…</div>
+                </div>
+              )}
+
+              {/* OTP sent — enter code */}
+              {fpScreen === "sent" && (
+                <div style={{ animation: "fadeUp 0.3s both", maxWidth: 420 }}>
+                  <button onClick={() => { setFpScreen("idle"); setFpError(""); setFpSuccess(""); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: 13, fontFamily: "'DM Sans',sans-serif", marginBottom: 20, padding: 0, display: "flex", alignItems: "center", gap: 5 }}>← Back</button>
+                  <div style={{ textAlign: "center", marginBottom: 24 }}>
+                    <div style={{ fontSize: 36, marginBottom: 10 }}>📬</div>
+                    <h3 style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 700, fontSize: 20, color: "#1a1410", marginBottom: 6 }}>Check your email</h3>
+                    <p style={{ fontSize: 13, color: "#888", lineHeight: 1.6 }}>We sent a 6-digit OTP to <strong style={{ color: "#1a1410" }}>{profile.email}</strong></p>
+                  </div>
+                  {fpError   && <div style={{ background: "#fff0f0", border: "1px solid rgba(200,50,50,0.2)", borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#cc2222" }}>⚠️ {fpError}</div>}
+                  {fpSuccess && <div style={{ background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.2)", borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: GOLD_DARK }}>✅ {fpSuccess}</div>}
+                  <label style={lbl}>ENTER 6-DIGIT OTP</label>
+                  <input type="text" inputMode="numeric" maxLength={6} placeholder="123456"
+                    value={pwForm.otpCode || ""}
+                    onChange={e => setPwForm(p => ({ ...p, otpCode: e.target.value.replace(/\D/g,"").slice(0,6) }))}
+                    style={{ ...inp, fontFamily: "'Space Mono',monospace", fontSize: 22, letterSpacing: "6px", textAlign: "center", marginBottom: 16 }}
+                    onFocus={e => { e.target.style.borderColor = GOLD; e.target.style.boxShadow = "0 0 0 3px rgba(201,168,76,0.1)"; }}
+                    onBlur={e => { e.target.style.borderColor = "rgba(201,168,76,0.25)"; e.target.style.boxShadow = "none"; }}/>
+                  <button
+                    disabled={!pwForm.otpCode || pwForm.otpCode.length < 6 || saving}
+                    onClick={async () => {
+                      setSaving(true); setFpError("");
+                      try {
+                        const res = await fetch(`${API}/verify-otp`, {
+                          method: "POST", headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ email: profile.email, otp: pwForm.otpCode }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) { setFpError(data.message || "Incorrect OTP."); setSaving(false); return; }
+                        setPwForm(p => ({ ...p, resetToken: data.resetToken }));
+                        setFpScreen("reset");
+                      } catch { setFpError("Connection error."); }
+                      setSaving(false);
+                    }}
+                    style={{ ...btn, opacity: !pwForm.otpCode || pwForm.otpCode.length < 6 || saving ? 0.6 : 1, cursor: !pwForm.otpCode || pwForm.otpCode.length < 6 ? "default" : "pointer" }}>
+                    {saving ? "Verifying…" : "Verify OTP →"}
+                  </button>
+                  <div style={{ textAlign: "center", marginTop: 14, fontSize: 13, color: "#aaa" }}>OTP expires in 10 minutes</div>
+                </div>
+              )}
+
+              {/* New password screen */}
+              {fpScreen === "reset" && (
+                <div style={{ animation: "fadeUp 0.3s both", maxWidth: 420 }}>
+                  <div style={{ textAlign: "center", marginBottom: 24 }}>
+                    <div style={{ fontSize: 36, marginBottom: 10 }}>🔑</div>
+                    <h3 style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 700, fontSize: 20, color: "#1a1410", marginBottom: 6 }}>Set new password</h3>
+                    <p style={{ fontSize: 13, color: "#888" }}>Choose a strong new password.</p>
+                  </div>
+                  {fpError && <div style={{ background: "#fff0f0", border: "1px solid rgba(200,50,50,0.2)", borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#cc2222" }}>⚠️ {fpError}</div>}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    {[
+                      { key: "newPass1", label: "NEW PASSWORD",         ph: "At least 6 characters", type: "password" },
+                      { key: "newPass2", label: "CONFIRM NEW PASSWORD", ph: "Repeat new password",   type: "password" },
+                    ].map(f => (
+                      <div key={f.key}>
+                        <label style={lbl}>{f.label}</label>
+                        <input type={f.type} value={pwForm[f.key] || ""} placeholder={f.ph}
+                          onChange={e => setPwForm(p => ({ ...p, [f.key]: e.target.value }))}
+                          style={{ ...inp, borderColor: f.key === "newPass2" && pwForm.newPass2 && pwForm.newPass1 !== pwForm.newPass2 ? "rgba(239,68,68,0.5)" : "rgba(201,168,76,0.25)" }}
+                          onFocus={e => { e.target.style.borderColor = GOLD; e.target.style.boxShadow = "0 0 0 3px rgba(201,168,76,0.1)"; }}
+                          onBlur={e => { e.target.style.borderColor = "rgba(201,168,76,0.25)"; e.target.style.boxShadow = "none"; }}/>
+                        {f.key === "newPass2" && pwForm.newPass2 && pwForm.newPass1 !== pwForm.newPass2 && (
+                          <div style={{ fontSize: 11, color: "#ef4444", marginTop: 4 }}>Passwords don't match</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    disabled={saving || !pwForm.newPass1 || pwForm.newPass1.length < 6 || pwForm.newPass1 !== pwForm.newPass2}
+                    onClick={async () => {
+                      setSaving(true); setFpError("");
+                      try {
+                        const res = await fetch(`${API}/reset-password`, {
+                          method: "POST", headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ resetToken: pwForm.resetToken, newPassword: pwForm.newPass1 }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) { setFpError(data.message || "Reset failed."); setSaving(false); return; }
+                        setFpScreen("done");
+                      } catch { setFpError("Connection error."); }
+                      setSaving(false);
+                    }}
+                    style={{ ...btn, marginTop: 20, opacity: saving || !pwForm.newPass1 || pwForm.newPass1.length < 6 || pwForm.newPass1 !== pwForm.newPass2 ? 0.6 : 1 }}>
+                    {saving ? "Updating…" : "Set New Password →"}
+                  </button>
+                </div>
+              )}
+
+              {/* Done */}
+              {fpScreen === "done" && (
+                <div style={{ textAlign: "center", padding: "20px 0", animation: "fadeUp 0.3s both" }}>
+                  <div style={{ fontSize: 52, marginBottom: 14 }}>🎉</div>
+                  <h3 style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 700, fontSize: 22, color: "#1a1410", marginBottom: 8 }}>Password updated!</h3>
+                  <p style={{ fontSize: 14, color: "#888", marginBottom: 24 }}>Your password has been reset successfully.</p>
+                  <button onClick={() => { setFpScreen("idle"); setPwForm({ currentPassword: "", newPassword: "", confirm: "" }); flash("success", "Password updated ✓"); }}
+                    style={btn}>Back to Security Settings</button>
+                </div>
+              )}
+
             </div>
           )}
 

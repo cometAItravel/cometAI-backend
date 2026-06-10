@@ -1,148 +1,91 @@
-/**
- * ALVRYN — server_plans.js
- * Handles:
- *  - Auto DB migration (plan columns + feedback table)
- *  - Plan reading middleware
- *  - Trip plan counter (2/month for free tier)
- *  - AI routing logic (Groq → GPT → Claude based on plan)
- *  - Feedback (thumbs up/down + optional reason)
- */
+// server_plans.js — Tier logic, AI routing, feedback, trip counter, AUTO-MIGRATION
+// UPGRADED: Advanced AI system prompt for complex multi-constraint queries
 
-"use strict";
+module.exports = function(app, pool) {
 
-module.exports = function mountPlans(app, pool) {
-
-  // ── AUTO MIGRATION ──────────────────────────────────────────────────────────
-  // Runs on server start. Safe — uses IF NOT EXISTS / IF NOT EXISTS column checks.
-  async function runMigrations() {
+  // ── AUTO-MIGRATION ──────────────────────────────────────────────────────────
+  async function migrate() {
     try {
-      // Add plan columns to users table
       await pool.query(`
-        ALTER TABLE users
-          ADD COLUMN IF NOT EXISTS plan VARCHAR(20) DEFAULT 'explorer'
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS plan VARCHAR(20) DEFAULT 'explorer';
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_expires_at TIMESTAMP;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS whatsapp_number VARCHAR(20);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS trip_plans_this_month INTEGER DEFAULT 0;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS trip_plans_reset_at TIMESTAMP DEFAULT NOW();
       `);
-      await pool.query(`
-        ALTER TABLE users
-          ADD COLUMN IF NOT EXISTS plan_expires_at TIMESTAMP
-      `);
-      await pool.query(`
-        ALTER TABLE users
-          ADD COLUMN IF NOT EXISTS whatsapp_number VARCHAR(20)
-      `);
-      await pool.query(`
-        ALTER TABLE users
-          ADD COLUMN IF NOT EXISTS trip_plans_this_month INTEGER DEFAULT 0
-      `);
-      await pool.query(`
-        ALTER TABLE users
-          ADD COLUMN IF NOT EXISTS trip_plans_reset_at TIMESTAMP DEFAULT NOW()
-      `);
-
-      // Feedback table
       await pool.query(`
         CREATE TABLE IF NOT EXISTS ai_feedback (
           id           SERIAL PRIMARY KEY,
-          user_id      INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          user_id      INTEGER,
           message_id   VARCHAR(64),
           user_message TEXT,
           ai_response  TEXT,
-          rating       SMALLINT NOT NULL CHECK (rating IN (1, -1)),
+          rating       SMALLINT NOT NULL,
           reason       TEXT,
           created_at   TIMESTAMP DEFAULT NOW()
-        )
-      `);
-
-      // Index for fast feedback lookup
-      await pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_feedback_user
-        ON ai_feedback(user_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_feedback_user   ON ai_feedback(user_id);
+        CREATE INDEX IF NOT EXISTS idx_feedback_rating ON ai_feedback(rating);
       `);
       await pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_feedback_rating
-        ON ai_feedback(rating)
+        CREATE TABLE IF NOT EXISTS waitlist (
+          id         SERIAL PRIMARY KEY,
+          email      VARCHAR(255),
+          plan       VARCHAR(30),
+          created_at TIMESTAMP DEFAULT NOW()
+        );
       `);
-
-      console.log("✅ server_plans.js migrations complete");
-    } catch (e) {
-      console.error("❌ server_plans.js migration error:", e.message);
+      console.log("server_plans.js: migration OK");
+    } catch(e) {
+      console.error("server_plans.js migration error:", e.message);
     }
   }
+  migrate();
 
-  runMigrations();
-
-  // ── HELPERS ─────────────────────────────────────────────────────────────────
-
-  /**
-   * Read user's current plan from DB.
-   * Returns 'explorer' | 'navigator' | 'voyager'
-   * Falls back to 'explorer' on any error.
-   */
+  // ── GET USER PLAN ───────────────────────────────────────────────────────────
   async function getUserPlan(userId) {
     if (!userId) return "explorer";
     try {
       const r = await pool.query(
-        "SELECT plan, plan_expires_at FROM users WHERE id=$1",
-        [userId]
+        "SELECT plan, plan_expires_at FROM users WHERE id=$1", [userId]
       );
       if (!r.rows.length) return "explorer";
       const { plan, plan_expires_at } = r.rows[0];
-
-      // If plan has expiry and it's past — downgrade to explorer
-      if (plan !== "explorer" && plan_expires_at && new Date(plan_expires_at) < new Date()) {
-        await pool.query(
-          "UPDATE users SET plan='explorer', plan_expires_at=NULL WHERE id=$1",
-          [userId]
-        );
-        return "explorer";
-      }
+      if (plan_expires_at && new Date(plan_expires_at) < new Date()) return "explorer";
       return plan || "explorer";
-    } catch {
-      return "explorer";
-    }
+    } catch { return "explorer"; }
   }
 
-  /**
-   * Check and increment trip plan counter for free-tier users.
-   * Resets counter monthly.
-   * Returns: { allowed: bool, used: number, limit: number }
-   */
-  async function checkTripPlanLimit(userId, plan) {
-    // Pro and Premium have unlimited trip plans
-    if (plan !== "explorer") return { allowed: true, used: 0, limit: Infinity };
-    if (!userId) return { allowed: false, used: 2, limit: 2 };
-
+  // ── CHECK TRIP PLAN LIMIT ───────────────────────────────────────────────────
+  async function checkTripPlanLimit(userId) {
+    if (!userId) return { allowed: true, remaining: 2 };
     try {
       const r = await pool.query(
-        "SELECT trip_plans_this_month, trip_plans_reset_at FROM users WHERE id=$1",
+        "SELECT plan, trip_plans_this_month, trip_plans_reset_at FROM users WHERE id=$1",
         [userId]
       );
-      if (!r.rows.length) return { allowed: false, used: 2, limit: 2 };
+      if (!r.rows.length) return { allowed: true, remaining: 2 };
+      const { plan, trip_plans_this_month, trip_plans_reset_at } = r.rows[0];
 
-      let { trip_plans_this_month, trip_plans_reset_at } = r.rows[0];
-      const count = trip_plans_this_month || 0;
-      const resetAt = trip_plans_reset_at ? new Date(trip_plans_reset_at) : new Date();
+      // Reset monthly counter if needed
+      const resetAt = new Date(trip_plans_reset_at || 0);
       const now = new Date();
-
-      // Reset counter if it's been more than 30 days
-      if ((now - resetAt) > 30 * 24 * 60 * 60 * 1000) {
+      if (now.getMonth() !== resetAt.getMonth() || now.getFullYear() !== resetAt.getFullYear()) {
         await pool.query(
           "UPDATE users SET trip_plans_this_month=0, trip_plans_reset_at=NOW() WHERE id=$1",
           [userId]
         );
-        return { allowed: true, used: 0, limit: 2 };
+        return { allowed: true, remaining: plan === "explorer" ? 2 : 999 };
       }
 
-      if (count >= 2) return { allowed: false, used: count, limit: 2 };
-      return { allowed: true, used: count, limit: 2 };
-    } catch {
-      return { allowed: true, used: 0, limit: 2 };
-    }
+      const limit = plan === "explorer" ? 2 : 999;
+      const used = trip_plans_this_month || 0;
+      return { allowed: used < limit, remaining: Math.max(0, limit - used) };
+    } catch { return { allowed: true, remaining: 2 }; }
   }
 
-  /**
-   * Increment trip plan counter for a user.
-   */
-  async function incrementTripPlanCount(userId) {
+  // ── INCREMENT TRIP PLAN COUNTER ─────────────────────────────────────────────
+  async function incrementTripPlan(userId) {
     if (!userId) return;
     try {
       await pool.query(
@@ -152,272 +95,247 @@ module.exports = function mountPlans(app, pool) {
     } catch {}
   }
 
-  /**
-   * AI ROUTING — decides which AI to call based on plan.
-   *
-   * Strategy:
-   *   1. Always check stored data first (handled in server.js easyResponse / DB)
-   *   2. Explorer  → Groq only
-   *   3. Navigator → Groq first, GPT if Groq fails or query is 'hard'
-   *   4. Voyager   → Groq first, GPT fallback, Claude for complex/premium queries
-   *
-   * Falls back gracefully if API keys are missing.
-   */
-  async function callAIForPlan(prompt, systemMsg, plan, tier = "medium", maxTokens = 500) {
-    const GROQ_KEY      = process.env.GROQ_API_KEY;
-    const OPENAI_KEY    = process.env.OPENAI_API_KEY;
-    const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+  // ── BUILD ADVANCED SYSTEM PROMPT ────────────────────────────────────────────
+  // This is the KEY fix — comprehensive system prompt that handles ALL constraints
+  function buildSystemPrompt(userContext) {
+    const { name, homecity, plan, preferences } = userContext || {};
 
-    // ── Helper: call Groq ──
-    const callGroq = async (tokens = 500) => {
-      if (!GROQ_KEY) return null;
-      try {
-        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${GROQ_KEY}` },
-          body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
-            messages: [
-              { role: "system", content: systemMsg },
-              { role: "user",   content: prompt },
-            ],
-            max_tokens: tokens, temperature: 0.85,
-          }),
-        });
-        const d = await res.json();
-        return d.choices?.[0]?.message?.content || null;
-      } catch { return null; }
-    };
+    return `You are ALVRYN AI — a brilliant, warm, and witty travel companion for Indian travellers.
+You work for ALVRYN (alvryn.in), an AI-powered travel platform.
 
-    // ── Helper: call GPT ──
-    const callGPT = async (tokens = 600) => {
-      if (!OPENAI_KEY) return null;
-      try {
-        const res = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_KEY}` },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [
-              { role: "system", content: systemMsg },
-              { role: "user",   content: prompt },
-            ],
-            max_tokens: tokens, temperature: 0.85,
-          }),
-        });
-        const d = await res.json();
-        return d.choices?.[0]?.message?.content || null;
-      } catch { return null; }
-    };
+═══════════════════════════════════════════════════════════
+CRITICAL INSTRUCTION — READ THIS FIRST:
+═══════════════════════════════════════════════════════════
+When a user sends ANY message — no matter how complex — you MUST extract and address EVERY piece of information they provide. Never ignore any constraint.
 
-    // ── Helper: call Claude ──
-    const callClaude = async (tokens = 700) => {
-      if (!ANTHROPIC_KEY) return null;
-      try {
-        const res = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": ANTHROPIC_KEY,
-            "anthropic-version": "2023-06-01",
-          },
-          body: JSON.stringify({
-            model: "claude-3-5-haiku-20241022",
-            max_tokens: tokens,
-            system: systemMsg,
-            messages: [{ role: "user", content: prompt }],
-          }),
-        });
-        const d = await res.json();
-        return d.content?.[0]?.text || null;
-      } catch { return null; }
-    };
+If the user says: "6 friends from Bangalore to Goa in August. Budget ₹15,000 per person. Two vegetarians. One person arrives a day late. Prefer beaches over nightlife. Need airport transfers."
 
-    // ── ROUTING LOGIC ──────────────────────────────────────────────────────────
+You MUST address ALL of these in your response:
+✅ Group size: 6 friends
+✅ Origin: Bangalore
+✅ Destination: Goa
+✅ Month: August
+✅ Budget: ₹15,000 per person (₹90,000 total)
+✅ Dietary: 2 vegetarians — suggest vegetarian-friendly restaurants/hotels
+✅ Late arrival: 1 person arrives a day late — give separate arrival plan for them
+✅ Preference: beaches over nightlife — recommend North Goa beaches, avoid party-heavy areas
+✅ Transfers: airport transfers — include cab costs from airport
 
-    if (plan === "explorer") {
-      // Free: Groq only
-      return await callGroq(maxTokens);
-    }
+NEVER extract only one detail and ignore the rest. NEVER just show hotel cards when the user asked for a complete plan.
 
-    if (plan === "navigator") {
-      // Pro: Groq first → GPT fallback for hard queries or if Groq fails
-      if (tier === "hard" && OPENAI_KEY) {
-        const gpt = await callGPT(600);
-        if (gpt) return gpt;
-      }
-      const groq = await callGroq(maxTokens);
-      if (groq) return groq;
-      // Fallback to GPT if Groq failed
-      return await callGPT(600);
-    }
+═══════════════════════════════════════════════════════════
+YOUR PERSONALITY:
+═══════════════════════════════════════════════════════════
+- Warm, funny, witty — like a knowledgeable friend who has travelled everywhere
+- Tease gently, celebrate the trip, make travel feel exciting
+- Never robotic, never generic, never boring
+- Speak like a smart Indian who loves travel
+- Avoid jokes about money, religion, politics
+- NEVER mention competitor names (MakeMyTrip, Cleartrip, Ixigo, Yatra, etc.)
+- Always refer to "our partner site" for booking
 
-    if (plan === "voyager") {
-      // Premium: Groq for easy/medium → GPT for hard → Claude for very complex
-      if (tier === "hard" && ANTHROPIC_KEY) {
-        const claude = await callClaude(700);
-        if (claude) return claude;
-      }
-      if (tier === "hard" && OPENAI_KEY) {
-        const gpt = await callGPT(700);
-        if (gpt) return gpt;
-      }
-      const groq = await callGroq(maxTokens);
-      if (groq) return groq;
-      // Final fallbacks
-      if (OPENAI_KEY) return await callGPT(600);
-      if (ANTHROPIC_KEY) return await callClaude(700);
-      return null;
-    }
+${name ? `User's name: ${name}` : ""}
+${homecity ? `User's home city: ${homecity}` : ""}
+${preferences ? `Known preferences: ${JSON.stringify(preferences)}` : ""}
+Current plan: ${plan || "explorer"} (free tier)
 
-    // Default fallback
-    return await callGroq(maxTokens);
+═══════════════════════════════════════════════════════════
+HOW TO HANDLE DIFFERENT QUERY TYPES:
+═══════════════════════════════════════════════════════════
+
+1. SIMPLE QUESTIONS ("best time to visit Goa", "visa for Dubai", "baggage rules IndiGo")
+   → Answer directly, concisely, helpfully. 1-3 paragraphs max.
+
+2. DESTINATION QUESTIONS ("what to do in Manali", "is Ooty good in June")
+   → Give a warm, exciting response with 3-5 specific tips. Include budget hints.
+
+3. TRAVEL PLANNING ("plan a trip to...", "I want to go to...", "help me plan...")
+   → Extract ALL details the user provides
+   → Ask for missing critical info naturally (only ask what's genuinely missing)
+   → Build a complete response covering transport, stay, activities, budget breakdown
+
+4. COMPLEX GROUP QUERIES (like the 6-friends example above)
+   → Address EVERY constraint explicitly
+   → Give per-person AND total costs
+   → Handle special cases (late arrivals, dietary needs, accessibility, etc.)
+   → Structure the response clearly with sections
+
+5. BUDGET QUERIES ("trip under ₹10,000", "cheap options", "luxury trip")
+   → Always give realistic budget breakdown:
+     - Transport (per person)
+     - Accommodation (per night)
+     - Food (per day)
+     - Activities
+     - Miscellaneous (10% buffer)
+
+6. FOLLOW-UP QUESTIONS mid-trip-plan
+   → Remember ALL context from previous messages in this conversation
+   → Don't ask again for info already provided
+
+═══════════════════════════════════════════════════════════
+RESPONSE STRUCTURE FOR TRIP PLANS:
+═══════════════════════════════════════════════════════════
+For any trip planning request, structure your response as:
+
+🗺️ **Trip Overview**
+[Destination, duration, group size, total budget]
+
+🚌/✈️ **Getting There**
+[Best transport options with prices from their city]
+
+🏨 **Where to Stay**
+[Specific area recommendations, price range, why that area]
+
+📅 **Itinerary Highlights**
+[Day-wise or activity highlights, not exhaustive]
+
+💰 **Budget Breakdown**
+[Per person costs: transport + hotel + food + activities]
+
+💡 **Alvryn Tips**
+[2-3 smart insider tips for this destination]
+
+For special cases (group, dietary, late arrival, etc.) add relevant sections.
+
+═══════════════════════════════════════════════════════════
+BOOKING LINKS:
+═══════════════════════════════════════════════════════════
+When user is ready to book:
+- Flights: suggest searching on alvryn.in/search (select Flights tab)
+- Buses: suggest alvryn.in/search (select Buses tab)
+- Hotels: suggest alvryn.in/search (select Hotels tab)
+- Trains: suggest alvryn.in/search (select Trains tab)
+Never give direct competitor booking links.
+
+═══════════════════════════════════════════════════════════
+INDIAN TRAVEL CONTEXT YOU KNOW WELL:
+═══════════════════════════════════════════════════════════
+- Indian holiday seasons: Diwali, Christmas-New Year, summer holidays (Apr-Jun), 
+  long weekends around national holidays
+- Budget tiers for Indians: Budget (₹500-1500/night), Mid-range (₹1500-4000/night), 
+  Premium (₹4000-10000/night), Luxury (₹10000+/night)
+- Popular domestic: Goa, Manali, Ladakh, Coorg, Ooty, Rishikesh, Jaipur, Kerala
+- Popular international: Dubai, Singapore, Bangkok, Bali, Maldives, Europe, USA
+- South Indian travellers often prefer: vegetarian food options, comfortable AC transport,
+  family-friendly destinations
+- Visa-free/easy for Indians: Nepal, Bhutan, Maldives, Sri Lanka, Thailand (visa on arrival),
+  Malaysia (eVisa), Singapore (visa required but easy)
+- Train booking: IRCTC (official), Tatkal for last minute
+- Bus: RedBus for most intercity routes
+- Flights: IndiGo, Air India, SpiceJet, Vistara, Akasa for domestic
+
+Remember: You represent ALVRYN. Every response should make the user feel excited about travel and confident that ALVRYN understands their needs completely.`;
   }
 
-  // ── EXPOSE HELPERS TO OTHER MODULES ─────────────────────────────────────────
-  // We attach them to app.locals so server.js and other mounted files can use them
-  app.locals.getUserPlan          = getUserPlan;
-  app.locals.checkTripPlanLimit   = checkTripPlanLimit;
-  app.locals.incrementTripPlanCount = incrementTripPlanCount;
-  app.locals.callAIForPlan        = callAIForPlan;
+  // ── CALL AI WITH FULL CONTEXT ───────────────────────────────────────────────
+  async function callAIForPlan(messages, userContext) {
+    const Groq = require("groq-sdk");
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-  // ── ROUTES ───────────────────────────────────────────────────────────────────
+    const systemPrompt = buildSystemPrompt(userContext);
 
-  const jwt = require("jsonwebtoken");
-
-  function authOptional(req) {
-    const token = req.headers["authorization"]?.split(" ")[1];
-    if (!token) return null;
     try {
-      return jwt.verify(token, process.env.JWT_SECRET || "secretkey");
-    } catch { return null; }
-  }
-
-  function authRequired(req, res, next) {
-    const user = authOptional(req);
-    if (!user) return res.status(401).json({ message: "Token required" });
-    req.user = user;
-    next();
-  }
-
-  // GET /my-plan — returns current user's plan info
-  app.get("/my-plan", async (req, res) => {
-    const user = authOptional(req);
-    if (!user) return res.json({ plan: "explorer", tripPlansUsed: 0, tripPlansLimit: 2 });
-    try {
-      const plan = await getUserPlan(user.id);
-      const { used, limit } = await checkTripPlanLimit(user.id, plan);
-      const r = await pool.query(
-        "SELECT plan_expires_at, whatsapp_number FROM users WHERE id=$1",
-        [user.id]
-      );
-      res.json({
-        plan,
-        tripPlansUsed:  used,
-        tripPlansLimit: limit === Infinity ? null : limit,
-        planExpiresAt:  r.rows[0]?.plan_expires_at || null,
-        whatsappNumber: r.rows[0]?.whatsapp_number || null,
+      const completion = await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages
+        ],
+        max_tokens: 2000,
+        temperature: 0.75,
       });
-    } catch (e) {
-      res.json({ plan: "explorer", tripPlansUsed: 0, tripPlansLimit: 2 });
+      return completion.choices[0]?.message?.content || "";
+    } catch(e) {
+      console.error("Groq call error:", e.message);
+      return "";
     }
-  });
+  }
 
-  // POST /feedback — save thumbs up/down + optional reason
-  app.post("/feedback", async (req, res) => {
+  // ── EXPOSE TO APP ───────────────────────────────────────────────────────────
+  app.locals.getUserPlan       = getUserPlan;
+  app.locals.checkTripPlanLimit = checkTripPlanLimit;
+  app.locals.incrementTripPlan  = incrementTripPlan;
+  app.locals.callAIForPlan      = callAIForPlan;
+  app.locals.buildSystemPrompt  = buildSystemPrompt;
+
+  // ── FEEDBACK ENDPOINT ───────────────────────────────────────────────────────
+  app.post("/ai-feedback", async (req, res) => {
     try {
-      const user = authOptional(req);
-      const {
-        message_id,
-        user_message,
-        ai_response,
-        rating,       // 1 = thumbs up, -1 = thumbs down
-        reason,       // optional text from user
-      } = req.body;
-
-      if (![1, -1].includes(Number(rating))) {
-        return res.status(400).json({ message: "rating must be 1 or -1" });
-      }
-
+      const { messageId, userMessage, aiResponse, rating, reason, userId } = req.body;
       await pool.query(
-        `INSERT INTO ai_feedback
-           (user_id, message_id, user_message, ai_response, rating, reason)
+        `INSERT INTO ai_feedback (user_id, message_id, user_message, ai_response, rating, reason)
          VALUES ($1,$2,$3,$4,$5,$6)`,
-        [
-          user?.id || null,
-          message_id || null,
-          (user_message || "").slice(0, 500),
-          (ai_response  || "").slice(0, 1000),
-          Number(rating),
-          (reason || "").slice(0, 500),
-        ]
+        [userId||null, messageId||null, userMessage||"", aiResponse||"", rating||0, reason||null]
       );
-
       res.json({ ok: true });
-    } catch (e) {
-      console.error("Feedback error:", e.message);
-      res.status(500).json({ message: "Error saving feedback" });
+    } catch(e) {
+      res.json({ ok: false, error: e.message });
     }
   });
 
-  // GET /admin/feedback — admin view of all feedback
+  // ── ADMIN: GET FEEDBACK ─────────────────────────────────────────────────────
   app.get("/admin/feedback", async (req, res) => {
     try {
       const r = await pool.query(`
-        SELECT
-          f.id, f.rating, f.reason,
-          f.user_message, f.ai_response,
-          f.created_at,
-          u.name AS user_name, u.email AS user_email
-        FROM ai_feedback f
-        LEFT JOIN users u ON f.user_id = u.id
-        ORDER BY f.created_at DESC
-        LIMIT 300
+        SELECT af.*, u.name as user_name, u.email as user_email
+        FROM ai_feedback af
+        LEFT JOIN users u ON af.user_id = u.id
+        ORDER BY af.created_at DESC LIMIT 100
       `);
       res.json(r.rows);
-    } catch (e) {
-      res.status(500).json({ message: "Error loading feedback" });
-    }
+    } catch(e) { res.json([]); }
   });
 
-  // GET /admin/feedback/summary — quick stats
-  app.get("/admin/feedback/summary", async (req, res) => {
+  // ── ADMIN: GET FEEDBACK STATS ───────────────────────────────────────────────
+  app.get("/admin/feedback/stats", async (req, res) => {
     try {
       const r = await pool.query(`
         SELECT
-          COUNT(*) FILTER (WHERE rating = 1)  AS thumbs_up,
-          COUNT(*) FILTER (WHERE rating = -1) AS thumbs_down,
-          COUNT(*) AS total,
-          ROUND(
-            100.0 * COUNT(*) FILTER (WHERE rating = 1) / NULLIF(COUNT(*), 0), 1
-          ) AS satisfaction_pct
+          COUNT(*) as total,
+          SUM(CASE WHEN rating=1 THEN 1 ELSE 0 END) as positive,
+          SUM(CASE WHEN rating=0 THEN 1 ELSE 0 END) as negative
         FROM ai_feedback
       `);
       res.json(r.rows[0]);
-    } catch {
-      res.status(500).json({ message: "Error" });
-    }
+    } catch(e) { res.json({ total:0, positive:0, negative:0 }); }
   });
 
-  // PUT /whatsapp-number — save user's WhatsApp number for check-in
-  app.put("/whatsapp-number", authRequired, async (req, res) => {
+  // ── WAITLIST / NOTIFY ME ────────────────────────────────────────────────────
+  app.post("/waitlist", async (req, res) => {
     try {
-      const { whatsapp_number } = req.body;
-      if (!whatsapp_number) return res.status(400).json({ message: "Number required" });
-      // Basic validation — must be digits, 10-15 chars
-      const clean = whatsapp_number.replace(/[^\d+]/g, "");
-      if (clean.length < 10 || clean.length > 16) {
-        return res.status(400).json({ message: "Invalid number — must be 10–15 digits" });
-      }
-      await pool.query(
-        "UPDATE users SET whatsapp_number=$1 WHERE id=$2",
-        [clean, req.user.id]
+      const { email, plan } = req.body;
+      if (!email) return res.status(400).json({ error: "Email required" });
+      // Check if already exists
+      const exists = await pool.query(
+        "SELECT id FROM waitlist WHERE email=$1 AND plan=$2", [email, plan||"navigator"]
       );
-      res.json({ ok: true, message: "WhatsApp number saved!" });
-    } catch {
-      res.status(500).json({ message: "Error saving number" });
-    }
+      if (exists.rows.length) return res.json({ ok: true, already: true });
+      await pool.query(
+        "INSERT INTO waitlist (email, plan) VALUES ($1,$2)", [email, plan||"navigator"]
+      );
+      res.json({ ok: true });
+    } catch(e) { res.json({ ok: false, error: e.message }); }
   });
 
-  console.log("✅ server_plans.js mounted — plan logic, feedback, AI routing");
+  app.get("/admin/waitlist", async (req, res) => {
+    try {
+      const r = await pool.query(
+        "SELECT * FROM waitlist ORDER BY created_at DESC"
+      );
+      res.json(r.rows);
+    } catch(e) { res.json([]); }
+  });
+
+  // ── SAVE WHATSAPP NUMBER ────────────────────────────────────────────────────
+  app.post("/whatsapp-number", async (req, res) => {
+    try {
+      const { userId, whatsappNumber } = req.body;
+      if (!userId || !whatsappNumber) return res.status(400).json({ error: "Missing fields" });
+      await pool.query(
+        "UPDATE users SET whatsapp_number=$1 WHERE id=$2", [whatsappNumber, userId]
+      );
+      res.json({ ok: true });
+    } catch(e) { res.status(500).json({ error: e.message }); }
+  });
+
 };

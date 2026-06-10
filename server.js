@@ -924,6 +924,11 @@ function buildSystemPrompt(userName, prefs, tier = "groq") {
 
   return `You are Alvryn AI — the world's most helpful, funny, and smart travel companion.
 
+CRITICAL — EXTRACT AND ADDRESS ALL CONSTRAINTS:
+When a message contains multiple pieces of info, address EVERY SINGLE ONE. NEVER extract only the destination and ignore group size, budget, dietary needs, or special cases.
+Example: "6 friends Bangalore to Goa, budget 15000/person, 2 vegetarians, one arrives late, prefer beaches, need airport transfer" — you MUST address ALL: group size, origin, budget breakdown (per person AND total), veg-friendly options, SEPARATE plan for the late person, South Goa for beaches not nightlife, airport cab cost.
+Give per-person AND total costs for groups. Handle each special case explicitly.
+
 PERSONALITY:
 - You are like a well-traveled best friend who knows everything about travel worldwide
 - Friendly, warm, slightly funny — but never cringe. Light humor, occasional gentle teasing
@@ -2022,7 +2027,26 @@ app.post("/ai-chat-v2", authenticateToken, async (req, res) => {
     }
 
     const cards = buildCards(message, f, t, date);
-    let dataContext = "";
+
+    // Extract ALL user constraints
+    const _gm = message.match(/(\d+)\s*(friends?|people|persons?|members?|of us|pax)/i);
+    const _bm = message.match(/(?:budget|under|within)[\s:]*[₹Rs.]*\s*([\d,]+)/i) || message.match(/[₹]\s*([\d,]+)/i);
+    const _veg = /vegetarian|vegan|\bveg\b|no meat/i.test(message);
+    const _late = /arrives?\s*(a\s*day|one\s*day)?\s*late|different\s*arrival|separate\s*arrival/i.test(message);
+    const _beach = /beach/i.test(message) && /over nightlife|not nightlife|avoid party/i.test(message);
+    const _transfer = /airport.*transfer|cab.*airport/i.test(message);
+    const _grp = _gm ? parseInt(_gm[1]) : null;
+    const _bgt = _bm ? parseInt(_bm[1].replace(/,/g,"")) : null;
+    const _cx = [];
+    if (_grp > 1) _cx.push(`Group: ${_grp} people`);
+    if (_bgt) _cx.push(`Budget: ₹${_bgt.toLocaleString()}/person${_grp ? ` = ₹${(_bgt*_grp).toLocaleString()} total` : ""}`);
+    if (_veg) _cx.push("Vegetarians in group — mention veg-friendly options explicitly");
+    if (_late) _cx.push("IMPORTANT: one person arrives late — give them a SEPARATE arrival plan");
+    if (_beach) _cx.push("Preference: beaches NOT nightlife — recommend quiet beach spots");
+    if (_transfer) _cx.push("Need airport transfer — include cab cost from airport");
+    let dataContext = _cx.length > 0
+      ? "\n\n[MUST address ALL these in your response:\n" + _cx.map(c=>"• "+c).join("\n") + "\n]"
+      : "";
     if (cards.length > 0) {
       dataContext = "\n\nTravel data found:";
       cards.forEach(c => {
@@ -2056,7 +2080,7 @@ app.post("/ai-chat-v2", authenticateToken, async (req, res) => {
     }
 
     if (!aiText) {
-      aiText = await callGroq(userPrompt, systemPrompt + tripContext, 500);
+      aiText = await callGroq(userPrompt, systemPrompt + tripContext, 1800);
     }
 
     if (aiText) {

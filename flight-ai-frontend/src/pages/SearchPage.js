@@ -1,11 +1,218 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import {
-  FLIGHT_CITIES, BUS_CITIES, TRAIN_CITIES, HOTEL_CITIES,
-  searchFlightCities, searchBusCities, searchTrainCities, searchHotelCities,
-  buildFlightLink, buildBusLink, buildTrainLink, buildHotelLink
-} from "../data/destinations";
+
+// ── INLINE DESTINATIONS DATA ──────────────────────────────────────────────────
+const FLIGHT_CITIES = [
+  {city:"Bangalore",code:"BLR",airport:"Kempegowda International",country:"India",top:true},
+  {city:"Delhi",code:"DEL",airport:"Indira Gandhi International",country:"India",top:true},
+  {city:"Mumbai",code:"BOM",airport:"Chhatrapati Shivaji International",country:"India",top:true},
+  {city:"Chennai",code:"MAA",airport:"Chennai International",country:"India",top:true},
+  {city:"Hyderabad",code:"HYD",airport:"Rajiv Gandhi International",country:"India",top:true},
+  {city:"Kolkata",code:"CCU",airport:"Netaji Subhas Chandra Bose Intl",country:"India",top:true},
+  {city:"Goa",code:"GOI",airport:"Dabolim / Mopa Airport",country:"India",top:true},
+  {city:"Pune",code:"PNQ",airport:"Pune International",country:"India",top:true},
+  {city:"Kochi",code:"COK",airport:"Cochin International",country:"India",top:true},
+  {city:"Ahmedabad",code:"AMD",airport:"Sardar Vallabhbhai Patel Intl",country:"India",top:true},
+  {city:"Jaipur",code:"JAI",airport:"Jaipur International",country:"India",top:true},
+  {city:"Lucknow",code:"LKO",airport:"Chaudhary Charan Singh Intl",country:"India",top:true},
+  {city:"Coimbatore",code:"CBE",airport:"Coimbatore International",country:"India"},
+  {city:"Madurai",code:"IXM",airport:"Madurai Airport",country:"India"},
+  {city:"Trichy",code:"TRZ",airport:"Tiruchirappalli International",country:"India"},
+  {city:"Trivandrum",code:"TRV",airport:"Trivandrum International",country:"India"},
+  {city:"Kozhikode",code:"CCJ",airport:"Calicut International",country:"India"},
+  {city:"Mangalore",code:"IXE",airport:"Mangalore International",country:"India"},
+  {city:"Mysore",code:"MYQ",airport:"Mysore Airport",country:"India"},
+  {city:"Tirupati",code:"TIR",airport:"Tirupati Airport",country:"India"},
+  {city:"Vijayawada",code:"VGA",airport:"Vijayawada International",country:"India"},
+  {city:"Visakhapatnam",code:"VTZ",airport:"Visakhapatnam Airport",country:"India"},
+  {city:"Hubli",code:"HBX",airport:"Hubli Airport",country:"India"},
+  {city:"Belgaum",code:"IXG",airport:"Belgaum Airport",country:"India"},
+  {city:"Varanasi",code:"VNS",airport:"Lal Bahadur Shastri Intl",country:"India"},
+  {city:"Patna",code:"PAT",airport:"Jay Prakash Narayan Intl",country:"India"},
+  {city:"Chandigarh",code:"IXC",airport:"Chandigarh International",country:"India"},
+  {city:"Amritsar",code:"ATQ",airport:"Sri Guru Ram Dass Jee Intl",country:"India"},
+  {city:"Dehradun",code:"DED",airport:"Jolly Grant Airport",country:"India"},
+  {city:"Srinagar",code:"SXR",airport:"Sheikh ul Alam International",country:"India"},
+  {city:"Leh",code:"IXL",airport:"Kushok Bakula Rimpochee Airport",country:"India"},
+  {city:"Jodhpur",code:"JDH",airport:"Jodhpur Airport",country:"India"},
+  {city:"Udaipur",code:"UDR",airport:"Maharana Pratap Airport",country:"India"},
+  {city:"Bhubaneswar",code:"BBI",airport:"Biju Patnaik International",country:"India"},
+  {city:"Ranchi",code:"IXR",airport:"Birsa Munda Airport",country:"India"},
+  {city:"Guwahati",code:"GAU",airport:"Lokpriya Gopinath Bordoloi Intl",country:"India"},
+  {city:"Nagpur",code:"NAG",airport:"Dr Babasaheb Ambedkar Intl",country:"India"},
+  {city:"Indore",code:"IDR",airport:"Devi Ahilyabai Holkar Airport",country:"India"},
+  {city:"Bhopal",code:"BHO",airport:"Raja Bhoj Airport",country:"India"},
+  {city:"Port Blair",code:"IXZ",airport:"Veer Savarkar International",country:"India"},
+  {city:"Dubai",code:"DXB",airport:"Dubai International",country:"UAE",top:true},
+  {city:"Singapore",code:"SIN",airport:"Changi Airport",country:"Singapore",top:true},
+  {city:"Bangkok",code:"BKK",airport:"Suvarnabhumi Airport",country:"Thailand",top:true},
+  {city:"London",code:"LHR",airport:"Heathrow Airport",country:"UK",top:true},
+  {city:"New York",code:"JFK",airport:"John F Kennedy International",country:"USA",top:true},
+  {city:"Kuala Lumpur",code:"KUL",airport:"KL International Airport",country:"Malaysia",top:true},
+  {city:"Colombo",code:"CMB",airport:"Bandaranaike International",country:"Sri Lanka"},
+  {city:"Kathmandu",code:"KTM",airport:"Tribhuvan International",country:"Nepal"},
+  {city:"Paris",code:"CDG",airport:"Charles de Gaulle Airport",country:"France"},
+  {city:"Tokyo",code:"NRT",airport:"Narita International",country:"Japan"},
+  {city:"Sydney",code:"SYD",airport:"Kingsford Smith Airport",country:"Australia"},
+  {city:"Doha",code:"DOH",airport:"Hamad International",country:"Qatar"},
+  {city:"Abu Dhabi",code:"AUH",airport:"Zayed International",country:"UAE"},
+  {city:"Male",code:"MLE",airport:"Velana International",country:"Maldives"},
+  {city:"Bali",code:"DPS",airport:"Ngurah Rai International",country:"Indonesia"},
+  {city:"Phuket",code:"HKT",airport:"Phuket International",country:"Thailand"},
+  {city:"Istanbul",code:"IST",airport:"Istanbul Airport",country:"Turkey"},
+  {city:"Frankfurt",code:"FRA",airport:"Frankfurt Airport",country:"Germany"},
+  {city:"Amsterdam",code:"AMS",airport:"Amsterdam Schiphol",country:"Netherlands"},
+  {city:"Toronto",code:"YYZ",airport:"Pearson International",country:"Canada"},
+  {city:"Los Angeles",code:"LAX",airport:"Los Angeles International",country:"USA"},
+  {city:"Hong Kong",code:"HKG",airport:"Hong Kong International",country:"Hong Kong"},
+  {city:"Seoul",code:"ICN",airport:"Incheon International",country:"South Korea"},
+  {city:"Melbourne",code:"MEL",airport:"Melbourne Airport",country:"Australia"},
+  {city:"Muscat",code:"MCT",airport:"Muscat International",country:"Oman"},
+  {city:"Riyadh",code:"RUH",airport:"King Khalid International",country:"Saudi Arabia"},
+  {city:"Jeddah",code:"JED",airport:"King Abdulaziz International",country:"Saudi Arabia"},
+  {city:"Sharjah",code:"SHJ",airport:"Sharjah International",country:"UAE"},
+  {city:"Nairobi",code:"NBO",airport:"Jomo Kenyatta International",country:"Kenya"},
+];
+
+const BUS_CITIES = [
+  // Karnataka
+  "Bangalore","Mysore","Mangalore","Hubli","Dharwad","Belgaum","Bidar","Gulbarga","Bellary",
+  "Shimoga","Tumkur","Hassan","Chikmagalur","Udupi","Davangere","Raichur","Hospet","Hampi",
+  "Madikeri","Coorg","Chamarajanagar","Mandya","Ramanagara","Kolar","Chintamani","Bagalkot",
+  "Gadag","Koppal","Haveri","Sirsi","Karwar","Hosur",
+  // Tamil Nadu
+  "Chennai","Coimbatore","Madurai","Trichy","Salem","Tirunelveli","Vellore","Erode",
+  "Thanjavur","Pondicherry","Ooty","Kodaikanal","Kumbakonam","Nagercoil","Kanyakumari",
+  "Dindigul","Rajapalayam","Virudhunagar","Sivakasi","Theni","Pollachi","Palani",
+  "Krishnagiri","Dharmapuri","Namakkal","Karur","Tirupur","Tiruvannamalai","Chidambaram",
+  "Marthandam","Cuddalore","Villupuram","Pudukottai","Ramnad","Perambalur","Ariyalur",
+  // Kerala
+  "Kochi","Trivandrum","Kozhikode","Thrissur","Kollam","Varkala","Alleppey","Kottayam",
+  "Munnar","Wayanad","Kannur","Kasaragod","Malappuram","Palakkad","Manjeri","Tirur",
+  "Thalassery","Vadakara","Pathanamthitta","Idukki","Calicut",
+  // Andhra Pradesh / Telangana
+  "Hyderabad","Visakhapatnam","Vijayawada","Tirupati","Warangal","Guntur","Nellore",
+  "Kurnool","Rajahmundry","Kakinada","Eluru","Ongole","Nandyal","Anantapur","Kadapa",
+  "Chittoor","Srikakulam","Vizianagaram","Bhimavaram","Tenali","Machilipatnam",
+  "Karimnagar","Nizamabad","Khammam","Mahbubnagar","Adilabad",
+  // Maharashtra
+  "Mumbai","Pune","Nagpur","Nashik","Aurangabad","Kolhapur","Solapur","Sangli",
+  "Satara","Ratnagiri","Thane","Navi Mumbai","Amravati","Akola","Latur","Osmanabad",
+  "Nanded","Jalgaon","Dhule","Ahmednagar","Buldhana","Yavatmal","Beed",
+  // Goa
+  "Goa","Panaji","Mapusa","Margao","Vasco da Gama","Ponda",
+  // Delhi NCR
+  "Delhi","Gurgaon","Noida","Faridabad","Ghaziabad",
+  // Rajasthan
+  "Jaipur","Jodhpur","Udaipur","Ajmer","Pushkar","Bikaner","Kota","Alwar",
+  "Bharatpur","Jaisalmer","Chittorgarh","Mount Abu",
+  // Uttar Pradesh
+  "Lucknow","Agra","Varanasi","Allahabad","Prayagraj","Kanpur","Gorakhpur",
+  "Mathura","Vrindavan","Rishikesh","Haridwar","Meerut","Bareilly","Moradabad",
+  "Aligarh","Jhansi","Ayodhya",
+  // Himachal / Uttarakhand
+  "Shimla","Manali","Dharamshala","McLeod Ganj","Kasol","Dehradun","Mussoorie","Nainital",
+  // Punjab / Haryana
+  "Chandigarh","Amritsar","Ludhiana","Jalandhar","Patiala",
+  // Gujarat
+  "Ahmedabad","Surat","Vadodara","Rajkot","Bhavnagar","Jamnagar","Gandhinagar","Anand",
+  // Madhya Pradesh
+  "Indore","Bhopal","Gwalior","Jabalpur","Ujjain","Sagar","Ratlam","Dewas",
+  // Odisha
+  "Bhubaneswar","Puri","Cuttack","Rourkela","Berhampur",
+  // West Bengal
+  "Kolkata","Darjeeling","Siliguri","Durgapur","Asansol",
+  // Bihar / Jharkhand
+  "Patna","Gaya","Ranchi","Jamshedpur","Dhanbad",
+  // Northeast
+  "Guwahati","Shillong","Agartala","Imphal",
+];
+
+const TRAIN_CITIES = [
+  {city:"Bangalore",code:"SBC"},{city:"Chennai",code:"MAS"},{city:"Hyderabad",code:"SC"},
+  {city:"Kochi",code:"ERS"},{city:"Trivandrum",code:"TVC"},{city:"Coimbatore",code:"CBE"},
+  {city:"Madurai",code:"MDU"},{city:"Mysore",code:"MYS"},{city:"Mangalore",code:"MAQ"},
+  {city:"Visakhapatnam",code:"VSKP"},{city:"Vijayawada",code:"BZA"},{city:"Tirupati",code:"TPTY"},
+  {city:"Kozhikode",code:"CLT"},{city:"Thrissur",code:"TCR"},{city:"Kollam",code:"QLN"},
+  {city:"Nagercoil",code:"NCJ"},{city:"Marthandam",code:"MVK"},{city:"Kanyakumari",code:"CAPE"},
+  {city:"Tirunelveli",code:"TEN"},{city:"Salem",code:"SA"},{city:"Erode",code:"ED"},
+  {city:"Trichy",code:"TPJ"},{city:"Thanjavur",code:"TJ"},{city:"Hosur",code:"HOS"},
+  {city:"Vellore",code:"KPD"},{city:"Pondicherry",code:"PDY"},{city:"Warangal",code:"WL"},
+  {city:"Guntur",code:"GNT"},{city:"Nellore",code:"NLR"},{city:"Kurnool",code:"KRNT"},
+  {city:"Rajahmundry",code:"RJY"},{city:"Hubli",code:"UBL"},{city:"Belgaum",code:"BGM"},
+  {city:"Delhi",code:"NDLS"},{city:"Mumbai",code:"CSTM"},{city:"Kolkata",code:"HWH"},
+  {city:"Ahmedabad",code:"ADI"},{city:"Pune",code:"PUNE"},{city:"Jaipur",code:"JP"},
+  {city:"Lucknow",code:"LKO"},{city:"Varanasi",code:"BSB"},{city:"Agra",code:"AGC"},
+  {city:"Patna",code:"PNBE"},{city:"Bhopal",code:"BPL"},{city:"Indore",code:"INDB"},
+  {city:"Nagpur",code:"NGP"},{city:"Surat",code:"ST"},{city:"Chandigarh",code:"CDG"},
+  {city:"Amritsar",code:"ASR"},{city:"Jodhpur",code:"JU"},{city:"Udaipur",code:"UDZ"},
+  {city:"Ajmer",code:"AII"},{city:"Gorakhpur",code:"GKP"},{city:"Allahabad",code:"ALD"},
+  {city:"Kanpur",code:"CNB"},{city:"Mathura",code:"MTJ"},{city:"Dehradun",code:"DDN"},
+  {city:"Haridwar",code:"HW"},{city:"Guwahati",code:"GHY"},{city:"Bhubaneswar",code:"BBS"},
+  {city:"Ranchi",code:"RNC"},{city:"Puri",code:"PURI"},{city:"Goa",code:"MAO"},
+  {city:"Aurangabad",code:"AWB"},{city:"Nashik",code:"NK"},{city:"Kolhapur",code:"KOP"},
+  {city:"Solapur",code:"SUR"},{city:"Vadodara",code:"BRC"},{city:"Rajkot",code:"RJT"},
+];
+
+const HOTEL_CITIES = [
+  "Goa","Bangalore","Mumbai","Delhi","Chennai","Hyderabad","Kolkata","Jaipur",
+  "Kochi","Agra","Varanasi","Udaipur","Manali","Shimla","Ooty","Kodaikanal",
+  "Munnar","Varkala","Alleppey","Coorg","Pondicherry","Port Blair","Leh","Ladakh",
+  "Dharamshala","McLeod Ganj","Rishikesh","Haridwar","Mussoorie","Nainital",
+  "Pushkar","Jodhpur","Jaisalmer","Bikaner","Mount Abu","Mysore","Hampi",
+  "Coimbatore","Trichy","Madurai","Rameshwaram","Tirupati","Pune","Aurangabad",
+  "Nashik","Lonavala","Mahabaleshwar","Ahmedabad","Surat","Vadodara","Rajkot",
+  "Chandigarh","Amritsar","Lucknow","Kanpur","Mathura","Vrindavan","Ayodhya",
+  "Patna","Gaya","Bodh Gaya","Ranchi","Bhubaneswar","Puri","Darjeeling",
+  "Gangtok","Shillong","Guwahati","Siliguri","Thrissur","Kozhikode","Kollam",
+  "Kottayam","Wayanad","Nagercoil","Kanyakumari","Tirunelveli",
+  "Dubai","Singapore","Bangkok","London","Paris","Tokyo","Bali","Maldives",
+  "Male","Phuket","Kuala Lumpur","Istanbul","Rome","Barcelona","Amsterdam",
+  "Sydney","Melbourne","Colombo","Kathmandu","Dhaka","Doha","Abu Dhabi",
+  "Muscat","Riyadh","Jeddah","Seoul","Osaka","Hong Kong","Taipei","Manila",
+  "Jakarta","Hanoi","Ho Chi Minh City","New York","Las Vegas","Toronto",
+];
+
+// ── LINK BUILDERS ──────────────────────────────────────────────────────────────
+const INDIA_CODES = new Set(["BLR","BOM","DEL","MAA","HYD","CCU","GOI","PNQ","COK","AMD","JAI","LKO","VNS","PAT","IXC","GAU","BBI","CBE","IXM","IXE","MYQ","TRV","VTZ","VGA","IXR","BHO","SXR","IXJ","HBX","IXG","TIR","IXL","IXZ","NAG","IDR","RPR","DED","SLV","ATQ","UDR","JDH","AGR","STV","CCJ","TRZ"]);
+
+function buildFlightLink({fromCode,toCode,date,returnDate,passengers=1,cabinClass="economy"}){
+  const isIndia=INDIA_CODES.has(fromCode)&&INDIA_CODES.has(toCode);
+  const base=isIndia?"https://www.aviasales.in":"https://www.aviasales.com";
+  let ddmm="";
+  if(date){const d=new Date(date);if(!isNaN(d))ddmm=String(d.getDate()).padStart(2,"0")+String(d.getMonth()+1).padStart(2,"0");}
+  let url=`${base}/search/${fromCode}${ddmm}${toCode}${passengers}`;
+  if(returnDate){const r=new Date(returnDate);if(!isNaN(r))url+=String(r.getDate()).padStart(2,"0")+String(r.getMonth()+1).padStart(2,"0");}
+  url+="?marker=714667&sub_id=alvryn_search";
+  if(cabinClass.includes("business"))url+="&class=business";
+  return url;
+}
+
+function buildBusLink({from,to,date}){
+  const f=(from||"").toLowerCase().replace(/\s+/g,"-");
+  const t=(to||"").toLowerCase().replace(/\s+/g,"-");
+  let url=`https://www.redbus.in/bus-tickets/${f}-to-${t}`;
+  if(date){const d=new Date(date);if(!isNaN(d))url+=`?doj=${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}`;}
+  return url;
+}
+
+function buildTrainLink({fromCode,toCode,date}){
+  let url=`https://www.irctc.co.in/nget/train-search?fromStation=${fromCode}&toStation=${toCode}&isCallFromDpDown=true&quota=GN&class=SL`;
+  if(date){const d=new Date(date);if(!isNaN(d))url+=`&journeyDate=${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}`;}
+  return url;
+}
+
+function buildHotelLink({city,checkIn,checkOut,guests=1,rooms=1}){
+  let url=`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(city)}&group_adults=${guests}&no_rooms=${rooms}`;
+  if(checkIn){const d=new Date(checkIn);if(!isNaN(d))url+=`&checkin=${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
+  if(checkOut){const d=new Date(checkOut);if(!isNaN(d))url+=`&checkout=${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
+  return url;
+}
+
+function searchFlightCities(q){if(!q)return FLIGHT_CITIES.filter(c=>c.top);const ql=q.toLowerCase();return FLIGHT_CITIES.filter(c=>c.city.toLowerCase().includes(ql)||c.code.toLowerCase().includes(ql)||c.country.toLowerCase().includes(ql)).slice(0,12);}
+function searchBusCities(q){if(!q)return BUS_CITIES.slice(0,20);const ql=q.toLowerCase();return BUS_CITIES.filter(c=>c.toLowerCase().includes(ql)).slice(0,12);}
+function searchTrainCities(q){if(!q)return TRAIN_CITIES.slice(0,20);const ql=q.toLowerCase();return TRAIN_CITIES.filter(c=>c.city.toLowerCase().includes(ql)||c.code.toLowerCase().includes(ql)).slice(0,12);}
+function searchHotelCities(q){if(!q)return HOTEL_CITIES.slice(0,20);const ql=q.toLowerCase();return HOTEL_CITIES.filter(c=>c.toLowerCase().includes(ql)).slice(0,12);}
 
 const API = "https://cometai-backend.onrender.com";
 const CLASSES = ["Economy","Premium Economy","Business","First Class"];
@@ -23,366 +230,157 @@ const TABS = [
   { id:"cab",    label:"Cabs",     icon:"🚖",  bg:"linear-gradient(135deg,#1a0a00 0%,#3d1a00 50%,#1a0a00 100%)", accent:"#fb923c", accent2:"#f97316", soon:true },
 ];
 
-// ── ANIMATED SCENE PER TAB ────────────────────────────────────────────────────
+// ── ANIMATED SCENE PER TAB (pure CSS — works everywhere) ─────────────────────
 function TabScene({ tabId }) {
-  const canvasRef = useRef(null);
-  const rafRef    = useRef(null);
+  const scenes = {
+    flight: (
+      <div style={{position:"absolute",inset:0,overflow:"hidden",pointerEvents:"none"}}>
+        {/* Stars */}
+        {Array.from({length:40},(_,i)=>(
+          <div key={i} style={{
+            position:"absolute",
+            left:`${(i*137)%100}%`, top:`${(i*97)%70}%`,
+            width: i%5===0 ? 2 : 1, height: i%5===0 ? 2 : 1,
+            borderRadius:"50%", background:"rgba(180,220,255,0.7)",
+            animation:`twinkle ${1.5+i%3}s ease-in-out ${i*0.1}s infinite alternate`,
+          }}/>
+        ))}
+        {/* Clouds */}
+        {[0,1,2].map(i=>(
+          <div key={i} style={{
+            position:"absolute", top:`${15+i*18}%`,
+            width: 120+i*40, height: 28,
+            background:"rgba(180,210,255,0.12)",
+            borderRadius:50,
+            animation:`cloudMove ${18+i*6}s linear ${-i*4}s infinite`,
+          }}/>
+        ))}
+        {/* Airplane */}
+        <div style={{
+          position:"absolute", top:"38%",
+          animation:"planefly 7s linear infinite",
+          fontSize:28, filter:"drop-shadow(0 0 8px rgba(100,180,255,0.5))",
+        }}>✈️</div>
+      </div>
+    ),
+    bus: (
+      <div style={{position:"absolute",inset:0,overflow:"hidden",pointerEvents:"none"}}>
+        {/* Road */}
+        <div style={{position:"absolute",bottom:0,left:0,right:0,height:"35%",background:"rgba(0,0,0,0.3)",borderTop:"1px solid rgba(80,200,80,0.2)"}}/>
+        {/* Road dashes */}
+        {Array.from({length:6},(_,i)=>(
+          <div key={i} style={{
+            position:"absolute", bottom:"14%", height:3, width:50,
+            background:"rgba(80,200,80,0.3)", borderRadius:2,
+            animation:`roadDash 3s linear ${-i*0.5}s infinite`,
+          }}/>
+        ))}
+        {/* Trees */}
+        {[15,35,58,78].map((left,i)=>(
+          <div key={i} style={{position:"absolute",bottom:"33%",left:`${left}%`,animation:`treeSway ${3+i}s ease-in-out ${i*0.3}s infinite alternate`}}>
+            <div style={{width:8,height:28,background:"rgba(60,120,40,0.6)",margin:"0 auto",borderRadius:2}}/>
+            <div style={{width:28,height:28,background:"rgba(50,180,60,0.35)",borderRadius:"50%",marginTop:-10,marginLeft:-10}}/>
+          </div>
+        ))}
+        {/* Bus — goes LEFT, correct direction */}
+        <div style={{
+          position:"absolute", bottom:"34%",
+          animation:"busdriveLeft 6s linear infinite",
+          fontSize:32, filter:"drop-shadow(0 0 8px rgba(80,200,80,0.4))",
+        }}>🚌</div>
+      </div>
+    ),
+    hotel: (
+      <div style={{position:"absolute",inset:0,overflow:"hidden",pointerEvents:"none"}}>
+        {/* Stars */}
+        {Array.from({length:30},(_,i)=>(
+          <div key={i} style={{
+            position:"absolute",
+            left:`${(i*113)%100}%`, top:`${(i*71)%55}%`,
+            width:1.5, height:1.5, borderRadius:"50%",
+            background:"rgba(255,220,150,0.6)",
+            animation:`twinkle ${1+i%4}s ease-in-out ${i*0.15}s infinite alternate`,
+          }}/>
+        ))}
+        {/* Moon */}
+        <div style={{position:"absolute",top:"12%",right:"15%",width:32,height:32,borderRadius:"50%",background:"rgba(255,220,100,0.15)",boxShadow:"0 0 20px rgba(255,200,80,0.1)"}}/>
+        {/* Building */}
+        <div style={{position:"absolute",bottom:0,left:"50%",transform:"translateX(-50%)",width:100,height:"60%",background:"rgba(40,22,4,0.95)",borderRadius:"4px 4px 0 0"}}>
+          {/* Windows grid */}
+          {Array.from({length:12},(_,i)=>(
+            <div key={i} style={{
+              position:"absolute",
+              left: `${14 + (i%4)*22}%`, top:`${12 + Math.floor(i/4)*28}%`,
+              width:"14%", height:"14%", borderRadius:2,
+              background: `rgba(255,${160+i*8},${40+i*5},${0.4+0.5*((Math.floor(Date.now()/1000)+i)%3===0?0:1)})`,
+              boxShadow: `0 0 6px rgba(255,180,50,0.3)`,
+              animation:`winBlink ${2+i%3}s ease-in-out ${i*0.4}s infinite alternate`,
+            }}/>
+          ))}
+        </div>
+        {/* Hotel sign glow */}
+        <div style={{position:"absolute",bottom:"59%",left:"50%",transform:"translateX(-50%)",padding:"3px 12px",background:"rgba(255,150,30,0.12)",borderRadius:4,animation:"glowPulse 2s ease-in-out infinite"}}>
+          <span style={{fontSize:10,color:"rgba(255,180,50,0.6)",letterSpacing:"2px",fontFamily:"'Space Mono',monospace"}}>HOTEL</span>
+        </div>
+      </div>
+    ),
+    train: (
+      <div style={{position:"absolute",inset:0,overflow:"hidden",pointerEvents:"none"}}>
+        {/* Stars */}
+        {Array.from({length:35},(_,i)=>(
+          <div key={i} style={{
+            position:"absolute",
+            left:`${(i*97)%100}%`, top:`${(i*83)%65}%`,
+            width:1, height:1, borderRadius:"50%",
+            background:"rgba(200,160,255,0.5)",
+            animation:`twinkle ${1.2+i%3}s ease-in-out ${i*0.12}s infinite alternate`,
+          }}/>
+        ))}
+        {/* Track */}
+        <div style={{position:"absolute",bottom:"30%",left:0,right:0,height:2,background:"rgba(160,100,255,0.25)"}}/>
+        <div style={{position:"absolute",bottom:"27%",left:0,right:0,height:2,background:"rgba(160,100,255,0.2)"}}/>
+        {/* Sleepers */}
+        {Array.from({length:8},(_,i)=>(
+          <div key={i} style={{
+            position:"absolute", bottom:"26%", width:14, height:10,
+            background:"rgba(120,60,200,0.3)", borderRadius:1,
+            animation:`sleeperMove 2.5s linear ${-i*0.31}s infinite`,
+          }}/>
+        ))}
+        {/* Train — goes RIGHT to LEFT correctly */}
+        <div style={{
+          position:"absolute", bottom:"30%",
+          animation:"traindriveLeft 6s linear infinite",
+          fontSize:30, filter:"drop-shadow(0 0 8px rgba(160,100,255,0.5))",
+          transform:"scaleX(-1)", // flip emoji to face left = moving left correctly
+        }}>🚂</div>
+      </div>
+    ),
+    cab: (
+      <div style={{position:"absolute",inset:0,overflow:"hidden",pointerEvents:"none"}}>
+        {/* City lights bg */}
+        {Array.from({length:20},(_,i)=>(
+          <div key={i} style={{
+            position:"absolute",
+            left:`${(i*137)%100}%`, top:`${30+(i*61)%40}%`,
+            width:2, height: 4+i%8,
+            background:`rgba(255,${140+i*5},${30+i*3},0.3)`,
+            animation:`twinkle ${1+i%3}s ease-in-out ${i*0.2}s infinite alternate`,
+          }}/>
+        ))}
+        {/* Road */}
+        <div style={{position:"absolute",bottom:0,left:0,right:0,height:"35%",background:"rgba(0,0,0,0.35)"}}/>
+        {/* Cab */}
+        <div style={{
+          position:"absolute", bottom:"34%",
+          animation:"cabdriveRight 7s linear infinite",
+          fontSize:30, filter:"drop-shadow(0 0 8px rgba(255,160,30,0.5))",
+        }}>🚖</div>
+      </div>
+    ),
+  };
 
-  useEffect(() => {
-    const cv = canvasRef.current; if (!cv) return;
-    const ctx = cv.getContext("2d");
-    let W = cv.offsetWidth, H = cv.offsetHeight;
-    cv.width = W; cv.height = H;
-
-    let frame = 0;
-
-    const resize = () => {
-      W = cv.offsetWidth; H = cv.offsetHeight;
-      cv.width = W; cv.height = H;
-    };
-    window.addEventListener("resize", resize);
-
-    // ── FLIGHT scene: plane flying left→right with clouds ──
-    if (tabId === "flight") {
-      const clouds = Array.from({length:5}, (_,i) => ({
-        x: Math.random() * W, y: 30 + Math.random() * (H * 0.5),
-        w: 60 + Math.random() * 80, speed: 0.3 + Math.random() * 0.4, op: 0.15 + Math.random() * 0.2
-      }));
-      let planeX = -60, planeY = H * 0.42;
-      const planeSpeed = W / 280;
-
-      const draw = () => {
-        ctx.clearRect(0,0,W,H);
-        frame++;
-        // Stars
-        for (let i = 0; i < 60; i++) {
-          const sx = (i * 137 + frame * 0.05) % W;
-          const sy = (i * 97) % H;
-          ctx.beginPath(); ctx.arc(sx, sy, 0.8, 0, Math.PI*2);
-          ctx.fillStyle = `rgba(180,220,255,${0.1 + 0.15 * Math.sin(frame * 0.02 + i)})`; ctx.fill();
-        }
-        // Clouds
-        clouds.forEach(c => {
-          c.x -= c.speed;
-          if (c.x + c.w < 0) { c.x = W + c.w; c.y = 30 + Math.random() * (H * 0.5); }
-          ctx.beginPath();
-          ctx.ellipse(c.x, c.y, c.w * 0.5, 14, 0, 0, Math.PI*2);
-          ctx.ellipse(c.x - 20, c.y + 5, c.w * 0.3, 10, 0, 0, Math.PI*2);
-          ctx.ellipse(c.x + 20, c.y + 5, c.w * 0.35, 11, 0, 0, Math.PI*2);
-          ctx.fillStyle = `rgba(200,230,255,${c.op})`; ctx.fill();
-        });
-        // Plane body
-        planeX += planeSpeed;
-        if (planeX > W + 80) planeX = -80;
-        const py = planeY + Math.sin(frame * 0.03) * 4;
-        ctx.save(); ctx.translate(planeX, py);
-        // fuselage
-        ctx.beginPath(); ctx.ellipse(0, 0, 28, 7, 0, 0, Math.PI*2);
-        ctx.fillStyle = "rgba(180,220,255,0.85)"; ctx.fill();
-        // nose
-        ctx.beginPath(); ctx.moveTo(28, 0); ctx.lineTo(40, 2); ctx.lineTo(28, 4);
-        ctx.fillStyle = "rgba(220,240,255,0.9)"; ctx.fill();
-        // wings
-        ctx.beginPath(); ctx.moveTo(0, -2); ctx.lineTo(-10, -18); ctx.lineTo(-18, -18); ctx.lineTo(-12, -2);
-        ctx.fillStyle = "rgba(150,200,255,0.75)"; ctx.fill();
-        ctx.beginPath(); ctx.moveTo(0, 2); ctx.lineTo(-10, 14); ctx.lineTo(-16, 14); ctx.lineTo(-12, 2);
-        ctx.fillStyle = "rgba(150,200,255,0.7)"; ctx.fill();
-        // tail
-        ctx.beginPath(); ctx.moveTo(-25, -2); ctx.lineTo(-30, -12); ctx.lineTo(-22, -12); ctx.lineTo(-20, -2);
-        ctx.fillStyle = "rgba(180,210,255,0.7)"; ctx.fill();
-        // engine trail
-        ctx.beginPath(); ctx.moveTo(-28, 0);
-        for (let i = 0; i < 20; i++) {
-          const tx = -28 - i * 3.5;
-          const ty = Math.sin(frame * 0.1 + i * 0.5) * 2;
-          ctx.lineTo(tx, ty);
-        }
-        ctx.strokeStyle = "rgba(180,220,255,0.15)"; ctx.lineWidth = 3; ctx.stroke();
-        ctx.restore();
-        rafRef.current = requestAnimationFrame(draw);
-      };
-      draw(); return;
-    }
-
-    // ── BUS scene: bus driving on road ──
-    if (tabId === "bus") {
-      let busX = -100;
-      const busSpeed = W / 320;
-      const roadY = H * 0.65;
-      // trees
-      const trees = Array.from({length:6}, (_,i) => ({
-        x: (W / 6) * i + Math.random() * 40,
-        h: 30 + Math.random() * 20
-      }));
-
-      const draw = () => {
-        ctx.clearRect(0,0,W,H);
-        frame++;
-        // Sky gradient
-        const sky = ctx.createLinearGradient(0,0,0,roadY);
-        sky.addColorStop(0, "rgba(10,30,15,0.8)");
-        sky.addColorStop(1, "rgba(20,50,25,0.4)");
-        ctx.fillStyle = sky; ctx.fillRect(0,0,W,roadY);
-        // Stars
-        for (let i = 0; i < 40; i++) {
-          const sx = (i * 173 + frame * 0.02) % W;
-          const sy = (i * 61) % (roadY * 0.8);
-          ctx.beginPath(); ctx.arc(sx, sy, 0.7, 0, Math.PI*2);
-          ctx.fillStyle = `rgba(150,255,150,${0.08 + 0.1 * Math.sin(frame * 0.03 + i)})`; ctx.fill();
-        }
-        // Trees
-        trees.forEach(t => {
-          t.x -= 0.4;
-          if (t.x < -20) t.x = W + 20;
-          // trunk
-          ctx.fillStyle = "rgba(80,120,60,0.6)";
-          ctx.fillRect(t.x - 3, roadY - t.h, 6, t.h);
-          // leaves
-          ctx.beginPath(); ctx.arc(t.x, roadY - t.h - 12, 14, 0, Math.PI*2);
-          ctx.fillStyle = "rgba(50,200,80,0.35)"; ctx.fill();
-        });
-        // Road
-        ctx.fillStyle = "rgba(15,40,20,0.9)";
-        ctx.fillRect(0, roadY, W, H - roadY);
-        // Road line
-        for (let i = 0; i < 8; i++) {
-          const lx = ((frame * 2 + i * (W/7)) % W);
-          ctx.fillStyle = "rgba(80,200,80,0.3)";
-          ctx.fillRect(lx, roadY + (H-roadY)*0.4, W/14, 2);
-        }
-        // Bus
-        busX += busSpeed;
-        if (busX > W + 100) busX = -100;
-        const bx = busX, by = roadY - 36;
-        ctx.save(); ctx.translate(bx, by);
-        // body
-        ctx.beginPath(); ctx.roundRect(-42, -20, 84, 32, 5);
-        ctx.fillStyle = "rgba(60,180,80,0.85)"; ctx.fill();
-        // windows
-        for (let w = -30; w <= 20; w += 18) {
-          ctx.beginPath(); ctx.roundRect(w, -16, 12, 10, 2);
-          ctx.fillStyle = "rgba(180,255,200,0.5)"; ctx.fill();
-        }
-        // destination board
-        ctx.beginPath(); ctx.roundRect(-40, -24, 50, 6, 2);
-        ctx.fillStyle = "rgba(40,140,60,0.8)"; ctx.fill();
-        // wheels
-        [-22, 18].forEach(wx => {
-          ctx.beginPath(); ctx.arc(wx, 14, 10, 0, Math.PI*2);
-          ctx.fillStyle = "rgba(20,60,20,0.9)"; ctx.fill();
-          ctx.beginPath(); ctx.arc(wx, 14, 5, 0, Math.PI*2);
-          ctx.fillStyle = "rgba(100,200,100,0.4)"; ctx.fill();
-        });
-        // headlight
-        ctx.beginPath(); ctx.ellipse(43, -5, 4, 3, 0, 0, Math.PI*2);
-        ctx.fillStyle = "rgba(200,255,150,0.8)"; ctx.fill();
-        ctx.restore();
-        rafRef.current = requestAnimationFrame(draw);
-      };
-      draw(); return;
-    }
-
-    // ── HOTEL scene: building at night with lit windows ──
-    if (tabId === "hotel") {
-      const windows = Array.from({length:20}, (_,i) => ({
-        col: i % 5, row: Math.floor(i/5),
-        on: Math.random() > 0.3,
-        blink: Math.random() > 0.7,
-        phase: Math.random() * Math.PI * 2,
-      }));
-
-      const draw = () => {
-        ctx.clearRect(0,0,W,H);
-        frame++;
-        // Night sky
-        const sky = ctx.createLinearGradient(0,0,0,H);
-        sky.addColorStop(0, "rgba(10,6,2,0.95)");
-        sky.addColorStop(1, "rgba(40,20,0,0.6)");
-        ctx.fillStyle = sky; ctx.fillRect(0,0,W,H);
-        // Stars
-        for (let i = 0; i < 50; i++) {
-          const sx = (i * 113) % W, sy = (i * 71) % (H*0.5);
-          const op = 0.15 + 0.2 * Math.sin(frame * 0.04 + i);
-          ctx.beginPath(); ctx.arc(sx, sy, 0.8, 0, Math.PI*2);
-          ctx.fillStyle = `rgba(255,220,150,${op})`; ctx.fill();
-        }
-        // Moon
-        ctx.beginPath(); ctx.arc(W * 0.8, H * 0.15, 18, 0, Math.PI*2);
-        ctx.fillStyle = "rgba(255,220,120,0.18)"; ctx.fill();
-        ctx.beginPath(); ctx.arc(W * 0.8, H * 0.15, 13, 0, Math.PI*2);
-        ctx.fillStyle = "rgba(255,230,150,0.12)"; ctx.fill();
-        // Hotel building
-        const bw = Math.min(W * 0.55, 180);
-        const bh = H * 0.7;
-        const bx = (W - bw) / 2, by = H - bh;
-        ctx.fillStyle = "rgba(50,28,5,0.92)";
-        ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, [4,4,0,0]);
-        ctx.fill();
-        // Roof details
-        ctx.fillStyle = "rgba(70,40,8,0.8)";
-        ctx.fillRect(bx + bw*0.35, by - 12, bw*0.08, 12);
-        ctx.fillRect(bx + bw*0.55, by - 18, bw*0.06, 18);
-        // Windows
-        const wCols = 5, wRows = 4;
-        const ww = (bw - 20) / (wCols + 0.5);
-        const wh = (bh - 30) / (wRows + 0.5);
-        windows.forEach(win => {
-          const wx = bx + 10 + win.col * ww + ww * 0.1;
-          const wy = by + 15 + win.row * wh + wh * 0.1;
-          const wWidth = ww * 0.65, wHeight = wh * 0.65;
-          let lit = win.on;
-          if (win.blink) lit = Math.sin(frame * 0.04 + win.phase) > 0;
-          ctx.beginPath(); ctx.roundRect(wx, wy, wWidth, wHeight, 2);
-          if (lit) {
-            const wg = ctx.createRadialGradient(wx+wWidth/2, wy+wHeight/2, 1, wx+wWidth/2, wy+wHeight/2, wWidth);
-            wg.addColorStop(0, "rgba(255,200,80,0.95)");
-            wg.addColorStop(1, "rgba(255,160,40,0.5)");
-            ctx.fillStyle = wg;
-            // glow
-            ctx.shadowColor = "rgba(255,180,50,0.6)";
-            ctx.shadowBlur = 8;
-          } else {
-            ctx.fillStyle = "rgba(20,10,2,0.8)";
-            ctx.shadowBlur = 0;
-          }
-          ctx.fill(); ctx.shadowBlur = 0;
-        });
-        // Hotel sign glow
-        ctx.beginPath(); ctx.roundRect(bx + bw*0.2, by + bh*0.88, bw*0.6, bh*0.08, 4);
-        ctx.fillStyle = `rgba(255,180,50,${0.15 + 0.08*Math.sin(frame*0.05)})`; ctx.fill();
-        rafRef.current = requestAnimationFrame(draw);
-      };
-      draw(); return;
-    }
-
-    // ── TRAIN scene: train moving on tracks ──
-    if (tabId === "train") {
-      let trainX = W + 200;
-      const trainSpeed = -(W / 240);
-      const trackY = H * 0.68;
-
-      const draw = () => {
-        ctx.clearRect(0,0,W,H);
-        frame++;
-        // Night sky
-        for (let i = 0; i < 55; i++) {
-          const sx = (i * 137) % W, sy = (i * 83) % (trackY * 0.85);
-          ctx.beginPath(); ctx.arc(sx, sy, 0.7, 0, Math.PI*2);
-          ctx.fillStyle = `rgba(200,160,255,${0.08 + 0.12*Math.sin(frame*0.025+i)})`; ctx.fill();
-        }
-        // Tracks
-        ctx.strokeStyle = "rgba(160,100,255,0.35)"; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(0, trackY); ctx.lineTo(W, trackY); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(0, trackY + 8); ctx.lineTo(W, trackY + 8); ctx.stroke();
-        // Sleepers
-        for (let i = 0; i < 12; i++) {
-          const sx = ((frame*1.5 + i*(W/11)) % (W+20)) - 10;
-          ctx.fillStyle = "rgba(120,60,200,0.3)";
-          ctx.fillRect(sx, trackY - 2, 16, 12);
-        }
-        // Train — moves right to left
-        trainX += trainSpeed;
-        if (trainX < -400) trainX = W + 200;
-        const tx = trainX, ty = trackY - 38;
-        ctx.save(); ctx.translate(tx, ty);
-        // Engine
-        ctx.beginPath(); ctx.roundRect(-70, -22, 55, 34, 5);
-        ctx.fillStyle = "rgba(130,60,220,0.85)"; ctx.fill();
-        ctx.beginPath(); ctx.roundRect(-80, -16, 14, 28, 3);
-        ctx.fillStyle = "rgba(100,40,180,0.9)"; ctx.fill();
-        // Headlight
-        ctx.beginPath(); ctx.ellipse(-84, -4, 5, 4, 0, 0, Math.PI*2);
-        ctx.fillStyle = "rgba(220,180,255,0.9)"; ctx.fill();
-        ctx.shadowColor = "rgba(200,150,255,0.8)"; ctx.shadowBlur = 10;
-        ctx.beginPath(); ctx.ellipse(-84, -4, 3, 2.5, 0, 0, Math.PI*2);
-        ctx.fillStyle = "rgba(255,240,255,1)"; ctx.fill(); ctx.shadowBlur = 0;
-        // Carriage 1
-        ctx.beginPath(); ctx.roundRect(-8, -18, 48, 28, 4);
-        ctx.fillStyle = "rgba(110,50,200,0.8)"; ctx.fill();
-        // Carriage 2
-        ctx.beginPath(); ctx.roundRect(48, -18, 48, 28, 4);
-        ctx.fillStyle = "rgba(100,45,190,0.75)"; ctx.fill();
-        // Windows
-        [-55,-38,-22, 5,20,35, 61,76,91].forEach(wx => {
-          ctx.beginPath(); ctx.roundRect(wx, -12, 11, 9, 2);
-          const isLit = Math.sin(frame * 0.04 + wx) > -0.3;
-          ctx.fillStyle = isLit ? "rgba(220,180,255,0.55)" : "rgba(50,20,80,0.6)"; ctx.fill();
-        });
-        // Wheels
-        [-55,-30, 10,35, 65,90].forEach(wx => {
-          ctx.beginPath(); ctx.arc(wx, 14, 8, 0, Math.PI*2);
-          ctx.fillStyle = "rgba(60,20,100,0.9)"; ctx.fill();
-          ctx.beginPath(); ctx.arc(wx, 14, 4, 0, Math.PI*2);
-          ctx.fillStyle = "rgba(160,100,255,0.45)"; ctx.fill();
-        });
-        // Steam puffs
-        for (let p = 0; p < 4; p++) {
-          const pAge = (frame * 1.5 + p * 20) % 60;
-          const px = -80 - pAge * 0.8, py = -24 - pAge * 0.5;
-          ctx.beginPath(); ctx.arc(px, py, 4 + pAge * 0.15, 0, Math.PI*2);
-          ctx.fillStyle = `rgba(200,160,255,${Math.max(0, 0.25 - pAge * 0.004)})`; ctx.fill();
-        }
-        ctx.restore();
-        rafRef.current = requestAnimationFrame(draw);
-      };
-      draw(); return;
-    }
-
-    // ── CAB scene: taxi on city street ──
-    if (tabId === "cab") {
-      let cabX = -120;
-      const cabSpeed = W / 300;
-      const streetY = H * 0.68;
-
-      const draw = () => {
-        ctx.clearRect(0,0,W,H);
-        frame++;
-        for (let i = 0; i < 40; i++) {
-          const sx = (i*113)%W, sy = (i*79)%(streetY*0.8);
-          ctx.beginPath(); ctx.arc(sx,sy,0.6,0,Math.PI*2);
-          ctx.fillStyle=`rgba(255,160,50,${0.08+0.1*Math.sin(frame*0.03+i)})`; ctx.fill();
-        }
-        // Street
-        ctx.fillStyle="rgba(20,10,0,0.9)"; ctx.fillRect(0,streetY,W,H-streetY);
-        for (let i=0;i<7;i++) {
-          const lx=((frame*2+i*(W/6))%W);
-          ctx.fillStyle="rgba(255,140,40,0.25)"; ctx.fillRect(lx,streetY+(H-streetY)*0.4,W/12,2);
-        }
-        // Cab
-        cabX+=cabSpeed; if(cabX>W+130)cabX=-120;
-        const cx=cabX, cy=streetY-28;
-        ctx.save(); ctx.translate(cx,cy);
-        ctx.beginPath(); ctx.roundRect(-38,-16,76,26,4);
-        ctx.fillStyle="rgba(255,140,0,0.88)"; ctx.fill();
-        ctx.beginPath(); ctx.roundRect(-24,-28,48,14,[4,4,0,0]);
-        ctx.fillStyle="rgba(255,160,30,0.7)"; ctx.fill();
-        [[- 12,-20],[8,-20]].forEach(([wx,wy])=>{
-          ctx.beginPath(); ctx.roundRect(wx,wy,14,10,2);
-          ctx.fillStyle="rgba(180,220,255,0.45)"; ctx.fill();
-        });
-        [-22,18].forEach(wx=>{
-          ctx.beginPath(); ctx.arc(wx,12,9,0,Math.PI*2);
-          ctx.fillStyle="rgba(30,15,0,0.9)"; ctx.fill();
-          ctx.beginPath(); ctx.arc(wx,12,4,0,Math.PI*2);
-          ctx.fillStyle="rgba(255,160,50,0.4)"; ctx.fill();
-        });
-        ctx.beginPath(); ctx.ellipse(40,-4,4,3,0,0,Math.PI*2);
-        ctx.fillStyle="rgba(255,220,100,0.9)"; ctx.fill();
-        ctx.restore();
-        rafRef.current=requestAnimationFrame(draw);
-      };
-      draw(); return;
-    }
-
-    return () => { cancelAnimationFrame(rafRef.current); window.removeEventListener("resize", resize); };
-  }, [tabId]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{ position:"absolute", inset:0, width:"100%", height:"100%", pointerEvents:"none" }}
-    />
-  );
+  return scenes[tabId] || null;
 }
 
 // ── CITY PICKER MODAL ─────────────────────────────────────────────────────────
@@ -646,6 +644,17 @@ export default function SearchPage() {
         ::-webkit-scrollbar{width:3px;} ::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.4);border-radius:2px;}
         @keyframes spin{to{transform:rotate(360deg);}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+        @keyframes twinkle{from{opacity:0.1;transform:scale(0.8);}to{opacity:0.9;transform:scale(1.2);}}
+        @keyframes planefly{0%{left:-60px;top:38%;}30%{top:32%;}60%{top:42%;}100%{left:110%;top:38%;}}
+        @keyframes busdriveLeft{0%{right:-80px;left:auto;}100%{right:110%;left:auto;}}
+        @keyframes traindriveLeft{0%{right:-100px;left:auto;}100%{right:110%;left:auto;}}
+        @keyframes cabdriveRight{0%{left:-80px;}100%{left:110%;}}
+        @keyframes cloudMove{0%{left:110%;}100%{left:-200px;}}
+        @keyframes roadDash{0%{left:110%;}100%{left:-60px;}}
+        @keyframes sleeperMove{0%{left:110%;}100%{left:-20px;}}
+        @keyframes treeSway{from{transform:rotate(-2deg);}to{transform:rotate(2deg);}}
+        @keyframes winBlink{0%{opacity:0.3;}100%{opacity:1;}}
+        @keyframes glowPulse{0%,100%{opacity:0.5;}50%{opacity:1;}}
         input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:0.4;cursor:pointer;}
         .city-btn{transition:all 0.2s;} .city-btn:hover{border-color:rgba(255,255,255,0.35)!important;}
         .search-btn{transition:all 0.2s;} .search-btn:hover{transform:translateY(-2px);filter:brightness(1.08);}

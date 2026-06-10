@@ -936,6 +936,9 @@ PERSONALITY:
 - Use emojis naturally — not every sentence, just where it feels right
 - If user makes a typo or spelling mistake, understand what they mean and answer correctly WITHOUT mentioning their typo
 - NEVER mention any other travel platform, airline booking site, or competitor by name
+- ALWAYS provide a booking card/link when user asks about flights, buses, hotels or trains. NEVER say "I don't provide links" or "I can't give direct links" — you ALWAYS provide booking options through our partner site.
+- Even when user doesn't ask for a link, proactively suggest booking: "Ready to book? Tap the card below!" or "Here's your booking link 👇"
+- If user mentions preferences (early morning, budget, comfortable, AC, etc.) mention those preferences in your response before pointing to the card.
 - NEVER hallucinate cities or destinations — only answer about what the user actually asked
 - NO jokes about money, religion, politics, or anything sensitive
 - Be internationally aware — users come from all over the world, not just India
@@ -946,7 +949,8 @@ USER CONTEXT:
 - ${personalContext || "New user, no preferences saved yet"}
 
 GREETING RULES:
-- If this is the first message in conversation, greet with: "${greeting}, ${name}! 👋"
+- Greet the user ONLY on the very first message of the conversation (when history is empty or has 1 message). On all follow-up messages, do NOT say "Good morning/afternoon/evening" again - just answer directly.
+- First message greeting: "${greeting}, ${name}! 👋"
 - Use their actual name always — never "there" or "buddy" or "friend"
 - If returning user (search count > 3), naturally reference something from their history like "Back for another adventure?" or mention their home city
 
@@ -1021,24 +1025,28 @@ function buildBusLink(from, to) {
 }
 
 function buildTrainLink(from, to, dateStr) {
+  // Using IRCTC — RedBus railways URL format is unreliable
   const TC = {
-    "bangalore":"SBC","bengaluru":"SBC","mumbai":"CSTM","delhi":"NDLS","new delhi":"NDLS",
-    "chennai":"MAS","hyderabad":"SC","kolkata":"HWH","pune":"PUNE","kochi":"ERS",
-    "jaipur":"JP","varanasi":"BSB","trivandrum":"TVC","coimbatore":"CBE","madurai":"MDU",
-    "mysore":"MYS","nagpur":"NGP","bhopal":"BPL","patna":"PNBE","lucknow":"LKO",
-    "agra":"AGC","amritsar":"ASR","chandigarh":"CDG","guwahati":"GHY","ranchi":"RNC",
+    "bangalore":"SBC","bengaluru":"SBC","yeshwanthpur":"YPR","mumbai":"CSTM",
+    "delhi":"NDLS","new delhi":"NDLS","chennai":"MAS","hyderabad":"SC",
+    "kolkata":"HWH","pune":"PUNE","kochi":"ERS","jaipur":"JP","varanasi":"BSB",
+    "trivandrum":"TVC","coimbatore":"CBE","madurai":"MDU","mysore":"MYS",
+    "nagpur":"NGP","bhopal":"BPL","patna":"PNBE","lucknow":"LKO","agra":"AGC",
+    "amritsar":"ASR","chandigarh":"CDG","guwahati":"GHY","ranchi":"RNC",
     "visakhapatnam":"VSKP","vijayawada":"BZA","hubli":"UBL","mangalore":"MAQ",
     "surat":"ST","ahmedabad":"ADI","indore":"INDB","dehradun":"DDN",
+    "hosur":"HOS","nagercoil":"NCJ","trichy":"TPJ","salem":"SA","erode":"ED",
+    "vellore":"KPD","pondicherry":"PDY","tirunelveli":"TEN","kanyakumari":"CAPE",
   };
-  const fc = TC[from?.toLowerCase()] || (from || "").slice(0, 4).toUpperCase();
-  const tc = TC[to?.toLowerCase()] || (to || "").slice(0, 4).toUpperCase();
+  const fc = TC[from?.toLowerCase()] || (from||"").slice(0,4).toUpperCase();
+  const tc = TC[to?.toLowerCase()] || (to||"").slice(0,4).toUpperCase();
   let dateParam = "";
   if (dateStr) {
     try {
       const d = new Date(dateStr);
       if (!isNaN(d)) {
-        const dd = String(d.getDate()).padStart(2, "0");
-        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2,"0");
+        const mm = String(d.getMonth()+1).padStart(2,"0");
         const yyyy = d.getFullYear();
         dateParam = `&journeyDate=${dd}-${mm}-${yyyy}`;
       }

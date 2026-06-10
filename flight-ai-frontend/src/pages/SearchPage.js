@@ -196,10 +196,35 @@ function buildBusLink({from,to,date}){
   return url;
 }
 
-function buildTrainLink({fromCode,toCode,date}){
-  let url=`https://www.irctc.co.in/nget/train-search?fromStation=${fromCode}&toStation=${toCode}&isCallFromDpDown=true&quota=GN&class=SL`;
-  if(date){const d=new Date(date);if(!isNaN(d))url+=`&journeyDate=${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}`;}
-  return url;
+function buildTrainLink(from, to, dateStr) {
+  // Using IRCTC — RedBus railways URL format is unreliable
+  const TC = {
+    "bangalore":"SBC","bengaluru":"SBC","yeshwanthpur":"YPR","mumbai":"CSTM",
+    "delhi":"NDLS","new delhi":"NDLS","chennai":"MAS","hyderabad":"SC",
+    "kolkata":"HWH","pune":"PUNE","kochi":"ERS","jaipur":"JP","varanasi":"BSB",
+    "trivandrum":"TVC","coimbatore":"CBE","madurai":"MDU","mysore":"MYS",
+    "nagpur":"NGP","bhopal":"BPL","patna":"PNBE","lucknow":"LKO","agra":"AGC",
+    "amritsar":"ASR","chandigarh":"CDG","guwahati":"GHY","ranchi":"RNC",
+    "visakhapatnam":"VSKP","vijayawada":"BZA","hubli":"UBL","mangalore":"MAQ",
+    "surat":"ST","ahmedabad":"ADI","indore":"INDB","dehradun":"DDN",
+    "hosur":"HOS","nagercoil":"NCJ","trichy":"TPJ","salem":"SA","erode":"ED",
+    "vellore":"KPD","pondicherry":"PDY","tirunelveli":"TEN","kanyakumari":"CAPE",
+  };
+  const fc = TC[from?.toLowerCase()] || (from||"").slice(0,4).toUpperCase();
+  const tc = TC[to?.toLowerCase()] || (to||"").slice(0,4).toUpperCase();
+  let dateParam = "";
+  if (dateStr) {
+    try {
+      const d = new Date(dateStr);
+      if (!isNaN(d)) {
+        const dd = String(d.getDate()).padStart(2,"0");
+        const mm = String(d.getMonth()+1).padStart(2,"0");
+        const yyyy = d.getFullYear();
+        dateParam = `&journeyDate=${dd}-${mm}-${yyyy}`;
+      }
+    } catch {}
+  }
+  return `https://www.irctc.co.in/nget/train-search?fromStation=${fc}&toStation=${tc}&isCallFromDpDown=true${dateParam}&quota=GN&class=SL`;
 }
 
 function buildHotelLink({city,checkIn,checkOut,guests=1,rooms=1}){

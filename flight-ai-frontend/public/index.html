@@ -2,42 +2,75 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#c9a84c" />
-    <meta name="description" content="Alvryn — AI-powered travel search. Find the best flights, buses and hotels in seconds." />
-    <meta name="keywords" content="flights, buses, hotels, travel, India, cheap flights, book bus, Alvryn" />
-    <meta property="og:title" content="Alvryn — Travel Beyond Boundaries" />
-    <meta property="og:description" content="Search flights, buses and hotels with AI. Any language, any route, instant results." />
-    <meta property="og:url" content="https://alvryn.in" />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <title>Alvryn — Travel Beyond Boundaries</title>
-    <!-- Alvryn SVG favicon -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='30' stroke='%23c9a84c' stroke-width='2' fill='%231a1508'/><path d='M20 46L28 18L36 46' stroke='%23c9a84c' stroke-width='2.5' stroke-linecap='round' fill='none'/><path d='M23 37L34 37' stroke='%23c9a84c' stroke-width='2' stroke-linecap='round'/></svg>"/>
-    <meta name="apple-mobile-web-app-title" content="Alvryn"/>
-  </head>
-  <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
 
-    <!-- ═══════════════════════════════════════════════════════
-         CUELINKS AUTO-MONETIZATION SCRIPT
-         Automatically converts RedBus, Booking.com and other
-         travel partner links into tracked affiliate links.
-         Cuelinks ID: 279251
-    ════════════════════════════════════════════════════════ -->
-    <script type="text/javascript">
-      var cID = "279251";
-      (function(d, t) {
-        var s = d.createElement(t);
-        s.type = "text/javascript";
-        s.async = true;
-        s.src = (d.location.protocol === "https:"
-          ? "https://cdn0.cuelinks.com/js/"
-          : "http://cdn0.cuelinks.com/js/") + "cuelinksv2.js";
-        d.getElementsByTagName("body")[0].appendChild(s);
-      })(document, "script");
+   <!-- FAVICON — Alvryn Mark -->
+<link rel="icon" href="%PUBLIC_URL%/favicons/favicon.ico" sizes="any">
+<link rel="icon" href="%PUBLIC_URL%/favicons/favicon-32x32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="%PUBLIC_URL%/favicons/apple-touch-icon-180x180.png">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0a0604" />
+
+    <!-- ── SEO — Alvryn Technologies ── -->
+    <title>Alvryn — Technology for the Human Experience</title>
+    <meta name="description" content="Alvryn is a technology company building intelligent products. Alvryn Go is India's AI-powered travel planning platform — flights, hotels, buses and trains planned in one conversation. Alvryn Solace, an AI companion, is coming soon." />
+    <meta name="keywords" content="Alvryn, Alvryn Go, Alvryn Technologies, AI travel planning, ALVI, Alvryn Solace, travel AI India, AI companion" />
+    <meta name="author" content="Alvryn Technologies" />
+    <meta name="robots" content="index, follow" />
+
+    <!-- ── Open Graph ── -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://alvryn.in/" />
+    <meta property="og:title" content="Alvryn — Technology for the Human Experience" />
+    <meta property="og:description" content="Alvryn builds intelligent products. Alvryn Go: AI travel planning. Alvryn Solace: AI companion. One company. Two products. One mission." />
+    <meta property="og:image" content="https://alvryn.in/alvryn-icon.svg" />
+    <meta property="og:site_name" content="Alvryn Technologies" />
+
+    <!-- ── Twitter ── -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Alvryn — Technology for the Human Experience" />
+    <meta name="twitter:description" content="AI travel planning and AI companionship. Alvryn Go is live. Alvryn Solace coming soon." />
+
+    <!-- ── Structured Data — Organisation ── -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Alvryn Technologies",
+      "url": "https://alvryn.in",
+      "logo": "https://alvryn.in/alvryn-icon.svg",
+      "description": "Alvryn is a technology company building intelligent products for the human experience.",
+      "email": "hello@alvryn.in",
+      "sameAs": [],
+      "hasOfferCatalog": {
+        "@type": "OfferCatalog",
+        "name": "Alvryn Products",
+        "itemListElement": [
+          {
+            "@type": "SoftwareApplication",
+            "name": "Alvryn Go",
+            "url": "https://alvryn.in/go",
+            "applicationCategory": "TravelApplication",
+            "description": "AI-powered travel planning platform. Plan flights, hotels, buses and trains in one conversation.",
+            "operatingSystem": "Web"
+          },
+          {
+            "@type": "SoftwareApplication",
+            "name": "Alvryn Solace",
+            "url": "https://alvryn.in/solace",
+            "applicationCategory": "LifestyleApplication",
+            "description": "An AI companion for presence and support. Coming soon.",
+            "operatingSystem": "Web"
+          }
+        ]
+      }
+    }
     </script>
 
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to use Alvryn.</noscript>
+    <div id="root"></div>
   </body>
 </html>

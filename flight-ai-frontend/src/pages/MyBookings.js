@@ -59,7 +59,7 @@ export default function MyBookings() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!localStorage.getItem("token")) { navigate("/login"); return; }
+    if (!localStorage.getItem("token")) { navigate("/go/login"); return; }
     const load = async () => {
       try {
         const res = await fetch(`${BACKEND}/my-bookings`, { headers:{ Authorization:`Bearer ${localStorage.getItem("token")}` } });
@@ -89,9 +89,9 @@ export default function MyBookings() {
           </div>
         </div>
         <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-          <button onClick={()=>navigate("/search")} style={{padding:"8px 18px",borderRadius:10,fontSize:13,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.06em",cursor:"pointer",color:"#1a1410",border:"none",background:GRAD,backgroundSize:"200% 200%",boxShadow:`0 4px 14px rgba(201,168,76,0.35)`}}>+ New Search</button>
-          <button onClick={()=>navigate("/profile")} style={{padding:"8px 18px",borderRadius:10,fontSize:13,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",background:`rgba(201,168,76,0.1)`,color:GOLD_DARK,border:`1.5px solid rgba(201,168,76,0.25)`}}>Profile</button>
-          <button onClick={()=>{localStorage.removeItem("token");localStorage.removeItem("user");navigate("/login");}} style={{padding:"8px 18px",borderRadius:10,fontSize:13,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",background:"#fff0f0",color:"#e53935",border:"1.5px solid rgba(229,57,53,0.2)"}}>Sign Out</button>
+          <button onClick={()=>navigate("/go/search")} style={{padding:"8px 18px",borderRadius:10,fontSize:13,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.06em",cursor:"pointer",color:"#1a1410",border:"none",background:GRAD,backgroundSize:"200% 200%",boxShadow:`0 4px 14px rgba(201,168,76,0.35)`}}>+ New Search</button>
+          <button onClick={()=>navigate("/go/profile")} style={{padding:"8px 18px",borderRadius:10,fontSize:13,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",background:`rgba(201,168,76,0.1)`,color:GOLD_DARK,border:`1.5px solid rgba(201,168,76,0.25)`}}>Profile</button>
+          <button onClick={()=>{localStorage.removeItem("token");localStorage.removeItem("user");navigate("/go/login");}} style={{padding:"8px 18px",borderRadius:10,fontSize:13,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",background:"#fff0f0",color:"#e53935",border:"1.5px solid rgba(229,57,53,0.2)"}}>Sign Out</button>
         </div>
       </nav>
 
@@ -115,8 +115,8 @@ export default function MyBookings() {
           <div style={{textAlign:"center",padding:"80px 20px"}}>
             <div style={{fontSize:72,marginBottom:20,animation:"floatUD 3s ease-in-out infinite"}}>🎫</div>
             <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:26,color:"#ccc",marginBottom:10}}>No bookings yet</div>
-            <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:15,color:"#ddd",marginBottom:28}}>Book your first flight or bus with Alvryn AI</div>
-            <button onClick={()=>navigate("/search")} style={{padding:"13px 32px",borderRadius:13,fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.08em",cursor:"pointer",color:"#1a1410",border:"none",background:GRAD,backgroundSize:"200% 200%",boxShadow:`0 6px 22px rgba(201,168,76,0.38)`}}>Search Now ✈</button>
+            <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:15,color:"#ddd",marginBottom:28}}>Book your first flight or bus with ALVI</div>
+            <button onClick={()=>navigate("/go/search")} style={{padding:"13px 32px",borderRadius:13,fontSize:15,fontWeight:700,fontFamily:"'Cormorant Garamond',serif",letterSpacing:"0.08em",cursor:"pointer",color:"#1a1410",border:"none",background:GRAD,backgroundSize:"200% 200%",boxShadow:`0 6px 22px rgba(201,168,76,0.38)`}}>Search Now ✈</button>
           </div>
         )}
 

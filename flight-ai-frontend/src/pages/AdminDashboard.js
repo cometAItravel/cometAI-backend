@@ -221,7 +221,7 @@ export default function AdminDashboard() {
           </div>
         </div>
         <div style={{display:"flex",gap:8}}>
-          <button onClick={()=>navigate("/search")} style={{padding:"7px 16px",borderRadius:9,fontSize:12,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",background:"transparent",color:"#555",border:"1.5px solid rgba(0,0,0,0.12)"}}>Site</button>
+          <button onClick={()=>navigate("/go/search")} style={{padding:"7px 16px",borderRadius:9,fontSize:12,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",background:"transparent",color:"#555",border:"1.5px solid rgba(0,0,0,0.12)"}}>Site</button>
           <button onClick={()=>{sessionStorage.removeItem("alvryn_admin");setAuthed(false);}} style={{padding:"7px 16px",borderRadius:9,fontSize:12,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",background:"#fff0f0",color:"#cc2222",border:"1.5px solid rgba(200,34,34,0.2)"}}>Logout</button>
         </div>
       </nav>

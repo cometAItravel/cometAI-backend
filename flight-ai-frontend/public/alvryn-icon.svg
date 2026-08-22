@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <radialGradient id="bg" cx="40%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#1a1008"/>
+      <stop offset="100%" stop-color="#050301"/>
+    </radialGradient>
+    <linearGradient id="bar" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8B6914"/>
+      <stop offset="45%" stop-color="#f0d080"/>
+      <stop offset="100%" stop-color="#c9a84c"/>
+    </linearGradient>
+    <linearGradient id="rng" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f0d080" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#8B6914" stop-opacity="0.7"/>
+    </linearGradient>
+  </defs>
+  <circle cx="50" cy="50" r="50" fill="url(#bg)"/>
+  <circle cx="50" cy="50" r="46" stroke="url(#rng)" stroke-width="1.2" fill="none"/>
+  <circle cx="50" cy="50" r="39" stroke="url(#rng)" stroke-width="0.7" fill="none" opacity="0.5"/>
+  <line x1="48" y1="22" x2="29" y2="78" stroke="url(#bar)" stroke-width="9.5" stroke-linecap="round"/>
+  <line x1="54" y1="22" x2="71" y2="78" stroke="#c9a84c" stroke-width="8" stroke-linecap="round" opacity="0.75"/>
+  <circle cx="50" cy="51" r="4.5" fill="#f0d080"/>
+  <circle cx="49" cy="50" r="2" fill="#fff" opacity="0.5"/>
+</svg>

@@ -16,7 +16,7 @@ export default function Login() {
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
-        if (payload.exp && payload.exp * 1000 > Date.now()) { navigate("/search"); return; }
+        if (payload.exp && payload.exp * 1000 > Date.now()) { navigate("/go/search"); return; }
       } catch {}
     }
   }, [navigate]);
@@ -67,7 +67,7 @@ export default function Login() {
       if (!res.ok) { setError(data.message || "Login failed. Please try again."); setLoading(false); return; }
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user || { name: form.email.split("@")[0], email: form.email }));
-      navigate("/search");
+      navigate("/go/search");
     } catch { setError("Connection error. Please check your internet and try again."); }
     setLoading(false);
   };

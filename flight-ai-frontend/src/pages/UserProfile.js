@@ -91,6 +91,18 @@ export default function UserProfile() {
   const [activeTab,setActiveTab]= useState("profile");
   const [msg,      setMsg]      = useState({ type: "", text: "" });
   const [bookings, setBookings] = useState([]);
+  const [planData, setPlanData] = useState({ plan:"explorer", messagesUsed:0, messagesLimit:20, remaining:20, isProUser:false });
+
+ const token = localStorage.getItem("token");
+ 
+useEffect(() => {
+  if (!token) return;
+  fetch(`${API}/my-plan`, { headers:{ Authorization:`Bearer ${token}` } })
+    .then(r => r.json())
+    .then(d => setPlanData(d))
+    .catch(() => {});
+}, [token]);
+
   const [bLoading, setBLoading] = useState(false);
 
   // Forgot password state (for users who forgot current password)
@@ -98,10 +110,9 @@ export default function UserProfile() {
   const [fpError,   setFpError]   = useState("");
   const [fpSuccess, setFpSuccess] = useState("");
 
-  const token = localStorage.getItem("token");
 
   useEffect(() => {
-    if (!token) { navigate("/login"); }
+    if (!token) { navigate("/go/login"); }
   }, [token, navigate]);
 
   useEffect(() => {
@@ -258,10 +269,10 @@ export default function UserProfile() {
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => navigate("/search")} style={{ padding: "8px 18px", borderRadius: 10, fontSize: 13, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", letterSpacing: "0.05em", cursor: "pointer", color: "#1a1410", border: "none", background: GRAD, backgroundSize: "200% 200%", animation: "gradShift 3s ease infinite" }}>
+          <button onClick={() => navigate("/go/search")} style={{ padding: "8px 18px", borderRadius: 10, fontSize: 13, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", letterSpacing: "0.05em", cursor: "pointer", color: "#1a1410", border: "none", background: GRAD, backgroundSize: "200% 200%", animation: "gradShift 3s ease infinite" }}>
             Search ✈
           </button>
-          <button onClick={() => { localStorage.removeItem("token"); localStorage.removeItem("user"); navigate("/login"); }}
+          <button onClick={() => { localStorage.removeItem("token"); localStorage.removeItem("user"); navigate("/go/login"); }}
             style={{ padding: "8px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600, fontFamily: "'DM Sans',sans-serif", cursor: "pointer", background: "#fff0f0", color: "#cc2222", border: "1.5px solid rgba(200,34,34,0.25)" }}>
             Sign Out
           </button>
@@ -317,6 +328,42 @@ export default function UserProfile() {
           {/* ── PROFILE ── */}
           {activeTab === "profile" && (
             <div style={{ animation: "fadeUp 0.4s both" }}>
+              {/* ── YOUR PLAN CARD ── */}
+<div style={{borderRadius:20,padding:"28px 26px",marginBottom:24,background:planData.isProUser?"linear-gradient(135deg,#0a0604,#1e0e04,#2d1408)":"rgba(201,168,76,0.06)",border:planData.isProUser?"1px solid rgba(201,168,76,0.25)":"1px solid rgba(201,168,76,0.18)",position:"relative",overflow:"hidden"}}>
+  {planData.isProUser&&<div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,#8B6914,#c9a84c,#f0d080)"}}/>}
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:12}}>
+    <div>
+      <div style={{fontFamily:"'Space Mono',monospace",fontSize:9,color:planData.isProUser?"rgba(201,168,76,0.6)":"#8B6914",letterSpacing:"0.18em",marginBottom:6}}>YOUR PLAN</div>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <span style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:600,fontSize:22,color:planData.isProUser?"#fff":"#0a0a0a"}}>
+          Alvryn {planData.plan==="explorer"||planData.plan==="free"?"Explorer":planData.plan==="navigator"?"Navigator":"Voyager"}
+        </span>
+        {planData.isProUser&&<span style={{fontFamily:"'Space Mono',monospace",fontSize:8,color:"#c9a84c",background:"rgba(201,168,76,0.12)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:100,padding:"3px 10px"}}>PRO</span>}
+      </div>
+    </div>
+    {!planData.isProUser&&(
+      <button onClick={()=>navigate("/go/plans")} style={{padding:"9px 20px",borderRadius:100,background:"linear-gradient(135deg,#8B6914,#c9a84c)",border:"none",color:"#fff",fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:600,cursor:"pointer"}}>
+        Upgrade →
+      </button>
+    )}
+  </div>
+  <div style={{marginBottom:planData.isProUser?0:6}}>
+    <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+      <span style={{fontFamily:"'DM Sans',sans-serif",fontSize:12,color:planData.isProUser?"rgba(255,255,255,0.4)":"rgba(0,0,0,0.4)"}}>
+        {planData.isProUser?"Unlimited messages":"Today's messages"}
+      </span>
+      {!planData.isProUser&&<span style={{fontFamily:"'Space Mono',monospace",fontSize:11,color:"#8B6914"}}>{planData.messagesUsed||0}/{planData.messagesLimit||20}</span>}
+    </div>
+    {!planData.isProUser&&(
+      <div style={{height:6,borderRadius:3,background:"rgba(0,0,0,0.06)",overflow:"hidden"}}>
+        <div style={{height:"100%",width:`${Math.min(100,((planData.messagesUsed||0)/(planData.messagesLimit||20))*100)}%`,background:(planData.remaining||20)<=5?"linear-gradient(90deg,#ef4444,#f87171)":"linear-gradient(90deg,#8B6914,#c9a84c)",borderRadius:3,transition:"width 0.3s ease"}}/>
+      </div>
+    )}
+  </div>
+  {!planData.isProUser&&<div style={{marginTop:8,fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"rgba(0,0,0,0.32)"}}>Resets daily at 12:00 AM IST</div>}
+</div>
+
+<h2 style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 700, fontSize: 22, color: "#1a1410", marginBottom: 24 }}>Personal Information</h2>
               <h2 style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 700, fontSize: 22, color: "#1a1410", marginBottom: 24 }}>Personal Information</h2>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
                 {[
@@ -619,7 +666,7 @@ export default function UserProfile() {
                 <div style={{ textAlign: "center", padding: "48px 20px" }}>
                   <div style={{ fontSize: 56, marginBottom: 16 }}>🎫</div>
                   <div style={{ fontFamily: "'Cormorant Garamond',serif", fontWeight: 600, fontSize: 20, color: "#888", marginBottom: 12 }}>No bookings yet</div>
-                  <button onClick={() => navigate("/search")} style={btn}>Search Flights ✈</button>
+                  <button onClick={() => navigate("/go/search")} style={btn}>Search Flights ✈</button>
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

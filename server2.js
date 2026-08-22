@@ -366,7 +366,7 @@ Rules:
       const resetWords = ["hi","hello","hey","start","restart","cancel","reset","stop","menu","back","help","hlo","heyyy"];
       if (resetWords.some(w => msg === w || msg.startsWith(w+" "))) {
         waSessions[phone] = { step:"idle" };
-        reply = `✈️ *Alvryn AI — Your Travel Buddy!* 🌍\n\n${getISTGreeting()}! Ask me anything:\n\n*✈️ Flights:*\n_"flights bangalore to mumbai tomorrow"_\n\n*🚌 Buses:*\n_"bus bangalore to goa tonight"_\n\n*🏨 Hotels:*\n_"hotels in goa under 2000"_\n\n*🗺️ Trip plan:*\n_"plan trip to goa under 5000"_\n\nAny language — English, Hindi, Tamil, Telugu! 🇮🇳`;
+        reply = `✈️ *ALVI — Your Travel Buddy!* 🌍\n\n${getISTGreeting()}! Ask me anything:\n\n*✈️ Flights:*\n_"flights bangalore to mumbai tomorrow"_\n\n*🚌 Buses:*\n_"bus bangalore to goa tonight"_\n\n*🏨 Hotels:*\n_"hotels in goa under 2000"_\n\n*🗺️ Trip plan:*\n_"plan trip to goa under 5000"_\n\nAny language — English, Hindi, Tamil, Telugu! 🇮🇳`;
 
       } else if (/\b(hotel|hotels|stay|room|accommodation|lodge|resort)\b/i.test(msg)) {
         // ── HOTEL ────────────────────────────────────────────────────────────
@@ -469,7 +469,7 @@ Rules:
       } else if (/plan|trip|travel|visit|suggest|recommend|itinerary|where.*go|vacation|holiday/i.test(msg)) {
         // ── TRIP PLAN via Groq ────────────────────────────────────────────────
         const groqReply = await callGroq(rawMsg,
-          `You are Alvryn AI WhatsApp travel assistant. User wants help planning a trip.
+          `You are ALVI WhatsApp travel assistant. User wants help planning a trip.
 Reply in SHORT WhatsApp format (max 400 chars). Use *bold* for headings.
 Give 2-3 destination suggestions with budget range.
 IST time: ${getISTGreeting()}.
@@ -484,10 +484,10 @@ NEVER mention competitor platforms.`,
         // ── DEFAULT: Groq general travel answer ──────────────────────────────
         const offTopic = /weather|cricket|ipl|news|sports|movie|song|recipe|politics|job|love/i.test(msg);
         if (offTopic) {
-          reply = `🤖 I'm Alvryn AI — travel specialist! ✈️\nAsk me about flights, buses, hotels or trip planning!`;
+          reply = `🤖 I'm ALVI — travel specialist! ✈️\nAsk me about flights, buses, hotels or trip planning!`;
         } else {
           const groqReply = await callGroq(rawMsg,
-            `You are Alvryn AI WhatsApp travel assistant. Reply SHORT (max 280 chars).
+            `You are ALVI WhatsApp travel assistant. Reply SHORT (max 280 chars).
 Use *bold* for key info. Focus only on travel.
 IST time: ${getISTGreeting()}. NEVER mention competitor platforms.`,
             180

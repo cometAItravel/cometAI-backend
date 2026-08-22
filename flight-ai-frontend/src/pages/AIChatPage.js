@@ -28,177 +28,84 @@ function flink(from, to, ddmm="", pax=1) {
   return `${base}/search/${fc}${ddmm}${tc}${pax}?marker=714667&sub_id=alvryn_ai`;
 }
 
-// ── THEMES ────────────────────────────────────────────────────────────────────
-const THEMES = {
-  gold: {
-    name:"⭐ Alvryn Gold",
-    bg:"#faf6ee", msgArea:"#f3ecda",
-    sidebar:"#1a1205", navBg:"rgba(250,246,238,0.97)",
-    userBubble:"linear-gradient(135deg,#c9a84c,#e8c06a)", userText:"#1a1008",
-    aiBubble:"#ffffff", aiText:"#1a1205",
-    border:"rgba(201,168,76,0.25)", cardBorder:"rgba(201,168,76,0.3)",
-    inputBg:"rgba(255,255,255,0.92)", inputText:"#1a1205",
-    sbText:"#f0e6cc", sbSubText:"#b8964a", sbBorder:"rgba(201,168,76,0.2)",
-    accent:"#c9a84c", accentDark:"#8B6914", accentSoft:"rgba(201,168,76,0.12)",
-    globeColor:"#c9a84c", globeGlow:"rgba(201,168,76,0.35)", inkColor:"#8B6914",
-    shadow:"0 4px 24px rgba(201,168,76,0.15)", cardShadow:"0 2px 16px rgba(0,0,0,0.06)",
-    divider:"rgba(201,168,76,0.15)",
+// ── THEMES — COMPLETE with all properties ────────────────────────────────────
+const THEMES = [
+  {
+    name:"Rose",
+    bg:"#fff0f0", accent:"#e05c7a", accentDark:"#b8395a",
+    accentSoft:"rgba(224,92,122,0.1)",
+    globeGlow:"rgba(224,92,122,0.4)", globeColor:"#e05c7a",
+    aiBubble:"#ffffff", cardBorder:"rgba(224,92,122,0.15)",
+    cardShadow:"0 2px 12px rgba(224,92,122,0.08)",
+    sidebar:"#1a0810", sbBorder:"rgba(224,92,122,0.18)",
+    sbText:"#f0d0d8", sbSubText:"rgba(240,208,216,0.5)",
+    navBg:"rgba(255,240,240,0.92)", border:"rgba(224,92,122,0.18)",
+    inputBg:"#ffffff", inputText:"#2a0a14", inkColor:"#2a0a14",
+    msgArea:"#fff0f0", aiText:"#2a0a14",
+    userBubble:"linear-gradient(135deg,#e05c7a,#b8395a)", userText:"#ffffff",
+    divider:"rgba(224,92,122,0.15)", shadow:"0 2px 8px rgba(224,92,122,0.12)",
   },
-  avengers: {
-    name:"🌌 Avengers",
-    bg:"#080d1a", msgArea:"#060b16",
-    sidebar:"#040810", navBg:"rgba(8,13,26,0.97)",
-    userBubble:"linear-gradient(135deg,#8b0000,#cc1a1a)", userText:"#fff",
-    aiBubble:"#0f172a", aiText:"#c8d8f0",
-    border:"rgba(74,144,217,0.2)", cardBorder:"rgba(74,144,217,0.25)",
-    inputBg:"rgba(15,23,42,0.9)", inputText:"#c8d8f0",
-    sbText:"#b8ccf0", sbSubText:"#5070a0", sbBorder:"rgba(74,144,217,0.2)",
-    accent:"#4a90d9", accentDark:"#2a60a9", accentSoft:"rgba(74,144,217,0.1)",
-    globeColor:"#4a90d9", globeGlow:"rgba(74,144,217,0.4)", inkColor:"#6aaaf0",
-    shadow:"0 4px 24px rgba(74,144,217,0.12)", cardShadow:"0 2px 16px rgba(0,0,0,0.3)",
-    divider:"rgba(74,144,217,0.12)",
+  {
+    name:"Midnight",
+    bg:"#0d0d1a", accent:"#7b68ee", accentDark:"#5a4acc",
+    accentSoft:"rgba(123,104,238,0.12)",
+    globeGlow:"rgba(123,104,238,0.5)", globeColor:"#7b68ee",
+    aiBubble:"rgba(255,255,255,0.05)", cardBorder:"rgba(123,104,238,0.18)",
+    cardShadow:"0 2px 12px rgba(0,0,0,0.35)",
+    sidebar:"#080810", sbBorder:"rgba(123,104,238,0.18)",
+    sbText:"#c8c0f0", sbSubText:"rgba(200,192,240,0.45)",
+    navBg:"rgba(13,13,26,0.94)", border:"rgba(123,104,238,0.18)",
+    inputBg:"rgba(255,255,255,0.06)", inputText:"#e0d8ff", inkColor:"#c8c0f0",
+    msgArea:"#0d0d1a", aiText:"#e0d8ff",
+    userBubble:"linear-gradient(135deg,#7b68ee,#5a4acc)", userText:"#ffffff",
+    divider:"rgba(123,104,238,0.15)", shadow:"0 2px 8px rgba(0,0,0,0.45)",
   },
-  f1: {
-    name:"🏎️ F1 Racing",
-    bg:"#0a0a0a", msgArea:"#080808",
-    sidebar:"#050505", navBg:"rgba(10,10,10,0.97)",
-    userBubble:"linear-gradient(135deg,#cc0000,#ff2222)", userText:"#fff",
-    aiBubble:"#141414", aiText:"#eeeeee",
-    border:"rgba(204,0,0,0.25)", cardBorder:"rgba(204,0,0,0.3)",
-    inputBg:"rgba(20,20,20,0.9)", inputText:"#eee",
-    sbText:"#eeeeee", sbSubText:"#888", sbBorder:"rgba(204,0,0,0.2)",
-    accent:"#cc0000", accentDark:"#990000", accentSoft:"rgba(204,0,0,0.1)",
-    globeColor:"#cc0000", globeGlow:"rgba(204,0,0,0.4)", inkColor:"#ff4444",
-    shadow:"0 4px 24px rgba(204,0,0,0.12)", cardShadow:"0 2px 16px rgba(0,0,0,0.4)",
-    divider:"rgba(204,0,0,0.12)",
+  {
+    name:"Forest",
+    bg:"#f0f4f0", accent:"#2d6a4f", accentDark:"#1b4332",
+    accentSoft:"rgba(45,106,79,0.1)",
+    globeGlow:"rgba(45,106,79,0.4)", globeColor:"#2d6a4f",
+    aiBubble:"#ffffff", cardBorder:"rgba(45,106,79,0.15)",
+    cardShadow:"0 2px 12px rgba(45,106,79,0.08)",
+    sidebar:"#0a1a10", sbBorder:"rgba(45,106,79,0.2)",
+    sbText:"#c0d8c8", sbSubText:"rgba(192,216,200,0.5)",
+    navBg:"rgba(240,244,240,0.92)", border:"rgba(45,106,79,0.18)",
+    inputBg:"#ffffff", inputText:"#0a1a10", inkColor:"#0a1a10",
+    msgArea:"#f0f4f0", aiText:"#0a1a10",
+    userBubble:"linear-gradient(135deg,#2d6a4f,#1b4332)", userText:"#ffffff",
+    divider:"rgba(45,106,79,0.15)", shadow:"0 2px 8px rgba(45,106,79,0.1)",
   },
-  wwe: {
-    name:"🤼 WWE",
-    bg:"#0a0a0a", msgArea:"#080808",
-    sidebar:"#050505", navBg:"rgba(10,10,10,0.97)",
-    userBubble:"linear-gradient(135deg,#c9a84c,#f0d060)", userText:"#0a0a0a",
-    aiBubble:"#161616", aiText:"#f0d060",
-    border:"rgba(201,168,76,0.25)", cardBorder:"rgba(201,168,76,0.3)",
-    inputBg:"rgba(22,22,22,0.9)", inputText:"#f0d060",
-    sbText:"#f0d060", sbSubText:"#a08030", sbBorder:"rgba(201,168,76,0.2)",
-    accent:"#c9a84c", accentDark:"#8B6914", accentSoft:"rgba(201,168,76,0.1)",
-    globeColor:"#f0d060", globeGlow:"rgba(240,208,96,0.4)", inkColor:"#f0d060",
-    shadow:"0 4px 24px rgba(201,168,76,0.12)", cardShadow:"0 2px 16px rgba(0,0,0,0.4)",
-    divider:"rgba(201,168,76,0.12)",
+  {
+    name:"Sand",
+    bg:"#faf6f0", accent:"#c9a84c", accentDark:"#8B6914",
+    accentSoft:"rgba(201,168,76,0.1)",
+    globeGlow:"rgba(201,168,76,0.4)", globeColor:"#c9a84c",
+    aiBubble:"#ffffff", cardBorder:"rgba(201,168,76,0.18)",
+    cardShadow:"0 2px 12px rgba(201,168,76,0.08)",
+    sidebar:"#0a0604", sbBorder:"rgba(201,168,76,0.18)",
+    sbText:"#f0e6cc", sbSubText:"rgba(240,230,204,0.45)",
+    navBg:"rgba(250,246,240,0.94)", border:"rgba(201,168,76,0.18)",
+    inputBg:"#ffffff", inputText:"#1a1008", inkColor:"#1a1008",
+    msgArea:"#faf6f0", aiText:"#1a1008",
+    userBubble:"linear-gradient(135deg,#c9a84c,#8B6914)", userText:"#ffffff",
+    divider:"rgba(201,168,76,0.15)", shadow:"0 2px 8px rgba(201,168,76,0.1)",
   },
-  cricket: {
-    name:"🏏 Cricket",
-    bg:"#f4fff7", msgArea:"#eafaf0",
-    sidebar:"#0d2b1a", navBg:"rgba(244,255,247,0.97)",
-    userBubble:"linear-gradient(135deg,#1e5c38,#2d8a56)", userText:"#fff",
-    aiBubble:"#ffffff", aiText:"#0d2b1a",
-    border:"rgba(45,106,79,0.2)", cardBorder:"rgba(45,106,79,0.25)",
-    inputBg:"rgba(255,255,255,0.9)", inputText:"#0d2b1a",
-    sbText:"#c0ecd0", sbSubText:"#5aaa80", sbBorder:"rgba(45,106,79,0.2)",
-    accent:"#2d6a4f", accentDark:"#1b4332", accentSoft:"rgba(45,106,79,0.08)",
-    globeColor:"#2d6a4f", globeGlow:"rgba(45,106,79,0.35)", inkColor:"#1b4332",
-    shadow:"0 4px 24px rgba(45,106,79,0.12)", cardShadow:"0 2px 16px rgba(0,0,0,0.05)",
-    divider:"rgba(45,106,79,0.1)",
+  {
+    name:"Ocean",
+    bg:"#f0f8ff", accent:"#0077b6", accentDark:"#005580",
+    accentSoft:"rgba(0,119,182,0.1)",
+    globeGlow:"rgba(0,119,182,0.4)", globeColor:"#0077b6",
+    aiBubble:"#ffffff", cardBorder:"rgba(0,119,182,0.15)",
+    cardShadow:"0 2px 12px rgba(0,119,182,0.08)",
+    sidebar:"#00111a", sbBorder:"rgba(0,119,182,0.2)",
+    sbText:"#c0d8e8", sbSubText:"rgba(192,216,232,0.5)",
+    navBg:"rgba(240,248,255,0.92)", border:"rgba(0,119,182,0.18)",
+    inputBg:"#ffffff", inputText:"#00111a", inkColor:"#00111a",
+    msgArea:"#f0f8ff", aiText:"#00111a",
+    userBubble:"linear-gradient(135deg,#0077b6,#005580)", userText:"#ffffff",
+    divider:"rgba(0,119,182,0.15)", shadow:"0 2px 8px rgba(0,119,182,0.1)",
   },
-  football: {
-    name:"⚽ Football",
-    bg:"#f4fff4", msgArea:"#eafaea",
-    sidebar:"#062006", navBg:"rgba(244,255,244,0.97)",
-    userBubble:"linear-gradient(135deg,#1a5c1a,#2d8b2d)", userText:"#fff",
-    aiBubble:"#ffffff", aiText:"#062006",
-    border:"rgba(0,100,0,0.2)", cardBorder:"rgba(0,100,0,0.25)",
-    inputBg:"rgba(255,255,255,0.9)", inputText:"#062006",
-    sbText:"#aaffaa", sbSubText:"#55aa55", sbBorder:"rgba(0,100,0,0.2)",
-    accent:"#006400", accentDark:"#004000", accentSoft:"rgba(0,100,0,0.08)",
-    globeColor:"#228b22", globeGlow:"rgba(34,139,34,0.35)", inkColor:"#006400",
-    shadow:"0 4px 24px rgba(0,100,0,0.1)", cardShadow:"0 2px 16px rgba(0,0,0,0.05)",
-    divider:"rgba(0,100,0,0.1)",
-  },
-  sakura: {
-    name:"🌸 Sakura",
-    bg:"#fff5f8", msgArea:"#ffe8f0",
-    sidebar:"#3a0018", navBg:"rgba(255,245,248,0.97)",
-    userBubble:"linear-gradient(135deg,#c0005a,#e8308a)", userText:"#fff",
-    aiBubble:"#ffffff", aiText:"#3a0018",
-    border:"rgba(233,30,140,0.2)", cardBorder:"rgba(233,30,140,0.25)",
-    inputBg:"rgba(255,255,255,0.9)", inputText:"#3a0018",
-    sbText:"#ffc0dc", sbSubText:"#c07090", sbBorder:"rgba(233,30,140,0.2)",
-    accent:"#e91e8c", accentDark:"#c0006a", accentSoft:"rgba(233,30,140,0.08)",
-    globeColor:"#e91e8c", globeGlow:"rgba(233,30,140,0.35)", inkColor:"#c0006a",
-    shadow:"0 4px 24px rgba(233,30,140,0.12)", cardShadow:"0 2px 16px rgba(0,0,0,0.05)",
-    divider:"rgba(233,30,140,0.1)",
-  },
-  nature: {
-    name:"🌿 Nature",
-    bg:"#f4f9ee", msgArea:"#e8f4e0",
-    sidebar:"#122012", navBg:"rgba(244,249,238,0.97)",
-    userBubble:"linear-gradient(135deg,#2d5a1e,#4a8a30)", userText:"#fff",
-    aiBubble:"#ffffff", aiText:"#122012",
-    border:"rgba(74,124,63,0.2)", cardBorder:"rgba(74,124,63,0.25)",
-    inputBg:"rgba(255,255,255,0.9)", inputText:"#122012",
-    sbText:"#c8e8b8", sbSubText:"#70aa58", sbBorder:"rgba(74,124,63,0.2)",
-    accent:"#4a7c3f", accentDark:"#2d5a24", accentSoft:"rgba(74,124,63,0.08)",
-    globeColor:"#4a7c3f", globeGlow:"rgba(74,124,63,0.35)", inkColor:"#2d5a24",
-    shadow:"0 4px 24px rgba(74,124,63,0.1)", cardShadow:"0 2px 16px rgba(0,0,0,0.05)",
-    divider:"rgba(74,124,63,0.1)",
-  },
-  sunset: {
-    name:"🌅 Sunset",
-    bg:"#fff8f2", msgArea:"#ffeede",
-    sidebar:"#2a0e00", navBg:"rgba(255,248,242,0.97)",
-    userBubble:"linear-gradient(135deg,#c44a00,#f07020)", userText:"#fff",
-    aiBubble:"#ffffff", aiText:"#2a0e00",
-    border:"rgba(230,92,0,0.2)", cardBorder:"rgba(230,92,0,0.25)",
-    inputBg:"rgba(255,255,255,0.9)", inputText:"#2a0e00",
-    sbText:"#ffc898", sbSubText:"#b06030", sbBorder:"rgba(230,92,0,0.2)",
-    accent:"#e65c00", accentDark:"#b03800", accentSoft:"rgba(230,92,0,0.08)",
-    globeColor:"#e65c00", globeGlow:"rgba(230,92,0,0.4)", inkColor:"#b03800",
-    shadow:"0 4px 24px rgba(230,92,0,0.12)", cardShadow:"0 2px 16px rgba(0,0,0,0.05)",
-    divider:"rgba(230,92,0,0.1)",
-  },
-  royalblue: {
-    name:"👑 Royal Blue",
-    bg:"#f0f4ff", msgArea:"#e4ecff",
-    sidebar:"#08124a", navBg:"rgba(240,244,255,0.97)",
-    userBubble:"linear-gradient(135deg,#0f2acc,#2244ff)", userText:"#fff",
-    aiBubble:"#ffffff", aiText:"#08124a",
-    border:"rgba(26,58,204,0.2)", cardBorder:"rgba(26,58,204,0.25)",
-    inputBg:"rgba(255,255,255,0.9)", inputText:"#08124a",
-    sbText:"#b0c4ff", sbSubText:"#6080cc", sbBorder:"rgba(26,58,204,0.2)",
-    accent:"#1a3acc", accentDark:"#0a1a8c", accentSoft:"rgba(26,58,204,0.08)",
-    globeColor:"#4466ff", globeGlow:"rgba(68,102,255,0.4)", inkColor:"#1a3acc",
-    shadow:"0 4px 24px rgba(26,58,204,0.12)", cardShadow:"0 2px 16px rgba(0,0,0,0.05)",
-    divider:"rgba(26,58,204,0.1)",
-  },
-  galaxy: {
-    name:"🌌 Galaxy",
-    bg:"#06080f", msgArea:"#080c18",
-    sidebar:"#030408", navBg:"rgba(6,8,15,0.97)",
-    userBubble:"linear-gradient(135deg,#5500cc,#8833ff)", userText:"#fff",
-    aiBubble:"#0e1428", aiText:"#c0a8ff",
-    border:"rgba(136,68,255,0.2)", cardBorder:"rgba(136,68,255,0.25)",
-    inputBg:"rgba(14,20,40,0.9)", inputText:"#c0a8ff",
-    sbText:"#b8a0ff", sbSubText:"#6644aa", sbBorder:"rgba(136,68,255,0.2)",
-    accent:"#8844ff", accentDark:"#5522cc", accentSoft:"rgba(136,68,255,0.1)",
-    globeColor:"#aa66ff", globeGlow:"rgba(170,102,255,0.4)", inkColor:"#aa88ff",
-    shadow:"0 4px 24px rgba(136,68,255,0.15)", cardShadow:"0 2px 16px rgba(0,0,0,0.4)",
-    divider:"rgba(136,68,255,0.12)",
-  },
-  rosegold: {
-    name:"🌹 Rose Gold",
-    bg:"#fff8f8", msgArea:"#ffeeee",
-    sidebar:"#380815", navBg:"rgba(255,248,248,0.97)",
-    userBubble:"linear-gradient(135deg,#a03050,#d05080)", userText:"#fff",
-    aiBubble:"#ffffff", aiText:"#380815",
-    border:"rgba(192,73,106,0.2)", cardBorder:"rgba(192,73,106,0.25)",
-    inputBg:"rgba(255,255,255,0.9)", inputText:"#380815",
-    sbText:"#ffc0c8", sbSubText:"#b07080", sbBorder:"rgba(192,73,106,0.2)",
-    accent:"#c0496a", accentDark:"#8a2040", accentSoft:"rgba(192,73,106,0.08)",
-    globeColor:"#c0496a", globeGlow:"rgba(192,73,106,0.35)", inkColor:"#8a2040",
-    shadow:"0 4px 24px rgba(192,73,106,0.12)", cardShadow:"0 2px 16px rgba(0,0,0,0.05)",
-    divider:"rgba(192,73,106,0.1)",
-  },
-};
+];
 
 // ── SOUND ─────────────────────────────────────────────────────────────────────
 function playSound(type) {
@@ -1438,7 +1345,10 @@ function PlansModal({ onClose, T }) {
 // ══════════════════════════════════════════════════════════════════════════════
 export default function AIChatPage() {
   const navigate = useNavigate();
-  const [themeKey, setThemeKey] = useState(() => localStorage.getItem("alvryn_theme") || "gold");
+  const [themeKey, setThemeKey] = useState(() => {
+    const k = localStorage.getItem("alvryn_theme");
+    return (k && ["0","1","2","3","4"].includes(k)) ? k : "3";
+  });
   const [chats, setChats]       = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -1465,7 +1375,7 @@ export default function AIChatPage() {
   let user = {};
   try { user = JSON.parse(localStorage.getItem("user") || "{}"); } catch {}
 
-  useEffect(() => { if (!token) navigate("/login"); }, [token, navigate]);
+  useEffect(() => { if (!token) navigate("/go/login"); }, [token, navigate]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior:"smooth" }); }, [messages, thinking]);
   useEffect(() => { localStorage.setItem("alvryn_theme", themeKey); }, [themeKey]);
 
@@ -1690,7 +1600,7 @@ export default function AIChatPage() {
   };
 
   const empty = messages.length===0;
-  const chatTitle = chats.find(c=>c.id===activeId)?.title || "Alvryn AI";
+  const chatTitle = chats.find(c=>c.id===activeId)?.title || "ALVI";
 
   const CSS = `
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
@@ -1838,12 +1748,12 @@ export default function AIChatPage() {
                 e.currentTarget.style.borderColor = `${T.accent}44`;
               }}>
               <span style={{ fontSize:14 }}>✨</span>
-              <span>ALVRYN Plans</span>
+              <span>ALVI plans</span>
               <span style={{ marginLeft:"auto", fontSize:10, opacity:0.6 }}>›</span>
             </button>
 
             {/* Sign Out */}
-            <button onClick={()=>{localStorage.removeItem("token");localStorage.removeItem("user");navigate("/login");}}
+            <button onClick={()=>{localStorage.removeItem("token");localStorage.removeItem("user");navigate("/go/login");}}
               style={{ width:"100%", padding:"8px", borderRadius:8, fontSize:12, fontWeight:500, cursor:"pointer", background:"rgba(239,68,68,0.06)", color:"rgba(239,68,68,0.7)", border:"1px solid rgba(239,68,68,0.2)", fontFamily:"'DM Sans',sans-serif" }}>
               Sign Out
             </button>
@@ -1851,10 +1761,25 @@ export default function AIChatPage() {
         </div>
       </div>
 
-      {/* ══ MAIN AREA ══ */}
-      <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", minWidth:0 }}>
+     {/* ══ MAIN AREA ══ */}
+<div style={{ flex:1, display:"flex", overflow:"hidden", minWidth:0 }}>
 
-        {/* ── STICKY TOP BAR ── */}
+  {/* ── LEFT QUICK PANEL ── ADD THIS ── */}
+  <div className="sb-hide-mobile" style={{width:200,flexShrink:0,borderRight:"1px solid rgba(0,0,0,0.08)",padding:"70px 12px 16px",overflowY:"auto",background:"rgba(0,0,0,0.02)",display:"flex",flexDirection:"column",gap:4}}>
+    <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:9,color:"rgba(0,0,0,0.35)",letterSpacing:"0.18em",marginBottom:10}}>QUICK PLAN</div>
+    {["Goa","Manali","Dubai","Bali","Japan","Switzerland","Maldives","Ladakh","Kerala"].map(dest=>(
+      <button key={dest} onClick={()=>send("Plan a trip to "+dest)}
+        style={{padding:"9px 12px",borderRadius:10,cursor:"pointer",fontSize:13,textAlign:"left",background:"rgba(0,0,0,0.03)",border:"1px solid rgba(0,0,0,0.07)",fontFamily:"'DM Sans',sans-serif",color:"rgba(0,0,0,0.6)",transition:"all 0.2s",outline:"none",width:"100%"}}
+        onMouseEnter={e=>{e.currentTarget.style.background="rgba(201,168,76,0.08)";e.currentTarget.style.borderColor="rgba(201,168,76,0.25)";}}
+        onMouseLeave={e=>{e.currentTarget.style.background="rgba(0,0,0,0.03)";e.currentTarget.style.borderColor="rgba(0,0,0,0.07)";}}>
+        ✦ {dest}
+      </button>
+    ))}
+  </div>
+  {/* ── END LEFT PANEL ── */}
+
+  {/* ── CENTER CHAT — wrap existing 3 blocks in this div ── */}
+  <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", minWidth:0 }}>
         <div style={{
           height:58, padding:"0 16px",
           display:"flex", alignItems:"center", justifyContent:"space-between",
@@ -1874,12 +1799,12 @@ export default function AIChatPage() {
             </button>
 
             <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:600, fontSize:16, color:T.aiText, letterSpacing:"0.04em", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"clamp(100px,30vw,280px)" }}>
-              {empty ? "Alvryn AI" : chatTitle}
+              {empty ? "ALVI" : chatTitle}
             </div>
           </div>
 
           <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-            <button onClick={()=>navigate("/search")} title="Search Flights & More"
+            <button onClick={()=>navigate("/go/search")} title="Search Flights & More"
               style={{ width:36, height:36, borderRadius:10, background:T.accentSoft, border:`1px solid ${T.border}`, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0, transition:"all 0.2s" }}
               onMouseEnter={e=>{e.currentTarget.style.background=`${T.accent}25`;}}
               onMouseLeave={e=>{e.currentTarget.style.background=T.accentSoft;}}>
@@ -2043,10 +1968,7 @@ export default function AIChatPage() {
                   token={token}
                   T={T}
                   onDone={(num) => {
-  if (sectionNum === 6) {
-    setCheckinDone(true);
-  }
-
+  setCheckinDone(true);
   if (num) setWaNumber(num);
   setCheckinPrompt(null);
 }}
@@ -2078,13 +2000,45 @@ export default function AIChatPage() {
                   : "↑"}
               </button>
             </div>
-
             <div style={{ textAlign:"center", marginTop:6, fontFamily:"'DM Sans',sans-serif", fontSize:11, color:T.aiText, opacity:0.3, fontWeight:300, letterSpacing:"0.01em" }}>
-              Alvryn AI can make mistakes — please double-check important details.
+              ALVI can make mistakes — please double-check important details.
             </div>
           </div>
         </div>
+        {/* ── INPUT AREA ends here ── */}
+
       </div>
+      {/* ── CENTER CHAT wrapper closes here ── */}
+
+      {/* ── RIGHT TIPS PANEL ── */}
+      <div className="sb-hide-mobile" style={{width:178,flexShrink:0,borderLeft:"1px solid rgba(0,0,0,0.08)",padding:"70px 12px 16px",overflowY:"auto",background:"rgba(0,0,0,0.02)",display:"flex",flexDirection:"column",gap:8}}>
+        <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:9,color:"rgba(0,0,0,0.35)",letterSpacing:"0.18em",marginBottom:8}}>TIPS FOR ALVI</div>
+        {[
+          {t:"Group size",d:'"6 friends going"'},
+          {t:"Budget",d:'"₹15k per person"'},
+          {t:"Travel mode",d:'"bus from Hosur"'},
+          {t:"Dietary",d:'"2 vegetarians"'},
+          {t:"Dates",d:'"August first week"'},
+        ].map((tip,i)=>(
+          <div key={i} style={{padding:"10px 12px",borderRadius:10,background:"rgba(201,168,76,0.05)",border:"1px solid rgba(201,168,76,0.12)"}}>
+            <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:12,fontWeight:600,color:"rgba(0,0,0,0.58)",marginBottom:2}}>{tip.t}</div>
+            <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"rgba(0,0,0,0.37)",fontStyle:"italic"}}>{tip.d}</div>
+          </div>
+        ))}
+        <div style={{marginTop:4,padding:"12px",borderRadius:10,background:"linear-gradient(135deg,rgba(139,105,20,0.08),rgba(201,168,76,0.04))",border:"1px solid rgba(201,168,76,0.2)"}}>
+          <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"rgba(139,105,20,0.75)",lineHeight:1.6}}>More detail = better plan from ALVI.</div>
+        </div>
+        <div style={{marginTop:"auto",padding:"12px",borderRadius:10,background:"rgba(0,0,0,0.03)",border:"1px solid rgba(0,0,0,0.07)",textAlign:"center"}}>
+          <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:10,color:"rgba(0,0,0,0.35)",marginBottom:6}}>Need search?</div>
+          <button onClick={()=>window.location.href="/go/search"} style={{padding:"7px 16px",borderRadius:8,background:"linear-gradient(135deg,#8B6914,#c9a84c)",border:"none",color:"#030303",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Open Search →</button>
+        </div>
+      </div>
+      {/* ── RIGHT PANEL ends here ── */}
+
     </div>
-  );
-}  
+    {/* ── MAIN AREA closes here ── */}
+
+  </div>
+
+);
+}

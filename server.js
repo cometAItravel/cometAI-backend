@@ -893,7 +893,7 @@ async function callGPT(prompt, systemMsg, maxTokens = 600) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  ALVRYN AI PERSONALITY SYSTEM PROMPT
+//  ALVI PERSONALITY SYSTEM PROMPT
 // ══════════════════════════════════════════════════════════════════════════════
 function buildSystemPrompt(userName, prefs, tier = "groq") {
   const name = userName ? userName.split(" ")[0] : "there";
@@ -922,7 +922,16 @@ function buildSystemPrompt(userName, prefs, tier = "groq") {
     searchCount > 0 ? `Returning user with ${searchCount} previous searches` : "New user",
   ].filter(Boolean).join(". ");
 
-  return `You are Alvryn AI — the world's most helpful, funny, and smart travel companion.
+  return `You are ALVI — the world's most helpful, funny, and smart travel companion.
+
+  CRITICAL — NUMBERED LIST PARSING:
+When a user answers multiple questions using a numbered format like:
+"1) answer 2) answer 3) answer 4) answer 5) answer"
+You MUST treat 1), 2), 3), 4), 5) as SEQUENCE MARKERS ONLY — never as values.
+The actual answer is ONLY what comes after the closing parenthesis.
+NEVER interpret a list number like "4)" as a price, budget, or quantity.
+Example: "1) 6 people 2) 2k 3) budget 4) bus from hosur 5) best date"
+means: group=6, budget=₹2000, type=budget, transport=bus from hosur, request=suggest best date.
 
 CRITICAL — EXTRACT AND ADDRESS ALL CONSTRAINTS:
 When a message contains multiple pieces of info, address EVERY SINGLE ONE. NEVER extract only the destination and ignore group size, budget, dietary needs, or special cases.
@@ -1838,7 +1847,7 @@ async function runTripPlanner(sid, message, userId, userName, prefs) {
     setTripSession(sid, { ...state, step: "show_section5" });
     const { to, toDisplay, purpose, duration } = state;
 
-    const systemMsg = `You are Alvryn AI travel guide. Give a SHORT, exciting list of must-do activities and places in ${toDisplay} for ${purpose || "tourism"} travel${duration ? ` for ${duration} days` : ""}. Use emojis. Be specific with place names. Mention approximate costs in local currency and INR where helpful. Max 10 bullet points. No competitor platform names.`;
+    const systemMsg = `You are ALVI travel guide. Give a SHORT, exciting list of must-do activities and places in ${toDisplay} for ${purpose || "tourism"} travel${duration ? ` for ${duration} days` : ""}. Use emojis. Be specific with place names. Mention approximate costs in local currency and INR where helpful. Max 10 bullet points. No competitor platform names.`;
     const groqReply = await callGroq(`Top activities and places to visit in ${toDisplay} for ${purpose || "tourism"} traveler${duration ? `, ${duration} days` : ""}`, systemMsg, 350);
 
     const fallback = `🗺️ **Things to do in ${toDisplay}:**\n\n• Explore the main attractions and landmarks\n• Try authentic local street food — always the highlight!\n• Visit at least one local market\n• Take a guided tour for historical context\n• Explore neighborhoods away from tourist hotspots\n\n💡 Ask me about specific things to do in ${toDisplay} for more detailed recommendations!`;
@@ -2180,10 +2189,10 @@ app.post("/whatsapp", async (req, res) => {
   const resetWords = ["hi","hello","hey","start","restart","cancel","reset","stop","menu","back","help"];
   if (resetWords.some(w => msg === w || msg.startsWith(w + " "))) {
     userSessions[phone] = { step: "idle" };
-    reply = `✈️ *Alvryn AI — Your Travel Buddy!* 🌍\n\nHi! Ask me anything about travel:\n\n*✈️ Flights:*\n_"flights bangalore to mumbai tomorrow"_\n\n*🚌 Buses:*\n_"bus bangalore to goa tonight"_\n\n*🏨 Hotels:*\n_"hotels in goa under 2000"_\n\n*🗺️ Trip planning:*\n_"plan 2 day goa trip under 5000"_`;
+    reply = `✈️ *ALVI — Your Travel Buddy!* 🌍\n\nHi! Ask me anything about travel:\n\n*✈️ Flights:*\n_"flights bangalore to mumbai tomorrow"_\n\n*🚌 Buses:*\n_"bus bangalore to goa tonight"_\n\n*🏨 Hotels:*\n_"hotels in goa under 2000"_\n\n*🗺️ Trip planning:*\n_"plan 2 day goa trip under 5000"_`;
   } else {
     const groqReply = await callGroq(rawMsg,
-      `You are Alvryn AI WhatsApp travel assistant. Reply SHORT (max 300 chars). Use *bold* for emphasis. Focus on travel: flights, hotels, visas, transport. IST time: ${getISTGreeting()}. Never mention other travel platforms.`,
+      `You are ALVI WhatsApp travel assistant. Reply SHORT (max 300 chars). Use *bold* for emphasis. Focus on travel: flights, hotels, visas, transport. IST time: ${getISTGreeting()}. Never mention other travel platforms.`,
       200
     );
     reply = groqReply || "I can help with flights, buses, hotels and trips! Type *help* for menu. 😊";

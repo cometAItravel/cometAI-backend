@@ -631,7 +631,7 @@ export default function LandingPage() {
             ))}
           </div>
           <div className="nav-btns" style={{ display:"flex", gap:8, alignItems:"center" }}>
-            <button onClick={() => navigate("/login")} className="nav-signin"
+            <button onClick={() => navigate("/go/login")} className="nav-signin"
               style={{ padding:"8px 16px", borderRadius:10, fontSize:13, fontWeight:500, fontFamily:"'DM Sans',sans-serif", background:"transparent", color:T.text, border:"1.5px solid rgba(0,0,0,0.12)", cursor:"pointer", transition:"all 0.2s", whiteSpace:"nowrap" }}>
               Sign In
             </button>
@@ -639,7 +639,7 @@ export default function LandingPage() {
               style={{ padding:"8px 14px", borderRadius:10, fontSize:13, fontWeight:600, fontFamily:"'DM Sans',sans-serif", cursor:"pointer", background:"rgba(201,168,76,0.1)", border:"1.5px solid rgba(201,168,76,0.35)", color:"#8B6914", whiteSpace:"nowrap" }}>
               🤖 AI Chat
             </button>
-            <button onClick={() => navigate("/register")} className="shine-btn nav-started"
+            <button onClick={() => navigate("/go/register")} className="shine-btn nav-started"
               style={{ padding:"8px 18px", borderRadius:10, fontSize:13, fontWeight:700, fontFamily:"'DM Sans',sans-serif", color:"#fff", border:"none", background:T.grad, boxShadow:`0 4px 20px ${T.accent}44`, whiteSpace:"nowrap" }}>
               Get Started
             </button>
@@ -717,7 +717,7 @@ export default function LandingPage() {
                       background:T.card||"var(--bg-card)", border:`1.5px solid ${T.cardBorder||"rgba(0,0,0,0.1)"}`, boxShadow:"0 4px 18px rgba(0,0,0,0.07)" }}>
                     Book a Bus 🚌
                   </button>
-                  <button onClick={() => navigate("/register")}
+                  <button onClick={() => navigate("/go/register")}
                     style={{ padding:"15px 26px", borderRadius:14, fontSize:15, fontWeight:500, fontFamily:"'DM Sans',sans-serif", color:T.desc||"#888",
                       background:"transparent", border:"1.5px solid rgba(0,0,0,0.09)", cursor:"pointer" }}>
                     Create Account →
@@ -784,7 +784,7 @@ export default function LandingPage() {
                 </div>
                 <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, color:T.sub,
                   maxWidth:520, margin:"0 auto", lineHeight:1.7 }}>
-                  From Electronic City to New York, Goa, Dubai or Bali — Alvryn plans your complete
+                  From Electronic City to New York, Goa, Dubai or Bali — ALVI plans your complete
                   door-to-door trip in seconds. No filters. No confusion.
                 </div>
               </div>
@@ -854,7 +854,7 @@ export default function LandingPage() {
                 <span>🔐</span>
                 <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:T.desc||"#555" }}>
                   Free account needed — takes 30 seconds.{" "}
-                  <span onClick={() => navigate("/register")} style={{ color:T.accent, cursor:"pointer", fontWeight:600, textDecoration:"underline" }}>Sign up free →</span>
+                  <span onClick={() => navigate("/go/register")} style={{ color:T.accent, cursor:"pointer", fontWeight:600, textDecoration:"underline" }}>Sign up free →</span>
                 </span>
               </div>
             </Reveal>
@@ -959,7 +959,7 @@ export default function LandingPage() {
                       <AlvrynIcon size={26}/>
                     </div>
                     <div>
-                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontWeight:700, color:"#fff", fontSize:14 }}>Alvryn AI</div>
+                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontWeight:700, color:"#fff", fontSize:14 }}>ALVI</div>
                       <div style={{ fontSize:11, color:"rgba(255,255,255,0.7)" }}>● online</div>
                     </div>
                   </div>
@@ -1044,7 +1044,7 @@ export default function LandingPage() {
                 <div style={{ background:T.card||"var(--bg-card)", backdropFilter:"blur(10px)", borderRadius:22, overflow:"hidden", boxShadow:"0 20px 60px rgba(0,0,0,0.08)", border:"1px solid rgba(201,168,76,0.2)" }}>
                   <div style={{ background:"linear-gradient(135deg,#c9a84c,#f0d080,#c9a84c)", backgroundSize:"200% 200%", padding:"14px 20px", display:"flex", alignItems:"center", gap:10 }}>
                     <div style={{ width:32, height:32, borderRadius:"50%", background:"rgba(255,255,255,0.3)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>✈️</div>
-                    <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:700, color:T.text, fontSize:15 }}>Alvryn AI Response</div>
+                    <div style={{ fontFamily:"'Cormorant Garamond',serif", fontWeight:700, color:T.text, fontSize:15 }}>ALVI Response</div>
                   </div>
                   <div style={{ padding:"20px" }}>
                     <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:T.desc||"#555", marginBottom:14, lineHeight:1.6 }}>
@@ -1214,7 +1214,7 @@ export default function LandingPage() {
                 { cat:"BUS TRAVEL", icon:"🚌", color:"#7C3AED", title:"Best overnight buses from Bangalore — complete guide", summary:"VRL Travels, SRS Travels and Neeta Tours run premium Volvo AC Sleeper buses from Bangalore to Chennai, Hyderabad, Goa and Mumbai. Book on RedBus 5 to 10 days ahead for the best seats. Window seats in the lower berth sell out first. Always check your boarding point — it may differ from the main bus stand.", tags:["Buses","Bangalore","Overnight Travel"] },
                 { cat:"INTERNATIONAL", icon:"🌏", color:"#EA580C", title:"Cheap international flights from India — where to look", summary:"Dubai is India's most connected international destination with 200 plus weekly flights from 8 Indian cities. Singapore and Bangkok are the next cheapest. TravelPayouts aggregates fares from 700 plus airlines globally. Fly on Tuesdays or Wednesdays for up to 25 percent cheaper fares than weekends.", tags:["International","Dubai","Budget"] },
                 { cat:"TRAVEL TIPS", icon:"🎒", color:"#059669", title:"India's top 5 weekend getaways reachable by bus", summary:"Coorg from Bangalore (4 hours). Pondicherry from Chennai (3.5 hours). Hampi from Bangalore (8 hours overnight). Munnar from Kochi (4 hours). Manali from Delhi (14 hours overnight). All bookable on RedBus at affordable fares — no flights needed.", tags:["Weekend Trips","Buses","Budget Travel"] },
-                { cat:"BOOKING GUIDE", icon:"📱", color:"#6C63FF", title:"How to book flights on WhatsApp — Alvryn AI guide", summary:"Alvryn's WhatsApp assistant is live and free. Send 'flights bangalore to mumbai tomorrow' to plus 1-415-523-8886 after joining with code 'join meal-biggest'. The AI understands natural language, typos and Hindi-English mix. It shows 3 to 5 options with timing and price, then redirects you to book.", tags:["WhatsApp","How To","Alvryn AI"] },
+                { cat:"BOOKING GUIDE", icon:"📱", color:"#6C63FF", title:"How to book flights on WhatsApp — ALVI guide", summary:"Alvryn's WhatsApp assistant is live and free. Send 'flights bangalore to mumbai tomorrow' to plus 1-415-523-8886 after joining with code 'join meal-biggest'. The AI understands natural language, typos and Hindi-English mix. It shows 3 to 5 options with timing and price, then redirects you to book.", tags:["WhatsApp","How To","ALVI"] },
                 { cat:"SEASON GUIDE", icon:"🌤️", color:"#EA580C", title:"Best time to book Goa flights — season guide", summary:"Peak season November to February offers perfect beach weather but fares are 40 to 60 percent higher — book 6 to 8 weeks ahead. Shoulder season October and March gives good weather at 20 to 30 percent lower fares. Off-season monsoon months offer the cheapest hotel rates if you can manage the rain.", tags:["Goa","Season","Beach Travel"] },
               ].map((post,i)=>(
                 <Reveal key={i} delay={i*60}>
@@ -1253,13 +1253,13 @@ export default function LandingPage() {
                 India's most intelligent travel booking platform. Best fares on flights and buses, instantly.
               </p>
               <div className="cta-row" style={{ display:"flex", gap:14, justifyContent:"center", flexWrap:"wrap" }}>
-                <button onClick={() => navigate("/register")} className="shine-btn"
+                <button onClick={() => navigate("/go/register")} className="shine-btn"
                   style={{ padding:"16px 44px", borderRadius:14, fontSize:16, fontWeight:600, fontFamily:"'DM Sans',sans-serif", color:"#fff", border:"none", cursor:"pointer",
                     background:T.grad, backgroundSize:"200% 200%", animation:"gradShift 3s ease infinite",
                     boxShadow:`0 12px 48px ${T.accent}44` }}>
                   Create Free Account ✈
                 </button>
-                <button onClick={() => navigate("/login")}
+                <button onClick={() => navigate("/go/login")}
                   style={{ padding:"16px 36px", borderRadius:14, fontSize:16, fontWeight:500, fontFamily:"'DM Sans',sans-serif", color:T.text||"#0a0a0a",
                     background:T.card||"var(--bg-card)", border:`1.5px solid ${T.cardBorder||"rgba(0,0,0,0.1)"}`, boxShadow:"0 4px 18px rgba(0,0,0,0.06)", cursor:"pointer" }}>
                   Sign In →
@@ -1303,7 +1303,7 @@ export default function LandingPage() {
                 <div style={{ fontFamily:"'Space Mono',monospace", fontSize:9, color:"#bbb", letterSpacing:"0.15em", marginBottom:16 }}>TRAVEL</div>
                 <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
                   {["Flights","Buses","WhatsApp Booking"].map(l => (
-                    <span key={l} onClick={() => { if(localStorage.getItem("token")) navigate("/search"); else navigate("/login"); }}
+                    <span key={l} onClick={() => { if(localStorage.getItem("token")) navigate("/go/search"); else navigate("/go/login"); }}
                       style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:T.desc||"#555", cursor:"pointer", transition:"color 0.2s" }}
                       onMouseEnter={e=>e.target.style.color=T.accent}
                       onMouseLeave={e=>e.target.style.color="#555"}>

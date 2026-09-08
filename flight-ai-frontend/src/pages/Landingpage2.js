@@ -229,6 +229,22 @@ export default function LandingPage2(){
   /* Modal */
   const [modal,setModal]=useState(null);
 
+    // ══ MAINTENANCE MODE — replace with real page once ready ══
+  const MAINTENANCE_ENABLED = true;
+  const BYPASS_SECRET = "alvryn2026access";
+  const [maintBypass, setMaintBypass] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("access") === BYPASS_SECRET) {
+      localStorage.setItem("go_maint_bypass", "true");
+    }
+    setMaintBypass(localStorage.getItem("go_maint_bypass") === "true");
+  }, []);
+
+  const maintenanceActive = MAINTENANCE_ENABLED && !maintBypass;
+  // ══ END MAINTENANCE STATE ══
+
   const goApp=useCallback(()=>navigate(localStorage.getItem("token")?"/ai":"/register"),[navigate]);
   const goSearch=useCallback(()=>navigate(localStorage.getItem("token")?"/search":"/login"),[navigate]);
 
@@ -256,6 +272,26 @@ export default function LandingPage2(){
   const PRIVACY=`Alvryn collects only the information necessary to provide travel planning services. We do not sell your data to third parties. Trip plans you create are stored securely and used only to improve your experience. You may request deletion of your data at any time by contacting us at privacy@alvryn.in. We use industry-standard encryption for all data in transit and at rest. Cookies are used solely for session management and service improvement.`;
   const TERMS=`By using Alvryn and ALVI, you agree to use our services for lawful travel planning purposes only. We are not responsible for bookings made through third-party partners (Aviasales, RedBus, Booking.com, IRCTC). Alvryn acts as an AI travel planning assistant and not as a travel agency. Prices shown are indicative and subject to availability. Free plan limits apply as described. We reserve the right to modify services with reasonable notice. Disputes shall be governed under Indian law.`;
   const ABOUT=`Alvryn is India's first AI-powered travel planning platform, built in Bangalore by a team obsessed with making travel accessible, intelligent, and effortless. Our AI assistant ALVI understands your trip requirements in plain language and plans complete journeys — flights, hotels, transfers and itineraries — in seconds. We believe everyone deserves to explore the world beyond what they know. Alvryn is free to use. We earn a small commission from booking partners when you book through our links, at no extra cost to you.`;
+
+  // ══ MAINTENANCE SCREEN — replaces the entire page when active ══
+  if (maintenanceActive) {
+    return (
+      <div style={{
+        position:"fixed", inset:0, background:"#ffffff", color:"#0a0a0a",
+        display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+        textAlign:"center", padding:24, fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      }}>
+        <div style={{ fontSize:11, fontWeight:600, letterSpacing:"0.22em", textTransform:"uppercase", opacity:0.4, marginBottom:24 }}>Alvryn Go</div>
+        <div style={{ fontWeight:300, fontSize:"clamp(26px,5vw,44px)", lineHeight:1.3, marginBottom:16, maxWidth:520 }}>
+          We're currently down for maintenance.
+        </div>
+        <p style={{ fontSize:14, opacity:0.5, maxWidth:380, lineHeight:1.6 }}>
+          Alvryn Go is temporarily unavailable while we work on something behind the scenes. Please check back soon.
+        </p>
+      </div>
+    );
+  }
+  // ══ END MAINTENANCE SCREEN ══
 
   return(
     <>

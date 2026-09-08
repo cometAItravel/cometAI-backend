@@ -19,27 +19,39 @@ const CSS = `
   --display: 'Bricolage Grotesque', sans-serif;
 }
 *,*::before,*::after{ box-sizing:border-box; margin:0; padding:0; }
-html{ overflow-x:hidden; scroll-behavior:smooth; }
+html{ scroll-behavior:smooth; }
 body{
   background:var(--paper);
   color:var(--ink);
   font-family:var(--sans);
-  overflow-x:hidden;
+  /* No overflow-x here on purpose — setting it on html/body is a known
+     iOS Safari bug that breaks position:fixed elements, causing them to
+     scroll away instead of staying pinned. Prevent stray horizontal
+     overflow at the source (elements themselves) instead. */
+  max-width:100vw;
 }
 
-/* ══ INTRO PANEL ══ */
-#panel{
-  position:fixed; top:0; left:0; right:0; bottom:0;
-  background:#000000; z-index:100;
-  transition: clip-path 1.5s cubic-bezier(0.65,0,0.35,1);
-  will-change: clip-path;
+/* ══ INTRO PANEL — rendered as a direct SVG path, not CSS clip-path.
+   clip-path:path() has patchy support in mobile/in-app browsers, where
+   it silently fails and shows an unclipped black box. Drawing the shape
+   directly and tweening its coordinates in JS works everywhere. ══ */
+#panel-wrap{
+  position:fixed; top:0; left:0; right:0; bottom:0; z-index:100;
+  pointer-events:none;
 }
+#panel-svg{ width:100%; height:100%; display:block; }
 #wordmark-wrap{
   position:fixed; top:0; left:0; right:0; bottom:0; z-index:101;
   display:flex; align-items:center; justify-content:center;
   pointer-events:none;
   transition: transform 1.5s cubic-bezier(0.65,0,0.35,1);
   will-change: transform;
+  /* Forces a stable GPU compositing layer — without this, fixed-position
+     elements can intermittently vanish during momentum scrolling on iOS. */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 #wordmark{
   font-weight:500;
@@ -359,6 +371,22 @@ export default function AlvrynHomePage() {
   const navigate = useNavigate();
   const [modal, setModal] = useState(null);
 
+    // ══ MAINTENANCE MODE — replaces the countdown gate ══
+  const MAINTENANCE_ENABLED = true;
+  const BYPASS_SECRET = "alvryn2026access";
+  const [maintBypass, setMaintBypass] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("access") === BYPASS_SECRET) {
+      localStorage.setItem("alvryn_maint_bypass", "true");
+    }
+    setMaintBypass(localStorage.getItem("alvryn_maint_bypass") === "true");
+  }, []);
+
+  const maintenanceActive = MAINTENANCE_ENABLED && !maintBypass;
+  // ══ END MAINTENANCE STATE ══
+
   const ABOUT = `Alvryn is a technology company focused on building intelligent products that extend what's possible in everyday human experience. We don't build tools. We build companions — for travel, for life, for the moments in between.
 
 Our work begins with a simple question: what does the person on the other side of this screen actually need? That question drives every product decision we make.
@@ -454,20 +482,47 @@ If you're a journalist, researcher or potential partner, include a brief descrip
       });
     }
 
-    let panel, wordWrap, word, W, H, edgeH, dipH, dipHalfW, cx, initialPath, finalPath;
+    let panelPathEl, panelWrap, wordWrap, word, W, H, edgeH, dipH, dipHalfW, cx, initialPath, finalPath;
     let navArmed = false;
     let extracted = false;
 
     function panelPath(edgeHeight, dipDepth, halfW, width) {
       const c = cx;
-      return "path('M 0 0 " +
+      return "M 0 0 " +
         "L " + width + " 0 " +
         "L " + width + " " + edgeHeight + " " +
         "L " + (c + halfW) + " " + edgeHeight + " " +
         "C " + (c + halfW * 0.7) + " " + edgeHeight + ", " + (c + halfW * 0.45) + " " + dipDepth + ", " + (c + halfW * 0.32) + " " + dipDepth + " " +
         "L " + (c - halfW * 0.32) + " " + dipDepth + " " +
         "C " + (c - halfW * 0.45) + " " + dipDepth + ", " + (c - halfW * 0.7) + " " + edgeHeight + ", " + (c - halfW) + " " + edgeHeight + " " +
-        "L 0 " + edgeHeight + " Z')";
+        "L 0 " + edgeHeight + " Z";
+    }
+
+    function easeInOutCubic(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+
+    // Draws the shape directly and animates it by tweening the underlying
+    // numbers frame by frame — no CSS clip-path involved anywhere, so this
+    // works the same on every browser instead of depending on clip-path
+    // support (which many in-app/mobile browsers lack).
+    let activeTween = null;
+    function tweenPanel(fromParams, toParams, duration, onDone) {
+      if (activeTween) cancelAnimationFrame(activeTween);
+      const start = performance.now();
+      function frame(now) {
+        const t = Math.min(1, (now - start) / duration);
+        const e = easeInOutCubic(t);
+        const eh = fromParams.edgeH + (toParams.edgeH - fromParams.edgeH) * e;
+        const dh = fromParams.dipH + (toParams.dipH - fromParams.dipH) * e;
+        const dw = fromParams.dipHalfW + (toParams.dipHalfW - fromParams.dipHalfW) * e;
+        panelPathEl.setAttribute('d', panelPath(eh, dh, dw, toParams.width));
+        if (t < 1) {
+          activeTween = requestAnimationFrame(frame);
+        } else {
+          activeTween = null;
+          if (onDone) onDone();
+        }
+      }
+      activeTween = requestAnimationFrame(frame);
     }
 
     function resetExtraction() {
@@ -479,15 +534,16 @@ If you're a journalist, researcher or potential partner, include a brief descrip
       cornerNavTrigger.classList.remove('active');
       cornerNavLinks.classList.remove('active');
       document.querySelectorAll('.extract-clone').forEach((el) => el.remove());
-      panel.style.opacity = '1';
+      panelWrap.style.opacity = '1';
       wordWrap.style.opacity = '1';
-      panel.style.pointerEvents = '';
+      panelWrap.style.pointerEvents = '';
       document.getElementById('nav-trigger').style.pointerEvents = 'auto';
     }
 
     function runIntro() {
       settled = false;
-      panel = document.getElementById('panel');
+      panelPathEl = document.getElementById('panel-path');
+      panelWrap = document.getElementById('panel-wrap');
       wordWrap = document.getElementById('wordmark-wrap');
       word = document.getElementById('wordmark');
       const content = document.getElementById('content');
@@ -504,8 +560,8 @@ If you're a journalist, researcher or potential partner, include a brief descrip
 
       resetExtraction();
 
-      panel.style.transition = 'none';
-      panel.style.clipPath = initialPath;
+      if (activeTween) cancelAnimationFrame(activeTween);
+      panelPathEl.setAttribute('d', initialPath);
       wordWrap.style.transition = 'none';
       wordWrap.style.transform = 'translateY(0)';
       word.style.transition = 'none';
@@ -517,9 +573,8 @@ If you're a journalist, researcher or potential partner, include a brief descrip
       document.getElementById('scroll-cue').classList.remove('in');
       window.scrollTo(0, 0);
 
-      void panel.offsetWidth;
+      void wordWrap.offsetWidth;
 
-      panel.style.transition = 'clip-path 1.5s cubic-bezier(0.65,0,0.35,1)';
       wordWrap.style.transition = 'transform 1.5s cubic-bezier(0.65,0,0.35,1)';
 
       const initialCenterY = H / 2;
@@ -539,12 +594,17 @@ If you're a journalist, researcher or potential partner, include a brief descrip
       const pause = 450;
       const liftAt = wipeFinishesAt + pause;
 
+      const liftDuration = 1500;
+
       setTimeout(() => {
-        panel.style.clipPath = finalPath;
+        tweenPanel(
+          { edgeH: H, dipH: H, dipHalfW },
+          { edgeH, dipH, dipHalfW, width: W },
+          liftDuration
+        );
         wordWrap.style.transform = 'translateY(' + deltaY + 'px)';
       }, liftAt);
 
-      const liftDuration = 1500;
       const settledAt = liftAt + liftDuration;
 
       setTimeout(() => {
@@ -647,21 +707,26 @@ If you're a journalist, researcher or potential partner, include a brief descrip
       trigger.style.pointerEvents = 'auto';
       const hoverHalfW = Math.min(0.30 * W, 420, W * 0.44);
       const hoverDipH = dipH + 4;
-      const hoverPath = panelPath(edgeH, hoverDipH, hoverHalfW, W);
       navLinks.style.height = hoverDipH + 'px';
 
       const actualWordWidth = word.getBoundingClientRect().width;
       document.querySelector('.nav-spacer').style.width = (actualWordWidth + 56) + 'px';
 
       function openNav() {
-        panel.style.transition = 'clip-path 0.7s cubic-bezier(0.16,1,0.3,1)';
-        panel.style.clipPath = hoverPath;
+        tweenPanel(
+          { edgeH, dipH, dipHalfW },
+          { edgeH, dipH: hoverDipH, dipHalfW: hoverHalfW, width: W },
+          400
+        );
         navLinks.classList.add('active');
         navLinks.style.opacity = '1';
       }
       function closeNav() {
-        panel.style.transition = 'clip-path 0.6s cubic-bezier(0.16,1,0.3,1)';
-        panel.style.clipPath = finalPath;
+        tweenPanel(
+          { edgeH, dipH: hoverDipH, dipHalfW: hoverHalfW },
+          { edgeH, dipH, dipHalfW, width: W },
+          350
+        );
         navLinks.classList.remove('active');
         navLinks.style.opacity = '0';
       }
@@ -715,9 +780,10 @@ If you're a journalist, researcher or potential partner, include a brief descrip
     let settled = false;
     let resizeTimer;
     function handleResize() {
-      if (!settled || !panel || !wordWrap || !word) return;
+      if (!settled || !panelPathEl || !wordWrap || !word) return;
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
+        if (activeTween) cancelAnimationFrame(activeTween);
         W = document.documentElement.clientWidth;
         H = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
         edgeH = 6;
@@ -725,9 +791,7 @@ If you're a journalist, researcher or potential partner, include a brief descrip
         dipHalfW = Math.max(90, Math.min(0.14 * W, 200, W * 0.42));
         cx = W / 2;
         finalPath = panelPath(edgeH, dipH, dipHalfW, W);
-
-        panel.style.transition = 'none';
-        panel.style.clipPath = finalPath;
+        panelPathEl.setAttribute('d', finalPath);
 
         const finalCenterY = dipH * 0.42;
         const deltaY = finalCenterY - (H / 2);
@@ -755,12 +819,36 @@ If you're a journalist, researcher or potential partner, include a brief descrip
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
 
+    // ══ MAINTENANCE RENDER — returns early, existing page return below is untouched ══
+  if (maintenanceActive) {
+    return (
+      <div style={{
+        position:"fixed", inset:0, background:"#ffffff", color:"#0a0a0a",
+        display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+        textAlign:"center", padding:24, fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      }}>
+        <div style={{ fontSize:11, fontWeight:600, letterSpacing:"0.22em", textTransform:"uppercase", opacity:0.4, marginBottom:24 }}>Alvryn</div>
+        <div style={{ fontWeight:300, fontSize:"clamp(26px,5vw,44px)", lineHeight:1.3, marginBottom:16, maxWidth:520 }}>
+          We're currently down for maintenance.
+        </div>
+        <p style={{ fontSize:14, opacity:0.5, maxWidth:380, lineHeight:1.6 }}>
+          Alvryn is temporarily unavailable while we work on something behind the scenes. Please check back soon.
+        </p>
+      </div>
+    );
+  }
+  // ══ END MAINTENANCE RENDER ══
+
   return (
     <>
       <style>{CSS}</style>
       {modal && <Modal id={modal} onClose={() => setModal(null)} />}
 
-      <div id="panel"></div>
+      <div id="panel-wrap">
+        <svg id="panel-svg">
+          <path id="panel-path" fill="#0a0a0a"></path>
+        </svg>
+      </div>
       <div id="wordmark-wrap">
         <div id="wordmark">
           <span data-letter="A">A</span><span data-letter="L">L</span><span data-letter="V">V</span><span data-letter="R">R</span><span data-letter="Y">Y</span><span data-letter="N">N</span>
